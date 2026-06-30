@@ -1,0 +1,80 @@
+{
+  "display_information": {
+    "name": "Tempo",
+    "description": "Your working memory for Slack — triages the firehose, remembers your commitments, decodes tone, protects your focus.",
+    "background_color": "#1f2330",
+    "long_description": "Tempo is an executive-function co-pilot: assistive technology for the way humans actually work in Slack. It triages everything since you were last active into what truly needs you, tracks the promises you made and were made to you, decodes the implicit tone and subtext of messages, and protects your attention. Grounded live in the Slack Real-Time Search API; nothing it reads is ever stored. Built for the ~15-20% of workers who are neurodivergent, for non-native speakers, and for everyone drowning in the firehose."
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Tempo",
+      "always_online": true
+    },
+    "app_home": {
+      "home_tab_enabled": true,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "assistant_view": {
+      "assistant_description": "I triage your Slack, remember your commitments, decode tone, and protect your focus.",
+      "suggested_prompts": [
+        { "title": "What needs me today?", "message": "What needs me today?" },
+        { "title": "What did I promise?", "message": "Show my open commitments." },
+        { "title": "Catch me up", "message": "Catch me up on what I missed while I was away." }
+      ]
+    },
+    "slash_commands": [
+      {
+        "command": "/tempo",
+        "description": "Triage, commitments, decode tone, focus, or catch-up",
+        "usage_hint": "[triage | commitments | catchup | focus | help]",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "redirect_urls": ["https://YOUR_DEPLOYMENT/api/oauth/callback"],
+    "scopes": {
+      "user": [
+        "search:read.public",
+        "search:read.private",
+        "search:read.im",
+        "search:read.mpim",
+        "search:read.files",
+        "search:read.users"
+      ],
+      "bot": [
+        "assistant:write",
+        "chat:write",
+        "im:write",
+        "im:history",
+        "commands",
+        "app_mentions:read",
+        "users:read",
+        "channels:history",
+        "groups:history",
+        "mpim:history",
+        "reactions:write"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://YOUR_DEPLOYMENT/api/slack/events",
+      "bot_events": [
+        "assistant_thread_started",
+        "assistant_thread_context_changed",
+        "message.im",
+        "app_mention",
+        "app_home_opened"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://YOUR_DEPLOYMENT/api/slack/events"
+    },
+    "socket_mode_enabled": true,
+    "org_deploy_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
