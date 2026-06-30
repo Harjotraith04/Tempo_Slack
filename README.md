@@ -134,6 +134,13 @@ manifest.json          Slack app manifest (scopes, assistant, /tempo, events)
 
 ---
 
+## Master plan & build ledger
+
+Tempo is built as a **continuously buildable** product. Two documents drive it:
+
+- **[`MASTER_PLAN.md`](MASTER_PLAN.md)** — the whole plan: vision, hackathon strategy, the professional modular-monolith architecture, the full code structure, every Slack + MCP integration, and the multi-phase 3-year roadmap. The build loop lives in its Part VI.
+- **[`LEDGER.md`](LEDGER.md)** — the current repo version + progress. Read it, build the next item from the master plan, then update it.
+
 ## License
 
 MIT (hackathon submission).
