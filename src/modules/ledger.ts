@@ -18,7 +18,7 @@ import { structured } from "../agent/llm.js";
 import type { RtsClient, RtsMessage } from "../rts/index.js";
 
 export type CommitmentDirection = "i_owe" | "owed_to_me";
-export type CommitmentStatus = "open" | "at_risk" | "overdue" | "done";
+export type CommitmentStatus = "open" | "at_risk" | "overdue" | "done" | "renegotiating";
 
 export interface Commitment {
   id: string;
@@ -96,7 +96,13 @@ export async function runLedger(
   }
 
   // Most urgent first: overdue, then at-risk, then by due date.
-  const order: Record<CommitmentStatus, number> = { overdue: 0, at_risk: 1, open: 2, done: 3 };
+  const order: Record<CommitmentStatus, number> = {
+    overdue: 0,
+    at_risk: 1,
+    renegotiating: 2,
+    open: 3,
+    done: 4,
+  };
   return commitments.sort((a, b) => {
     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
     return (a.dueTs ?? Infinity) - (b.dueTs ?? Infinity);

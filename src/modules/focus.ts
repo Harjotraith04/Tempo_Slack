@@ -10,6 +10,7 @@
  */
 
 import { getMcpClients, type CalendarResult, type TaskResult } from "../mcp/index.js";
+import { getSlackActions, type SlackActionsClient } from "../slack/index.js";
 import type { TriageItem } from "./triage.js";
 
 export interface FocusPlan {
@@ -20,12 +21,19 @@ export interface FocusPlan {
   task?: TaskResult;
   dndUntilTs: number;
   summary: string;
+  dndApplied: boolean;
+  statusApplied: boolean;
+  digestScheduledFor?: number;
 }
 
 /** Round up to the next 15-minute boundary. */
 function nextSlot(nowTs: number): number {
   const q = 15 * 60;
   return Math.ceil(nowTs / q) * q;
+}
+
+function clockLabel(ts: number): string {
+  return new Date(ts * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 export async function planFocusBlock(opts: {
@@ -35,8 +43,13 @@ export async function planFocusBlock(opts: {
   taskTitle?: string;
   sourcePermalink?: string;
   due?: number;
+  subjectUserId?: string;
+  userToken?: string;
+  /** Injectable for tests; defaults to getSlackActions({ userToken }). */
+  slack?: SlackActionsClient;
 }): Promise<FocusPlan> {
   const { calendar, tasks } = getMcpClients();
+  const slack = opts.slack ?? getSlackActions({ userToken: opts.userToken });
   const duration = (opts.durationMins ?? 90) * 60;
   const startTs = nextSlot(opts.nowTs);
   const endTs = startTs + duration;
@@ -59,6 +72,25 @@ export async function planFocusBlock(opts: {
     });
   }
 
+  // Slack-native: DND + status, because the user just asked Tempo to protect
+  // their focus — that ask *is* the tap. Digest scheduling is best-effort.
+  const durationMins = opts.durationMins ?? 90;
+  const dnd = await slack.setFocusDnd({ minutes: durationMins });
+  const status = await slack.setFocusStatus({
+    statusText: `Focusing — back at ${clockLabel(endTs)}`,
+    statusEmoji: "🎯",
+    expirationTs: endTs,
+  });
+  let digestScheduledFor: number | undefined;
+  if (opts.subjectUserId) {
+    const digest = await slack.scheduleDigest({
+      userId: opts.subjectUserId,
+      postAtTs: endTs,
+      text: `Focus block done — here's what came in while you were heads-down.`,
+    });
+    if (digest.ok) digestScheduledFor = endTs;
+  }
+
   return {
     title,
     startTs,
@@ -66,7 +98,10 @@ export async function planFocusBlock(opts: {
     calendar: cal,
     task,
     dndUntilTs: endTs,
-    summary: `Blocked ${opts.durationMins ?? 90} min for "${title}"${task ? ` and created a task` : ""}. Do-Not-Disturb on until the block ends; only true blockers will break through.`,
+    summary: `Blocked ${durationMins} min for "${title}"${task ? ` and created a task` : ""}. Do-Not-Disturb on until the block ends; only true blockers will break through.`,
+    dndApplied: dnd.ok,
+    statusApplied: status.ok,
+    digestScheduledFor,
   };
 }
 

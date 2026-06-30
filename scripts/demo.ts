@@ -8,10 +8,24 @@
  * This is both the verification harness and the storyboard for the 3-min video.
  */
 
-import { buildContext } from "../src/agent/context.js";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildContext, afterTsOf, type TempoContext } from "../src/agent/context.js";
 import { respond } from "../src/agent/orchestrator.js";
 import { checkDraft } from "../src/modules/decoder.js";
+import { runTriage } from "../src/modules/triage.js";
+import { runLedger } from "../src/modules/ledger.js";
+import { draftNudge, draftRenegotiation } from "../src/modules/draft.js";
+import { snoozeItem, markItemDone, isSuppressed } from "../src/db/snoozes.js";
+import { syncCommitments, markRenegotiating } from "../src/db/commitments.js";
 import { config } from "../src/config.js";
+
+// Repeated `npm run demo` runs must never write into the project root: point
+// the file-backed stores at a throwaway temp dir before anything reads/writes
+// them. Must happen before any store-touching call (the very first being
+// Scene 1's triage, which now filters through the suppression store).
+process.env.TEMPO_STORE_DIR = mkdtempSync(join(tmpdir(), "tempo-demo-"));
 
 function rule(title: string) {
   console.log("\n" + "─".repeat(72));
@@ -27,6 +41,44 @@ function renderBlocks(blocks: any[]) {
     else if (b.type === "divider") console.log("  · · ·");
     else if (b.type === "actions")
       console.log(`  [ ${b.elements.map((e: any) => e.text.text).join(" ] [ ")} ]`);
+  }
+}
+
+/**
+ * The action-handler layer (src/app.ts) only fires from real Slack button
+ * clicks, so it isn't reachable through the free-text orchestrator path above
+ * — this exercises the same store + draft calls directly, the way Scene 3
+ * bypasses respond() to call checkDraft() directly.
+ */
+async function demoButtonLayer(ctx: TempoContext) {
+  const triage = await runTriage(ctx.rts, { afterTs: afterTsOf(ctx) });
+  const [first, second] = triage.needsYou;
+
+  if (first) {
+    snoozeItem(ctx.subjectUserId, first.permalink, ctx.nowTs + 4 * 3600);
+    console.log(`  [Snooze] "${first.excerpt.slice(0, 50)}…" → suppressed now: ${isSuppressed(ctx.subjectUserId, first.permalink, ctx.nowTs)}`);
+  }
+  if (second) {
+    markItemDone(ctx.subjectUserId, second.permalink);
+    console.log(`  [Done]   "${second.excerpt.slice(0, 50)}…" → suppressed now: ${isSuppressed(ctx.subjectUserId, second.permalink, ctx.nowTs)}`);
+  }
+
+  const fresh = await runLedger(ctx.rts, { nowTs: ctx.nowTs });
+  const commitments = syncCommitments(ctx.subjectUserId, fresh);
+  const owedToMe = commitments.find((c) => c.direction === "owed_to_me");
+  const iOwe = commitments.find((c) => c.direction === "i_owe");
+
+  if (owedToMe) {
+    const nudge = await draftNudge(owedToMe);
+    console.log(`  [Nudge] draft to ${owedToMe.counterparty}: "${nudge}"`);
+  }
+  if (iOwe) {
+    markRenegotiating(ctx.subjectUserId, iOwe.permalink);
+    const draft = await draftRenegotiation(iOwe);
+    console.log(`  [Renegotiate] draft to ${iOwe.counterparty}: "${draft}"`);
+    const resynced = syncCommitments(ctx.subjectUserId, await runLedger(ctx.rts, { nowTs: ctx.nowTs }));
+    const stillRenegotiating = resynced.find((c) => c.permalink === iOwe.permalink)?.status === "renegotiating";
+    console.log(`  Status after renegotiate persists across a re-sync: ${stillRenegotiating}`);
   }
 }
 
@@ -58,6 +110,9 @@ async function main() {
 
   rule('6. "Catch me up" — Re-entry brief');
   renderBlocks((await respond(ctx, "catch me up on what I missed")).blocks);
+
+  rule('7. Tapping a button — Snooze / Done / Nudge / Renegotiate');
+  await demoButtonLayer(ctx);
 
   console.log("\n" + "─".repeat(72));
   console.log("  Nothing above was sent or changed without Sam's tap. Nothing RTS");

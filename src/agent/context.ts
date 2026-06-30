@@ -18,6 +18,8 @@ export interface TempoContext {
   awayDays: number;
   subjectUserId: string;
   subjectName: string;
+  /** Threaded through to Slack-native actions (focus DND/status/digest). */
+  userToken?: string;
 }
 
 export interface BuildContextOpts {
@@ -39,6 +41,7 @@ export function buildContext(opts: BuildContextOpts = {}): TempoContext {
     awayDays: Math.max(1, Math.round((nowTs - lastActiveTs) / (24 * 3600))),
     subjectUserId: opts.subjectUserId ?? SUBJECT_USER_ID,
     subjectName: opts.subjectName ?? "there",
+    userToken: opts.userToken,
   };
 }
 

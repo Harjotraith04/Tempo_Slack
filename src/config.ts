@@ -25,6 +25,7 @@ function req(name: string, fallback?: string): string {
 
 export type ReceiverMode = "socket" | "http";
 export type RtsMode = "mock" | "live";
+export type SlackActionsMode = "mock" | "live";
 
 export const config = {
   slack: {
@@ -49,6 +50,10 @@ export const config = {
     receiver: (opt("TEMPO_RECEIVER") ?? "socket") as ReceiverMode,
     port: Number(opt("PORT") ?? 3000),
     rts: (opt("TEMPO_RTS") ?? "mock") as RtsMode,
+    // Independent from TEMPO_RTS: a dev connected to a real sandbox for RTS
+    // shouldn't have Tempo silently flip their own DND/status/profile unless
+    // they explicitly opt in to live Slack-write actions.
+    slackActions: (opt("TEMPO_SLACK_ACTIONS") ?? "mock") as SlackActionsMode,
     encryptionKey: req("TEMPO_ENCRYPTION_KEY", "dev-insecure-key-change-me-please"),
   },
 } as const;
@@ -66,3 +71,4 @@ export function assertSlackRuntime(): void {
 }
 
 export const isLiveRts = () => config.runtime.rts === "live";
+export const isLiveSlackActions = () => config.runtime.slackActions === "live";

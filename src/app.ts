@@ -12,16 +12,20 @@
  * (Vercel/prod) — see createApp() / createExpressApp().
  */
 
-import boltPkg from "@slack/bolt";
+import { App, Assistant, ExpressReceiver, LogLevel } from "@slack/bolt";
 import { config, assertSlackRuntime } from "./config.js";
 import { buildContext } from "./agent/context.js";
 import { respond as tempoRespond, routeIntent } from "./agent/orchestrator.js";
-import { draftReply } from "./modules/draft.js";
+import { draftReply, draftNudge, draftRenegotiation } from "./modules/draft.js";
 import { homeBlocks } from "./blocks/index.js";
 import { getUserToken } from "./db/tokens.js";
+import { snoozeItem, markItemDone } from "./db/snoozes.js";
+import { getCommitmentByPermalink, markRenegotiating, markNudged } from "./db/commitments.js";
 
-const { App, Assistant, ExpressReceiver, LogLevel } = boltPkg;
 type BoltApp = InstanceType<typeof App>;
+
+/** How long a manual snooze hides a triage item before it resurfaces. */
+const DEFAULT_SNOOZE_SECS = 4 * 3600;
 
 /** Prefer the user's stored OAuth token; fall back to the single demo token. */
 function resolveUserToken(slackUserId: string): string | undefined {
@@ -93,7 +97,48 @@ export function registerHandlers(app: BoltApp) {
     await ack();
     await postDraft(client, body);
   });
-  for (const id of ["snooze", "mark_done", "nudge", "renegotiate", "use_rewrite", "keep_draft"]) {
+
+  app.action("snooze", async ({ ack, body, client }) => {
+    await ack();
+    const { permalink, userId } = actionTarget(body);
+    if (permalink) snoozeItem(userId, permalink, Math.floor(Date.now() / 1000) + DEFAULT_SNOOZE_SECS);
+    await ephemeral(client, body, confirmation("snooze"));
+  });
+
+  app.action("mark_done", async ({ ack, body, client }) => {
+    await ack();
+    const { permalink, userId } = actionTarget(body);
+    if (permalink) markItemDone(userId, permalink);
+    await ephemeral(client, body, confirmation("mark_done"));
+  });
+
+  app.action("nudge", async ({ ack, body, client }) => {
+    await ack();
+    const { permalink, userId } = actionTarget(body);
+    const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+    if (!c) {
+      await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
+      return;
+    }
+    markNudged(userId, permalink);
+    const draft = await draftNudge(c);
+    await postComposedDraft(client, body, draft);
+  });
+
+  app.action("renegotiate", async ({ ack, body, client }) => {
+    await ack();
+    const { permalink, userId } = actionTarget(body);
+    const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+    if (!c) {
+      await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
+      return;
+    }
+    markRenegotiating(userId, permalink);
+    const draft = await draftRenegotiation(c);
+    await postComposedDraft(client, body, draft);
+  });
+
+  for (const id of ["use_rewrite", "keep_draft"]) {
     app.action(id, async ({ ack, body, client }) => {
       await ack();
       await ephemeral(client, body, confirmation(id));
@@ -133,24 +178,33 @@ function confirmation(actionId: string): string {
   const map: Record<string, string> = {
     snooze: "Snoozed — I'll resurface it later.",
     mark_done: "Marked done. Nice.",
-    nudge: "I'll send a gentle nudge.",
-    renegotiate: "I can draft a message to push the deadline — just say so.",
     use_rewrite: "Using the rewrite. Review it and send when ready.",
     keep_draft: "Keeping your version.",
   };
   return map[actionId] ?? "Done.";
 }
 
-async function postDraft(client: any, body: any) {
-  const permalink: string = body?.actions?.[0]?.value ?? "";
-  const userId: string = body?.user?.id ?? "U_SAM";
-  const channel: string | undefined = body?.channel?.id ?? body?.container?.channel_id;
-  const threadTs: string | undefined = body?.message?.thread_ts ?? body?.message?.ts;
+/** The permalink + acting user for a button click — both snooze/done and the
+ * commitment actions key off this, since every actionable card item carries
+ * its permalink as the button value. */
+function actionTarget(body: any): { permalink: string; userId: string } {
+  return {
+    permalink: body?.actions?.[0]?.value ?? "",
+    userId: body?.user?.id ?? "U_SAM",
+  };
+}
 
+async function postDraft(client: any, body: any) {
+  const { permalink, userId } = actionTarget(body);
   const ctx = contextFor(userId);
   const source = await sourceTextFor(ctx, permalink);
   const draft = await draftReply(source ?? "");
+  await postComposedDraft(client, body, draft);
+}
 
+async function postComposedDraft(client: any, body: any, draft: string) {
+  const channel: string | undefined = body?.channel?.id ?? body?.container?.channel_id;
+  const threadTs: string | undefined = body?.message?.thread_ts ?? body?.message?.ts;
   const text = `Here's a draft — *review and send it yourself* (I won't post it for you):\n>>> ${draft}`;
   if (channel) await client.chat.postMessage({ channel, thread_ts: threadTs, text });
 }

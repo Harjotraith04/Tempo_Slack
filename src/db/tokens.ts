@@ -66,3 +66,8 @@ export function getUserToken(userId: string): string | undefined {
   const rec = load()[userId];
   return rec ? decrypt(rec.enc) : undefined;
 }
+
+/** Metadata only — no decrypt() — so listing installs never touches token material. */
+export function listInstalledUsers(): { userId: string; teamId: string; installedAt: number }[] {
+  return Object.values(load()).map(({ userId, teamId, installedAt }) => ({ userId, teamId, installedAt }));
+}

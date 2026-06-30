@@ -14,6 +14,8 @@ import { runLedger } from "../modules/ledger.js";
 import { decodeMessage } from "../modules/decoder.js";
 import { runReentry } from "../modules/reentry.js";
 import { planFocusBlock } from "../modules/focus.js";
+import { isSuppressed } from "../db/snoozes.js";
+import { syncCommitments } from "../db/commitments.js";
 import {
   triageBlocks,
   ledgerBlocks,
@@ -59,7 +61,11 @@ async function respondCore(
 
   switch (intent) {
     case "triage": {
-      const r = await runTriage(ctx.rts, { afterTs: after });
+      const raw = await runTriage(ctx.rts, { afterTs: after });
+      const r = {
+        ...raw,
+        needsYou: raw.needsYou.filter((i) => !isSuppressed(ctx.subjectUserId, i.permalink, ctx.nowTs)),
+      };
       const top = r.needsYou.slice(0, 3);
       return {
         intent,
@@ -70,7 +76,8 @@ async function respondCore(
       };
     }
     case "commitments": {
-      const c = await runLedger(ctx.rts, { nowTs: ctx.nowTs });
+      const fresh = await runLedger(ctx.rts, { nowTs: ctx.nowTs });
+      const c = syncCommitments(ctx.subjectUserId, fresh);
       return {
         intent,
         text:
@@ -85,7 +92,13 @@ async function respondCore(
     }
     case "focus": {
       const mins = Number(input.match(/(\d{2,3})\s*(min|m)\b/)?.[1] ?? 90);
-      const p = await planFocusBlock({ nowTs: ctx.nowTs, durationMins: mins, title: "Deep work (protected by Tempo)" });
+      const p = await planFocusBlock({
+        nowTs: ctx.nowTs,
+        durationMins: mins,
+        title: "Deep work (protected by Tempo)",
+        subjectUserId: ctx.subjectUserId,
+        userToken: ctx.userToken,
+      });
       return { intent, text: p.summary, blocks: focusBlocks(p) };
     }
     case "decode": {

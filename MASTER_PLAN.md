@@ -306,6 +306,7 @@ Tempo is built as a **continuously buildable** product. There is no separate pro
 4. **Build** those items following Part III (architecture) and Part IV (code structure), honoring the invariants below.
 5. **Keep the zero-credential demo + tests green** at every step; extend `scripts/demo.ts` for any new user-visible capability.
 6. **Record:** append a `History` entry to `LEDGER.md`, bump `package.json` `version`, and rewrite `Next up` to the following phase.
+7. **Commit and push automatically** once the phase builds successfully (green baseline from step 5 holds): commit with a short, plain commit message — title only, no body/description, no AI co-author/attribution trailer of any kind — then push to the tracked remote branch. Do this without asking; it's pre-authorized for every successfully built phase.
 
 ### Invariants (never violate)
 1. **Never persist RTS content** — ground live, discard.
@@ -314,6 +315,7 @@ Tempo is built as a **continuously buildable** product. There is no separate pro
 4. **Accessibility-first** on every surface.
 5. **User-token RTS** — no `action_token`; permission-scoped.
 6. **Match existing patterns / extend ports** — don't invent parallel ones.
+7. **Commit messages never name an AI/model as author or co-author** — short title only, no description, no `Co-Authored-By` trailer.
 
 ### Versioning
 Semver tied to phases. `package.json` `version` is canonical; `LEDGER.md` is the human history.

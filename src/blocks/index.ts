@@ -96,6 +96,7 @@ const STATUS_LABEL: Record<Commitment["status"], string> = {
   at_risk: "⏳ Due soon",
   open: "Open",
   done: "✓ Done",
+  renegotiating: "🔄 Renegotiating",
 };
 
 export function ledgerBlocks(commitments: Commitment[]): KnownBlock[] {
@@ -115,8 +116,8 @@ export function ledgerBlocks(commitments: Commitment[]): KnownBlock[] {
       type: "actions",
       elements: [
         linkBtn("Open", c.permalink),
-        btn("Draft it now", "draft_deliverable", c.id, "primary"),
-        btn("Renegotiate", "renegotiate", c.id),
+        btn("Draft it now", "draft_deliverable", c.permalink, "primary"),
+        btn("Renegotiate", "renegotiate", c.permalink),
       ],
     } as KnownBlock);
   }
@@ -128,7 +129,7 @@ export function ledgerBlocks(commitments: Commitment[]): KnownBlock[] {
     blocks.push(section(`${STATUS_LABEL[c.status]} · *${c.what}* — from ${c.counterparty}${c.dueText ? ` (${c.dueText})` : ""}`));
     blocks.push({
       type: "actions",
-      elements: [btn("Open", "open_link", c.permalink), btn("Nudge them", "nudge", c.id)],
+      elements: [linkBtn("Open", c.permalink), btn("Nudge them", "nudge", c.permalink)],
     } as KnownBlock);
   }
   return blocks;
