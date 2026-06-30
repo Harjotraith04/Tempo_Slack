@@ -17,12 +17,14 @@ import { config, assertSlackRuntime } from "./config.js";
 import { buildContext } from "./agent/context.js";
 import { respond as tempoRespond, routeIntent, triageAll } from "./agent/orchestrator.js";
 import { draftReply, draftNudge, draftRenegotiation } from "./modules/draft.js";
-import { homeDashboardBlocks, settingsModalView, type SettingsModalPrefs } from "./blocks/index.js";
+import { homeDashboardBlocks, onboardingBlocks, settingsModalView, type SettingsModalPrefs } from "./blocks/index.js";
 import { getUserToken } from "./db/tokens.js";
 import { snoozeItem, markItemDone } from "./db/snoozes.js";
 import { getCommitmentByPermalink, markRenegotiating, markNudged } from "./db/commitments.js";
 import { getPrefs, savePrefs } from "./db/prefs.js";
 import { resolveA11yPrefs } from "./a11y/index.js";
+import { getTtsClient } from "./a11y/tts/index.js";
+import { isFirstRun, welcomeMessage } from "./modules/onboarding.js";
 
 type BoltApp = InstanceType<typeof App>;
 
@@ -41,29 +43,47 @@ function contextFor(slackUserId: string) {
   });
 }
 
+/** Publishes the App Home tab: live triage + commitments, reusing the same
+ * respond() path the Assistant pane / `/tempo` use, optionally prefixed with
+ * the first-run onboarding banner. Triage + commitments are pure reads —
+ * safe to recompute on every Home open. Focus is deliberately NOT live here:
+ * planning a focus block has real side effects (MCP + Slack DND/status), and
+ * opening a tab must never act on the user's behalf. */
+async function publishHome(client: any, userId: string, opts: { showOnboarding?: boolean } = {}) {
+  const ctx = contextFor(userId);
+  const [triage, commitments] = await Promise.all([
+    tempoRespond(ctx, "what needs me today?"),
+    tempoRespond(ctx, "show my commitments"),
+  ]);
+  await client.views.publish({
+    user_id: userId,
+    view: {
+      type: "home",
+      blocks: [
+        ...(opts.showOnboarding ? onboardingBlocks() : []),
+        ...homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks }),
+      ] as any,
+    },
+  });
+}
+
 /** Register every Tempo handler on a Bolt app (receiver-agnostic). */
 export function registerHandlers(app: BoltApp) {
   const assistant = new Assistant({
-    threadStarted: async ({ say, setSuggestedPrompts }) => {
-      await say(
-        "Hi — I'm Tempo, your working memory for Slack. I'll only ever surface what actually needs you, and I never act without your tap. What would help right now?",
-      );
-      await setSuggestedPrompts({
-        title: "Start here",
-        prompts: [
-          { title: "What needs me today?", message: "What needs me today?" },
-          { title: "What did I promise?", message: "Show my open commitments." },
-          { title: "Catch me up", message: "Catch me up on what I missed while I was away." },
-        ],
-      });
+    threadStarted: async ({ event, say, setSuggestedPrompts }) => {
+      const userId = event.assistant_thread?.user_id ?? "U_SAM";
+      const welcome = welcomeMessage(isFirstRun(getPrefs(userId)));
+      await say(welcome.text);
+      await setSuggestedPrompts({ title: "Start here", prompts: welcome.prompts });
     },
-    userMessage: async ({ message, say, setStatus }) => {
+    userMessage: async ({ message, say, setStatus, client }) => {
       const text = (message as any).text ?? "";
       const userId = (message as any).user ?? "U_SAM";
       await setStatus("is thinking…");
       try {
         const res = await tempoRespond(contextFor(userId), text);
         await say({ text: res.text, blocks: res.blocks as any });
+        await maybeSendReadAloud(client, userId, res.speech);
       } catch (err) {
         console.error("userMessage error", err);
         await say("Sorry — I hit a snag pulling that together. Try again in a moment.");
@@ -72,36 +92,33 @@ export function registerHandlers(app: BoltApp) {
   });
   app.assistant(assistant);
 
-  app.command("/tempo", async ({ command, ack, respond }) => {
+  app.command("/tempo", async ({ command, ack, respond, client }) => {
     await ack();
     const text = command.text?.trim() || "triage";
     const res = await tempoRespond(contextFor(command.user_id), text);
     await respond({ response_type: "ephemeral", text: res.text, blocks: res.blocks as any });
+    await maybeSendReadAloud(client, command.user_id, res.speech);
   });
 
-  app.event("app_mention", async ({ event, say }) => {
-    const res = await tempoRespond(contextFor((event as any).user ?? "U_SAM"), (event as any).text ?? "triage");
+  app.event("app_mention", async ({ event, say, client }) => {
+    const userId = (event as any).user ?? "U_SAM";
+    const res = await tempoRespond(contextFor(userId), (event as any).text ?? "triage");
     await say({ text: res.text, blocks: res.blocks as any, thread_ts: (event as any).ts });
+    await maybeSendReadAloud(client, userId, res.speech);
   });
 
   app.event("app_home_opened", async ({ event, client }) => {
     const userId = (event as any).user ?? "U_SAM";
-    const ctx = contextFor(userId);
-    // Triage + commitments are pure reads (RTS search + the local stores) —
-    // safe to recompute on every Home open. Focus is deliberately NOT live
-    // here: planning a focus block has real side effects (MCP + Slack
-    // DND/status), and opening a tab must never act on the user's behalf.
-    const [triage, commitments] = await Promise.all([
-      tempoRespond(ctx, "what needs me today?"),
-      tempoRespond(ctx, "show my commitments"),
-    ]);
-    await client.views.publish({
-      user_id: userId,
-      view: {
-        type: "home",
-        blocks: homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks }) as any,
-      },
-    });
+    await publishHome(client, userId, { showOnboarding: isFirstRun(getPrefs(userId)) });
+  });
+
+  app.action("complete_onboarding", async ({ ack, body, client }) => {
+    await ack();
+    const userId = (body as any)?.user?.id ?? "U_SAM";
+    savePrefs(userId, { onboardedAt: Math.floor(Date.now() / 1000) });
+    // Re-publish immediately so the banner disappears without requiring a
+    // tab close/reopen.
+    await publishHome(client, userId);
   });
 
   app.action("open_settings", async ({ ack, body, client }) => {
@@ -126,6 +143,7 @@ export function registerHandlers(app: BoltApp) {
     const userId = (body as any)?.user?.id ?? "U_SAM";
     const res = await triageAll(contextFor(userId));
     await ephemeral(client, body, res.text, res.blocks as any);
+    await maybeSendReadAloud(client, userId, res.speech);
   });
 
   app.action("draft_reply", async ({ ack, body, client }) => {
@@ -276,6 +294,30 @@ async function dm(client: any, userId: string, text: string, blocks?: any[]) {
   const im = await client.conversations.open({ users: userId });
   const channel = im?.channel?.id;
   if (channel) await client.chat.postMessage({ channel, text, ...(blocks ? { blocks } : {}) });
+}
+
+/** When the user has the read-aloud a11y preference on, synthesizes the
+ * response's speech script and DMs it as an audio file — always via DM
+ * (never into a shared channel), matching Tempo's calm/private posture.
+ * Best-effort: a synthesis/upload failure must never break message delivery. */
+async function maybeSendReadAloud(client: any, userId: string, speech: string) {
+  try {
+    if (!resolveA11yPrefs(getPrefs(userId)).readAloud) return;
+    const tts = await getTtsClient().synthesize({ text: speech });
+    if (!tts.ok || !tts.audioBase64) return;
+    const im = await client.conversations.open({ users: userId });
+    const channel = im?.channel?.id;
+    if (!channel) return;
+    await client.files.uploadV2({
+      channel_id: channel,
+      file: Buffer.from(tts.audioBase64, "base64"),
+      filename: tts.filename ?? "tempo-read-aloud.wav",
+      title: "Tempo — read aloud",
+      initial_comment: "🔊 Read-aloud version of my last reply.",
+    });
+  } catch (err) {
+    console.error("read-aloud delivery failed", err);
+  }
 }
 
 function parseSettingsSubmission(view: any): Partial<SettingsModalPrefs> {

@@ -250,6 +250,30 @@ export function homeDashboardBlocks(opts: { triage: KnownBlock[]; commitments: K
   ];
 }
 
+// ── Onboarding ───────────────────────────────────────────────────────────────
+
+/** The first-run banner — shown above the live App Home dashboard only until
+ * the user taps through it (app.ts's "complete_onboarding" action). */
+export function onboardingBlocks(): KnownBlock[] {
+  return [
+    header("Welcome to Tempo 👋"),
+    section(
+      "Your working memory for Slack — five things, always with your tap first:\n" +
+        "• *Triage* — what actually needs you\n" +
+        "• *Commitment Ledger* — promises made & owed\n" +
+        "• *Tone Decoder* — what a message really means\n" +
+        "• *Focus Guardian* — real Do-Not-Disturb + calendar protection\n" +
+        "• *Re-entry* — a calm catch-up after time away",
+    ),
+    context("Nothing I read from Slack is ever stored. I only act when you tap a button."),
+    {
+      type: "actions",
+      elements: [btn("Got it — let's go", "complete_onboarding", "complete_onboarding", "primary")],
+    } as KnownBlock,
+    divider,
+  ];
+}
+
 // ── Settings modal ──────────────────────────────────────────────────────────
 
 const VERBOSITY_OPTIONS = [

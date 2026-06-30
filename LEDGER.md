@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v0.3.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock
+**Current version:** v0.4.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -10,16 +10,27 @@
 - **Phase 0 / v0.1.0 — Foundation:** DONE.
 - **Phase 1a / v0.2.0 — Foundational slice (stores + Slack-native focus + real interactivity):** DONE.
 - **Phase 1b / v0.3.0 — Live App Home dashboard + a11y settings modal + "show the rest":** DONE.
+- **Phase 1c / v0.4.0 — Read-aloud audio (TTS) + first-run onboarding:** DONE.
 
 ## Next up → Phase 1 / v1.0.0 "Hackathon Winner" (remaining)
-See `MASTER_PLAN.md` → Part V, Year 1, Phase 1 for full detail. Persistence, Slack-native focus, real interactivity, and the user-facing App Home/settings surfaces are all done (see History below); what's left:
-- [ ] Read-aloud audio (TTS) — `a11y/index.ts`'s `toSpeech()` only produces text today, no audio synthesis. `UserPrefs.readAloud` is already stored and settable via the settings modal, just not consumed by anything yet.
-- [ ] Onboarding first-run flow
-- [ ] Deploy + seed + judging access + 3-min video + architecture diagram + write-up
+See `MASTER_PLAN.md` → Part V, Year 1, Phase 1 for full detail. Persistence, Slack-native focus, real interactivity, the App Home/settings surfaces, read-aloud audio, and first-run onboarding are all done (see History below); what's left is submission logistics, not code:
+- [ ] Deploy to a Slack sandbox
+- [ ] Seed the sandbox (`npm run seed -- --execute`) so live RTS has data
+- [ ] Grant judging access (`slackhack@salesforce.com` + `testing@devpost.com`)
+- [ ] Record the ~3-min demo video (beats in `MASTER_PLAN.md` §1.6)
+- [ ] Architecture diagram
+- [ ] Devpost write-up + explicit impact statement
 
 ---
 
 ## History
+
+### v0.4.0 — 2026-07-01 — Read-aloud audio (TTS) + first-run onboarding
+**Built:** a new `TtsClient` port (`a11y/tts/{types,mock,live,index}.ts`) following the same mock/live double-gate pattern as `rts/` and `slack/` — mock synthesizes a real, deterministic, valid (silent) WAV file with no I/O; live calls OpenAI's `tts-1` speech endpoint over the global `fetch` (no new npm dependency), gated by `TEMPO_TTS` / auto-detected from `OPENAI_API_KEY`, same convention as `TEMPO_AI`. `app.ts`'s new best-effort `maybeSendReadAloud()` checks the user's stored `readAloud` preference, synthesizes the response's existing speech script, and DMs the resulting audio file (`files.uploadV2`, new `files:write` bot scope) — wired into every surface that produces a `TempoResponse`: the Assistant pane, `/tempo`, `app_mention`, and "Show the rest". `UserPrefs.readAloud` is no longer a dead switch.
+Also built first-run onboarding: a new `modules/onboarding.ts` (`isFirstRun()` / `welcomeMessage()`) and `blocks/index.ts`'s `onboardingBlocks()` banner. A brand-new user's first App Home open now shows a five-module explainer + privacy promise above the live dashboard, with a "Got it — let's go" button (`complete_onboarding`) that persists a new `UserPrefs.onboardedAt` field and immediately republishes the Home view without the banner; the Assistant pane's `threadStarted` greeting now reads the same first-run flag to give new users the fuller explainer and returning users today's shorter greeting. `app_home_opened`'s fetch-and-publish logic was factored into a shared `publishHome()` helper to avoid duplicating it between the two call sites.
+**Quality:** 80 tests passing (up from 65) across 13 files, including a new `a11y/tts/tts.test.ts` (deterministic mock WAV bytes + a mocked-`fetch` contract test for the live adapter, mirroring `slack/actions.test.ts`'s mocked-`WebClient` pattern), onboarding coverage in `modules.test.ts`/`blocks.test.ts`/`app.actions.test.ts` (banner shown/hidden, tap persists + republishes), and read-aloud delivery coverage in `app.actions.test.ts` (audio DMed when the pref is on, never synthesized when it's off) · typecheck clean · build clean · `npm run demo` extended with a 9th scene (synthesize a real response's speech script into audio) and a 10th (a brand-new user's onboarding banner, tap, and first-run flag flipping).
+**Open seams:** live TTS (OpenAI `tts-1`) is unverified against a real call — only contract-tested via a mocked `fetch`, the same level of coverage `LiveRtsClient` had before `scripts/verify-live-rts.ts` existed; no equivalent verify script was added for TTS. Onboarding is App-Home-led; there's no separate onboarding surface beyond the Home banner + the Assistant greeting tweak. Intent routing still keyword-only; insecure default encryption key unchanged; file-backed stores still assume a writable local filesystem (deferred to v2.4 per earlier entries).
+**Next:** deploy + seed + judging access + 3-min video + architecture diagram + write-up — the rest of the v1.0 "Hackathon Winner" submission checklist.
 
 ### v0.3.0 — 2026-07-01 — Live App Home dashboard + a11y settings modal + "show the rest"
 **Built:** App Home (`app_home_opened`) now publishes a live dashboard — real triage + commitments, recomputed and suppression/renegotiation-aware on every open, via the same `respond()` path the Assistant pane and `/tempo` use; a `⚙️ Settings` button opens a real `views.open` modal (verbosity, reading level, max items, default focus length, read-aloud) that saves to `db/prefs.ts` on submit (`app.view("settings_modal", ...)`); `db/prefs.ts` extended with `readingLevel`/`readAloud`/`maxItems`; a `resolveA11yPrefs()` helper in `a11y/index.ts` merges stored prefs over the existing defaults. These prefs are now actually consumed, not just stored: triage caps to the user's `maxItems` (was hardcoded to 3) and exposes a real "Show the rest" button (new `orchestrator.triageAll()` + `show_rest` action handler) instead of a text-only hint nobody could act on; focus block duration falls back to the user's `focusDefaultMins` when not stated in the request; response text is condensed for "brief" verbosity.

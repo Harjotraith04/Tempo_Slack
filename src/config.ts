@@ -56,6 +56,14 @@ export const config = {
     slackActions: (opt("TEMPO_SLACK_ACTIONS") ?? "mock") as SlackActionsMode,
     encryptionKey: req("TEMPO_ENCRYPTION_KEY", "dev-insecure-key-change-me-please"),
   },
+  tts: {
+    apiKey: opt("OPENAI_API_KEY"),
+    voice: opt("TEMPO_TTS_VOICE") ?? "alloy",
+    // live = call OpenAI's speech endpoint; mock = deterministic silent WAV
+    // (runs with no key). Auto-detects to "live" when OPENAI_API_KEY is set.
+    mode: (opt("TEMPO_TTS") ??
+      (opt("OPENAI_API_KEY") ? "live" : "mock")) as "live" | "mock",
+  },
 } as const;
 
 export function assertSlackRuntime(): void {
@@ -72,3 +80,4 @@ export function assertSlackRuntime(): void {
 
 export const isLiveRts = () => config.runtime.rts === "live";
 export const isLiveSlackActions = () => config.runtime.slackActions === "live";
+export const isLiveTts = () => config.tts.mode === "live";

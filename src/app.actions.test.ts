@@ -57,6 +57,9 @@ function fakeClient() {
     conversations: {
       open: vi.fn().mockResolvedValue({ ok: true, channel: { id: "D1" } }),
     },
+    files: {
+      uploadV2: vi.fn().mockResolvedValue({ ok: true }),
+    },
   };
 }
 
@@ -189,6 +192,32 @@ describe("show_rest", () => {
   });
 });
 
+describe("read-aloud delivery", () => {
+  it("DMs a synthesized audio file when the user has readAloud on", async () => {
+    const { savePrefs } = await import("./db/prefs.js");
+    savePrefs("U_RA1", { readAloud: true });
+
+    const client = fakeClient();
+    const body = { actions: [{ value: "show_rest" }], user: { id: "U_RA1" }, channel: { id: "C1" } };
+    await app.actions.show_rest!({ ack: vi.fn(), body, client });
+
+    expect(client.conversations.open).toHaveBeenCalledWith({ users: "U_RA1" });
+    expect(client.files.uploadV2).toHaveBeenCalledTimes(1);
+    const call = client.files.uploadV2.mock.calls[0]![0];
+    expect(call.channel_id).toBe("D1");
+    expect(Buffer.isBuffer(call.file)).toBe(true);
+    expect(call.file.length).toBeGreaterThan(0);
+  });
+
+  it("never synthesizes or uploads audio when readAloud is off (the default)", async () => {
+    const client = fakeClient();
+    const body = { actions: [{ value: "show_rest" }], user: { id: "U_RA2" }, channel: { id: "C1" } };
+    await app.actions.show_rest!({ ack: vi.fn(), body, client });
+
+    expect(client.files.uploadV2).not.toHaveBeenCalled();
+  });
+});
+
 describe("settings: open_settings + settings_modal submission", () => {
   it("open_settings opens a modal pre-filled with the user's current prefs", async () => {
     const { savePrefs } = await import("./db/prefs.js");
@@ -274,5 +303,43 @@ describe("app_home_opened", () => {
     expect(call.view.type).toBe("home");
     const buttons = call.view.blocks.filter((b: any) => b.type === "actions").flatMap((b: any) => b.elements);
     expect(buttons.some((b: any) => b.action_id === "open_settings")).toBe(true);
+  });
+
+  it("shows the onboarding banner on a brand-new user's first Home open", async () => {
+    const client = fakeClient();
+    const event = { user: "U_NEW1" };
+    await app.events.app_home_opened!({ event, client });
+
+    const call = client.views.publish.mock.calls[0]![0];
+    const buttons = call.view.blocks.filter((b: any) => b.type === "actions").flatMap((b: any) => b.elements);
+    expect(buttons.some((b: any) => b.action_id === "complete_onboarding")).toBe(true);
+  });
+
+  it("does not show the onboarding banner for a user who already onboarded", async () => {
+    const { savePrefs } = await import("./db/prefs.js");
+    savePrefs("U_RETURNING", { onboardedAt: Math.floor(Date.now() / 1000) });
+
+    const client = fakeClient();
+    const event = { user: "U_RETURNING" };
+    await app.events.app_home_opened!({ event, client });
+
+    const call = client.views.publish.mock.calls[0]![0];
+    const buttons = call.view.blocks.filter((b: any) => b.type === "actions").flatMap((b: any) => b.elements);
+    expect(buttons.some((b: any) => b.action_id === "complete_onboarding")).toBe(false);
+  });
+});
+
+describe("complete_onboarding", () => {
+  it("persists onboardedAt and republishes the Home view without the banner", async () => {
+    const client = fakeClient();
+    const body = { user: { id: "U_NEW2" } };
+    await app.actions.complete_onboarding!({ ack: vi.fn(), body, client });
+
+    expect(getPrefs("U_NEW2")?.onboardedAt).toBeGreaterThan(0);
+    expect(client.views.publish).toHaveBeenCalledTimes(1);
+    const call = client.views.publish.mock.calls[0]![0];
+    expect(call.user_id).toBe("U_NEW2");
+    const buttons = call.view.blocks.filter((b: any) => b.type === "actions").flatMap((b: any) => b.elements);
+    expect(buttons.some((b: any) => b.action_id === "complete_onboarding")).toBe(false);
   });
 });

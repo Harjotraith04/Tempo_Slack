@@ -56,7 +56,8 @@
         "channels:history",
         "groups:history",
         "mpim:history",
-        "reactions:write"
+        "reactions:write",
+        "files:write"
       ]
     }
   },

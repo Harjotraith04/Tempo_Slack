@@ -7,6 +7,7 @@ import {
   focusBlocks,
   reentryBlocks,
   homeDashboardBlocks,
+  onboardingBlocks,
   settingsModalView,
 } from "./index.js";
 import type { TriageItem, TriageResult } from "../modules/triage.js";
@@ -190,6 +191,16 @@ describe("homeDashboardBlocks", () => {
 
     // No live focus block (planning one has side effects — must never run on a passive Home open).
     expect(JSON.stringify(blocks)).not.toContain("Do-Not-Disturb on until");
+  });
+});
+
+describe("onboardingBlocks", () => {
+  it("has exactly one button — the onboarding completion tap", () => {
+    const blocks = onboardingBlocks();
+    const els = buttons(blocks);
+    expect(els).toHaveLength(1);
+    expect(els[0]!.action_id).toBe("complete_onboarding");
+    expect(els[0]!.text.text.trim().length).toBeGreaterThan(0);
   });
 });
 

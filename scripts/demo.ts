@@ -19,9 +19,11 @@ import { runLedger } from "../src/modules/ledger.js";
 import { draftNudge, draftRenegotiation } from "../src/modules/draft.js";
 import { snoozeItem, markItemDone, isSuppressed } from "../src/db/snoozes.js";
 import { syncCommitments, markRenegotiating } from "../src/db/commitments.js";
-import { homeDashboardBlocks, settingsModalView } from "../src/blocks/index.js";
+import { homeDashboardBlocks, onboardingBlocks, settingsModalView } from "../src/blocks/index.js";
 import { getPrefs, savePrefs } from "../src/db/prefs.js";
 import { resolveA11yPrefs } from "../src/a11y/index.js";
+import { getTtsClient } from "../src/a11y/tts/index.js";
+import { isFirstRun, welcomeMessage } from "../src/modules/onboarding.js";
 import { config } from "../src/config.js";
 
 // Repeated `npm run demo` runs must never write into the project root: point
@@ -145,6 +147,29 @@ async function main() {
 
   rule('8. App Home dashboard — live, reflects the snooze/renegotiate above');
   await demoHomeAndSettings(ctx);
+
+  rule('9. Read-aloud audio — turning a response into a real audio file (TEMPO_TTS)');
+  {
+    const r = await respond(ctx, "what needs me today?");
+    const tts = await getTtsClient().synthesize({ text: r.speech });
+    console.log(`  Speech script: "${r.speech}"`);
+    console.log(
+      `  Synthesized ${Buffer.from(tts.audioBase64 ?? "", "base64").length} bytes of ` +
+        `${tts.mimeType} (TEMPO_TTS=${config.tts.mode}). Delivered as a DM whenever a user's ` +
+        `read-aloud preference is on.`,
+    );
+  }
+
+  rule('10. First-run onboarding — a brand-new user opens Tempo for the first time');
+  {
+    const newUserId = "U_NEW_DEMO";
+    console.log(`  isFirstRun(brand-new user) = ${isFirstRun(getPrefs(newUserId))}`);
+    const welcome = welcomeMessage(isFirstRun(getPrefs(newUserId)));
+    console.log(`  Assistant greeting: "${welcome.text.slice(0, 90)}…"`);
+    renderBlocks(onboardingBlocks());
+    savePrefs(newUserId, { onboardedAt: ctx.nowTs });
+    console.log(`  After tapping "Got it — let's go": isFirstRun = ${isFirstRun(getPrefs(newUserId))}`);
+  }
 
   console.log("\n" + "─".repeat(72));
   console.log("  Nothing above was sent or changed without Sam's tap. Nothing RTS");

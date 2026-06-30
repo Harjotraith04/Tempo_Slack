@@ -6,6 +6,8 @@ import { decodeMessage, checkDraft } from "./decoder.js";
 import { runReentry } from "./reentry.js";
 import { planFocusBlock, whatBreaksThrough } from "./focus.js";
 import { runTriage } from "./triage.js";
+import { isFirstRun, welcomeMessage } from "./onboarding.js";
+import type { UserPrefs } from "../db/prefs.js";
 
 const rts = new MockRtsClient();
 const afterTs = `${SAM_LAST_ACTIVE}.000000`;
@@ -57,5 +59,28 @@ describe("focus", () => {
     const { needsYou } = await runTriage(rts, { afterTs });
     const breaking = whatBreaksThrough(needsYou);
     expect(breaking.every((i) => i.urgency >= 85)).toBe(true);
+  });
+});
+
+describe("onboarding", () => {
+  it("treats a user with no stored prefs, or prefs with no onboardedAt, as a first run", () => {
+    expect(isFirstRun(undefined)).toBe(true);
+    const noOnboarding: UserPrefs = { userId: "U1", updatedAt: DEMO_NOW };
+    expect(isFirstRun(noOnboarding)).toBe(true);
+  });
+
+  it("is no longer a first run once onboardedAt is set", () => {
+    const onboarded: UserPrefs = { userId: "U1", updatedAt: DEMO_NOW, onboardedAt: DEMO_NOW };
+    expect(isFirstRun(onboarded)).toBe(false);
+  });
+
+  it("gives a first-time user a fuller welcome than a returning user", () => {
+    const first = welcomeMessage(true);
+    const returning = welcomeMessage(false);
+    expect(first.text).not.toBe(returning.text);
+    expect(first.text.length).toBeGreaterThan(returning.text.length);
+    expect(first.text.toLowerCase()).toContain("welcome");
+    expect(first.prompts.length).toBeGreaterThan(0);
+    expect(returning.prompts).toEqual(first.prompts);
   });
 });

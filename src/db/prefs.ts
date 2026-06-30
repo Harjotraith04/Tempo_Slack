@@ -22,6 +22,9 @@ export interface UserPrefs {
   focusDefaultMins?: number;
   dndDefaultMins?: number;
   lastActiveTs?: number;
+  /** Set once the user has completed (or dismissed) the first-run onboarding
+   * banner — see modules/onboarding.ts's isFirstRun(). */
+  onboardedAt?: number;
   updatedAt: number;
 }
 
