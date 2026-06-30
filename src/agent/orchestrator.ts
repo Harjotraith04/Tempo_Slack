@@ -16,6 +16,7 @@ import { runReentry } from "../modules/reentry.js";
 import { planFocusBlock } from "../modules/focus.js";
 import { isSuppressed } from "../db/snoozes.js";
 import { syncCommitments } from "../db/commitments.js";
+import { getPrefs } from "../db/prefs.js";
 import {
   triageBlocks,
   ledgerBlocks,
@@ -25,7 +26,7 @@ import {
   helpBlocks,
 } from "../blocks/index.js";
 
-import { toSpeech } from "../a11y/index.js";
+import { toSpeech, condense, resolveA11yPrefs } from "../a11y/index.js";
 
 export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "help";
 
@@ -48,8 +49,34 @@ export function routeIntent(input: string): Intent {
 }
 
 export async function respond(ctx: TempoContext, input: string): Promise<TempoResponse> {
+  const a11y = resolveA11yPrefs(getPrefs(ctx.subjectUserId));
   const r = await respondCore(ctx, input);
-  return { ...r, speech: toSpeech({ intent: r.intent, text: r.text }) };
+  const text = condense(r.text, a11y.verbosity);
+  return { ...r, text, speech: toSpeech({ intent: r.intent, text }) };
+}
+
+/** Filters out anything the user snoozed/marked done, the way every triage render must. */
+async function liveTriage(ctx: TempoContext) {
+  const raw = await runTriage(ctx.rts, { afterTs: afterTsOf(ctx) });
+  return {
+    ...raw,
+    needsYou: raw.needsYou.filter((i) => !isSuppressed(ctx.subjectUserId, i.permalink, ctx.nowTs)),
+  };
+}
+
+/** The "show the rest" path — same live triage, no maxItems cap. Not reachable
+ * through free-text routing; app.ts's "show_rest" button calls this directly. */
+export async function triageAll(ctx: TempoContext): Promise<TempoResponse> {
+  const r = await liveTriage(ctx);
+  const text = r.needsYou.length
+    ? `All ${r.needsYou.length} items: ` + r.needsYou.map((i) => i.suggestedAction).join("; ")
+    : "You're all caught up.";
+  return {
+    intent: "triage",
+    text,
+    blocks: triageBlocks(r, { maxItems: r.needsYou.length || 1 }),
+    speech: toSpeech({ intent: "triage", text }),
+  };
 }
 
 async function respondCore(
@@ -58,21 +85,20 @@ async function respondCore(
 ): Promise<Omit<TempoResponse, "speech">> {
   const intent = routeIntent(input);
   const after = afterTsOf(ctx);
+  const prefs = getPrefs(ctx.subjectUserId);
+  const a11y = resolveA11yPrefs(prefs);
 
   switch (intent) {
     case "triage": {
-      const raw = await runTriage(ctx.rts, { afterTs: after });
-      const r = {
-        ...raw,
-        needsYou: raw.needsYou.filter((i) => !isSuppressed(ctx.subjectUserId, i.permalink, ctx.nowTs)),
-      };
-      const top = r.needsYou.slice(0, 3);
+      const r = await liveTriage(ctx);
+      const top = r.needsYou.slice(0, a11y.maxItems);
       return {
         intent,
         text: top.length
-          ? `${top.length} things need you: ` + top.map((i) => `${i.suggestedAction} (${i.reason})`).join("; ")
+          ? `${top.length} thing${top.length > 1 ? "s" : ""} need${top.length > 1 ? "" : "s"} you: ` +
+            top.map((i) => `${i.suggestedAction} (${i.reason})`).join("; ")
           : "You're all caught up.",
-        blocks: triageBlocks(r),
+        blocks: triageBlocks(r, { maxItems: a11y.maxItems }),
       };
     }
     case "commitments": {
@@ -91,7 +117,7 @@ async function respondCore(
       return { intent, text: "The 3 that matter most: " + b.topThree.join("; "), blocks: reentryBlocks(b) };
     }
     case "focus": {
-      const mins = Number(input.match(/(\d{2,3})\s*(min|m)\b/)?.[1] ?? 90);
+      const mins = Number(input.match(/(\d{2,3})\s*(min|m)\b/)?.[1] ?? prefs?.focusDefaultMins ?? 90);
       const p = await planFocusBlock({
         nowTs: ctx.nowTs,
         durationMins: mins,

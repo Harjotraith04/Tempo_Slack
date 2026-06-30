@@ -16,6 +16,9 @@ const FILENAME = ".tempo-prefs.json";
 export interface UserPrefs {
   userId: string;
   verbosity?: "brief" | "standard";
+  readingLevel?: "plain" | "standard";
+  readAloud?: boolean;
+  maxItems?: number;
   focusDefaultMins?: number;
   dndDefaultMins?: number;
   lastActiveTs?: number;

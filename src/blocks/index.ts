@@ -53,8 +53,9 @@ function linkBtn(text: string, url: string): any {
 
 // ── Triage ───────────────────────────────────────────────────────────────────
 
-export function triageBlocks(r: TriageResult): KnownBlock[] {
-  const top = r.needsYou.slice(0, 3);
+export function triageBlocks(r: TriageResult, opts: { maxItems?: number } = {}): KnownBlock[] {
+  const maxItems = opts.maxItems ?? 3;
+  const top = r.needsYou.slice(0, maxItems);
   const blocks: KnownBlock[] = [
     header(top.length ? `${top.length} thing${top.length > 1 ? "s" : ""} actually need you` : "You're all caught up"),
     context(
@@ -84,7 +85,11 @@ export function triageBlocks(r: TriageResult): KnownBlock[] {
 
   if (r.needsYou.length > top.length) {
     blocks.push(divider);
-    blocks.push(context(`+ ${r.needsYou.length - top.length} more lower-priority items. Ask me to "show the rest" when you're ready.`));
+    blocks.push(context(`+ ${r.needsYou.length - top.length} more lower-priority items.`));
+    blocks.push({
+      type: "actions",
+      elements: [btn("Show the rest", "show_rest", "show_rest")],
+    } as KnownBlock);
   }
   return blocks;
 }
@@ -220,4 +225,124 @@ export function homeBlocks(): KnownBlock[] {
 
 export function helpBlocks(): KnownBlock[] {
   return homeBlocks();
+}
+
+/** The App Home tab — live triage + commitments, reusing the same renders the
+ * Assistant pane / `/tempo` produce, plus a settings entry point. Focus is
+ * deliberately a static call-to-action, never a live block here: planning a
+ * focus block has real side effects (MCP + Slack DND/status), and opening the
+ * Home tab must never act without the user's explicit tap. */
+export function homeDashboardBlocks(opts: { triage: KnownBlock[]; commitments: KnownBlock[] }): KnownBlock[] {
+  return [
+    header("Tempo"),
+    section("Your working memory for Slack — calm, live, and grounded in what's actually happening. I never act without your tap."),
+    {
+      type: "actions",
+      elements: [btn("⚙️ Settings", "open_settings", "open_settings")],
+    } as KnownBlock,
+    divider,
+    ...opts.triage,
+    divider,
+    ...opts.commitments,
+    divider,
+    section("*Protect your focus:*\nRun `/tempo focus` (or ask the Assistant) to block real calendar time and turn on Do-Not-Disturb — Tempo never starts a focus block on its own."),
+    context("Grounded live in the Slack Real-Time Search API. Nothing it reads is stored."),
+  ];
+}
+
+// ── Settings modal ──────────────────────────────────────────────────────────
+
+const VERBOSITY_OPTIONS = [
+  { text: { type: "plain_text", text: "Standard — full context" }, value: "standard" },
+  { text: { type: "plain_text", text: "Brief — one line" }, value: "brief" },
+] as const;
+
+const READING_LEVEL_OPTIONS = [
+  { text: { type: "plain_text", text: "Plain language" }, value: "plain" },
+  { text: { type: "plain_text", text: "Standard" }, value: "standard" },
+] as const;
+
+const MAX_ITEMS_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  text: { type: "plain_text", text: String(n) },
+  value: String(n),
+}));
+
+const READ_ALOUD_OPTION = { text: { type: "plain_text", text: "Read responses aloud (speech script)" }, value: "on" };
+
+export interface SettingsModalPrefs {
+  verbosity: "brief" | "standard";
+  readingLevel: "plain" | "standard";
+  readAloud: boolean;
+  maxItems: number;
+  focusDefaultMins?: number;
+}
+
+/** Modal view for `views.open`. Submission lands in `app.view("settings_modal", ...)`. */
+export function settingsModalView(prefs: SettingsModalPrefs): any {
+  return {
+    type: "modal",
+    callback_id: "settings_modal",
+    title: { type: "plain_text", text: "Tempo settings" },
+    submit: { type: "plain_text", text: "Save" },
+    close: { type: "plain_text", text: "Cancel" },
+    blocks: [
+      {
+        type: "input",
+        block_id: "verbosity",
+        label: { type: "plain_text", text: "How much detail?" },
+        element: {
+          type: "radio_buttons",
+          action_id: "value",
+          options: VERBOSITY_OPTIONS,
+          initial_option: VERBOSITY_OPTIONS.find((o) => o.value === prefs.verbosity),
+        },
+      },
+      {
+        type: "input",
+        block_id: "reading_level",
+        label: { type: "plain_text", text: "Reading level" },
+        element: {
+          type: "radio_buttons",
+          action_id: "value",
+          options: READING_LEVEL_OPTIONS,
+          initial_option: READING_LEVEL_OPTIONS.find((o) => o.value === prefs.readingLevel),
+        },
+      },
+      {
+        type: "input",
+        block_id: "max_items",
+        label: { type: "plain_text", text: "Max items per card" },
+        element: {
+          type: "static_select",
+          action_id: "value",
+          options: MAX_ITEMS_OPTIONS,
+          initial_option: MAX_ITEMS_OPTIONS.find((o) => o.value === String(prefs.maxItems)) ?? MAX_ITEMS_OPTIONS[2],
+        },
+      },
+      {
+        type: "input",
+        block_id: "focus_default_mins",
+        optional: true,
+        label: { type: "plain_text", text: "Default focus block length (minutes)" },
+        element: {
+          type: "plain_text_input",
+          action_id: "value",
+          initial_value: prefs.focusDefaultMins ? String(prefs.focusDefaultMins) : undefined,
+          placeholder: { type: "plain_text", text: "e.g. 90" },
+        },
+      },
+      {
+        type: "input",
+        block_id: "read_aloud",
+        optional: true,
+        label: { type: "plain_text", text: "Accessibility" },
+        element: {
+          type: "checkboxes",
+          action_id: "value",
+          options: [READ_ALOUD_OPTION],
+          initial_options: prefs.readAloud ? [READ_ALOUD_OPTION] : [],
+        },
+      },
+    ],
+  };
 }

@@ -28,6 +28,22 @@ export const DEFAULT_PREFS: A11yPrefs = {
   maxItems: 3,
 };
 
+/** Merges a user's stored prefs (db/prefs.ts) over the defaults — any field
+ * the user hasn't set yet falls back gently rather than erroring. */
+export function resolveA11yPrefs(stored?: {
+  verbosity?: Verbosity;
+  readingLevel?: ReadingLevel;
+  readAloud?: boolean;
+  maxItems?: number;
+}): A11yPrefs {
+  return {
+    verbosity: stored?.verbosity ?? DEFAULT_PREFS.verbosity,
+    readingLevel: stored?.readingLevel ?? DEFAULT_PREFS.readingLevel,
+    readAloud: stored?.readAloud ?? DEFAULT_PREFS.readAloud,
+    maxItems: stored?.maxItems ?? DEFAULT_PREFS.maxItems,
+  };
+}
+
 /** Collapse multi-sentence prose to its first clause for "brief" mode. */
 export function condense(text: string, verbosity: Verbosity): string {
   if (verbosity === "standard") return text;

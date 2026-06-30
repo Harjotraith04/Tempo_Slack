@@ -6,6 +6,8 @@ import {
   draftCheckBlocks,
   focusBlocks,
   reentryBlocks,
+  homeDashboardBlocks,
+  settingsModalView,
 } from "./index.js";
 import type { TriageItem, TriageResult } from "../modules/triage.js";
 import type { Commitment } from "../modules/ledger.js";
@@ -72,6 +74,29 @@ describe("triageBlocks", () => {
     for (const b of buttons(triageBlocks(r))) {
       expect(b.text.text.trim().length).toBeGreaterThan(0);
     }
+  });
+
+  it("respects a custom maxItems and shows no 'show the rest' button when everything fits", () => {
+    const r: TriageResult = {
+      needsYou: [mkItem({ permalink: "https://a/1" }), mkItem({ permalink: "https://a/2" })],
+      scanned: 2,
+      handledQuietly: 0,
+    };
+    const blocks = triageBlocks(r, { maxItems: 5 });
+    expect(buttons(blocks).some((b) => b.action_id === "show_rest")).toBe(false);
+  });
+
+  it("adds a 'Show the rest' button once items exceed maxItems", () => {
+    const r: TriageResult = {
+      needsYou: [mkItem({ permalink: "https://a/1" }), mkItem({ permalink: "https://a/2" }), mkItem({ permalink: "https://a/3" })],
+      scanned: 3,
+      handledQuietly: 0,
+    };
+    const blocks = triageBlocks(r, { maxItems: 1 });
+    const rows = actionsBlocks(blocks);
+    // 1 per-item row + 1 "show the rest" row.
+    expect(rows).toHaveLength(2);
+    expect(buttons(blocks).some((b) => b.action_id === "show_rest")).toBe(true);
   });
 });
 
@@ -146,6 +171,47 @@ describe("display-only cards have no interactive elements", () => {
       awayDays: 7,
     };
     expect(actionsBlocks(reentryBlocks(b))).toHaveLength(0);
+  });
+});
+
+describe("homeDashboardBlocks", () => {
+  it("includes a settings button and the supplied triage/commitments sections", () => {
+    const triage = triageBlocks({ needsYou: [mkItem()], scanned: 1, handledQuietly: 0 });
+    const commitments = ledgerBlocks([mkCommitment()]);
+    const blocks = homeDashboardBlocks({ triage, commitments });
+
+    const settingsBtn = buttons(blocks).find((b) => b.action_id === "open_settings");
+    expect(settingsBtn).toBeTruthy();
+    expect(settingsBtn.text.text.trim().length).toBeGreaterThan(0);
+
+    // The supplied section blocks are present verbatim — composition, not transformation.
+    expect(blocks).toEqual(expect.arrayContaining(triage));
+    expect(blocks).toEqual(expect.arrayContaining(commitments));
+
+    // No live focus block (planning one has side effects — must never run on a passive Home open).
+    expect(JSON.stringify(blocks)).not.toContain("Do-Not-Disturb on until");
+  });
+});
+
+describe("settingsModalView", () => {
+  it("is a modal pre-filled with the caller's current prefs", () => {
+    const view = settingsModalView({ verbosity: "brief", readingLevel: "plain", readAloud: true, maxItems: 2, focusDefaultMins: 45 });
+    expect(view.type).toBe("modal");
+    expect(view.callback_id).toBe("settings_modal");
+
+    const byBlockId = (id: string) => view.blocks.find((b: any) => b.block_id === id);
+    expect(byBlockId("verbosity").element.initial_option.value).toBe("brief");
+    expect(byBlockId("reading_level").element.initial_option.value).toBe("plain");
+    expect(byBlockId("max_items").element.initial_option.value).toBe("2");
+    expect(byBlockId("focus_default_mins").element.initial_value).toBe("45");
+    expect(byBlockId("read_aloud").element.initial_options).toHaveLength(1);
+  });
+
+  it("falls back to no pre-selection when read-aloud is off and focus minutes are unset", () => {
+    const view = settingsModalView({ verbosity: "standard", readingLevel: "standard", readAloud: false, maxItems: 3 });
+    const byBlockId = (id: string) => view.blocks.find((b: any) => b.block_id === id);
+    expect(byBlockId("read_aloud").element.initial_options).toHaveLength(0);
+    expect(byBlockId("focus_default_mins").element.initial_value).toBeUndefined();
   });
 });
 

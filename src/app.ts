@@ -15,12 +15,14 @@
 import { App, Assistant, ExpressReceiver, LogLevel } from "@slack/bolt";
 import { config, assertSlackRuntime } from "./config.js";
 import { buildContext } from "./agent/context.js";
-import { respond as tempoRespond, routeIntent } from "./agent/orchestrator.js";
+import { respond as tempoRespond, routeIntent, triageAll } from "./agent/orchestrator.js";
 import { draftReply, draftNudge, draftRenegotiation } from "./modules/draft.js";
-import { homeBlocks } from "./blocks/index.js";
+import { homeDashboardBlocks, settingsModalView, type SettingsModalPrefs } from "./blocks/index.js";
 import { getUserToken } from "./db/tokens.js";
 import { snoozeItem, markItemDone } from "./db/snoozes.js";
 import { getCommitmentByPermalink, markRenegotiating, markNudged } from "./db/commitments.js";
+import { getPrefs, savePrefs } from "./db/prefs.js";
+import { resolveA11yPrefs } from "./a11y/index.js";
 
 type BoltApp = InstanceType<typeof App>;
 
@@ -83,10 +85,47 @@ export function registerHandlers(app: BoltApp) {
   });
 
   app.event("app_home_opened", async ({ event, client }) => {
+    const userId = (event as any).user ?? "U_SAM";
+    const ctx = contextFor(userId);
+    // Triage + commitments are pure reads (RTS search + the local stores) —
+    // safe to recompute on every Home open. Focus is deliberately NOT live
+    // here: planning a focus block has real side effects (MCP + Slack
+    // DND/status), and opening a tab must never act on the user's behalf.
+    const [triage, commitments] = await Promise.all([
+      tempoRespond(ctx, "what needs me today?"),
+      tempoRespond(ctx, "show my commitments"),
+    ]);
     await client.views.publish({
-      user_id: (event as any).user,
-      view: { type: "home", blocks: homeBlocks() as any },
+      user_id: userId,
+      view: {
+        type: "home",
+        blocks: homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks }) as any,
+      },
     });
+  });
+
+  app.action("open_settings", async ({ ack, body, client }) => {
+    await ack();
+    const userId = (body as any)?.user?.id ?? "U_SAM";
+    const triggerId = (body as any)?.trigger_id;
+    if (!triggerId) return;
+    const stored = getPrefs(userId);
+    const a11y = resolveA11yPrefs(stored);
+    const view = settingsModalView({ ...a11y, focusDefaultMins: stored?.focusDefaultMins });
+    await client.views.open({ trigger_id: triggerId, view });
+  });
+
+  app.view("settings_modal", async ({ ack, body, view }) => {
+    await ack();
+    const userId = (body as any)?.user?.id ?? "U_SAM";
+    savePrefs(userId, parseSettingsSubmission(view));
+  });
+
+  app.action("show_rest", async ({ ack, body, client }) => {
+    await ack();
+    const userId = (body as any)?.user?.id ?? "U_SAM";
+    const res = await triageAll(contextFor(userId));
+    await ephemeral(client, body, res.text, res.blocks as any);
   });
 
   app.action("draft_reply", async ({ ack, body, client }) => {
@@ -205,8 +244,15 @@ async function postDraft(client: any, body: any) {
 async function postComposedDraft(client: any, body: any, draft: string) {
   const channel: string | undefined = body?.channel?.id ?? body?.container?.channel_id;
   const threadTs: string | undefined = body?.message?.thread_ts ?? body?.message?.ts;
+  const userId: string = body?.user?.id ?? "U_SAM";
   const text = `Here's a draft — *review and send it yourself* (I won't post it for you):\n>>> ${draft}`;
-  if (channel) await client.chat.postMessage({ channel, thread_ts: threadTs, text });
+  if (channel) {
+    await client.chat.postMessage({ channel, thread_ts: threadTs, text });
+    return;
+  }
+  // No channel in context (e.g. the button was clicked from App Home, which
+  // has no channel) — fall back to DMing the user directly.
+  await dm(client, userId, text);
 }
 
 async function sourceTextFor(ctx: ReturnType<typeof buildContext>, permalink: string): Promise<string | undefined> {
@@ -215,10 +261,38 @@ async function sourceTextFor(ctx: ReturnType<typeof buildContext>, permalink: st
   return res.messages.find((m) => m.permalink === permalink)?.text;
 }
 
-async function ephemeral(client: any, body: any, text: string) {
+async function ephemeral(client: any, body: any, text: string, blocks?: any[]) {
   const channel = body?.channel?.id ?? body?.container?.channel_id;
   const user = body?.user?.id;
-  if (channel && user) await client.chat.postEphemeral({ channel, user, text });
+  if (channel && user) {
+    await client.chat.postEphemeral({ channel, user, text, ...(blocks ? { blocks } : {}) });
+    return;
+  }
+  // Ephemeral messages require a channel, which App Home doesn't have — DM instead.
+  if (user) await dm(client, user, text, blocks);
+}
+
+async function dm(client: any, userId: string, text: string, blocks?: any[]) {
+  const im = await client.conversations.open({ users: userId });
+  const channel = im?.channel?.id;
+  if (channel) await client.chat.postMessage({ channel, text, ...(blocks ? { blocks } : {}) });
+}
+
+function parseSettingsSubmission(view: any): Partial<SettingsModalPrefs> {
+  const values = view?.state?.values ?? {};
+  const verbosity = values.verbosity?.value?.selected_option?.value as SettingsModalPrefs["verbosity"] | undefined;
+  const readingLevel = values.reading_level?.value?.selected_option?.value as SettingsModalPrefs["readingLevel"] | undefined;
+  const maxItemsRaw = values.max_items?.value?.selected_option?.value;
+  const focusMinsRaw = values.focus_default_mins?.value?.value;
+  const readAloud = (values.read_aloud?.value?.selected_options ?? []).length > 0;
+
+  return {
+    ...(verbosity ? { verbosity } : {}),
+    ...(readingLevel ? { readingLevel } : {}),
+    ...(maxItemsRaw ? { maxItems: Number(maxItemsRaw) } : {}),
+    focusDefaultMins: focusMinsRaw ? Number(focusMinsRaw) : undefined,
+    readAloud,
+  };
 }
 
 export { routeIntent };

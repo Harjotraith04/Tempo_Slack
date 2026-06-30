@@ -19,6 +19,9 @@ import { runLedger } from "../src/modules/ledger.js";
 import { draftNudge, draftRenegotiation } from "../src/modules/draft.js";
 import { snoozeItem, markItemDone, isSuppressed } from "../src/db/snoozes.js";
 import { syncCommitments, markRenegotiating } from "../src/db/commitments.js";
+import { homeDashboardBlocks, settingsModalView } from "../src/blocks/index.js";
+import { getPrefs, savePrefs } from "../src/db/prefs.js";
+import { resolveA11yPrefs } from "../src/a11y/index.js";
 import { config } from "../src/config.js";
 
 // Repeated `npm run demo` runs must never write into the project root: point
@@ -82,6 +85,32 @@ async function demoButtonLayer(ctx: TempoContext) {
   }
 }
 
+/**
+ * App Home (app_home_opened) and the settings modal (views.open/app.view) are
+ * Slack-trigger-only surfaces (need a real trigger_id/view payload), so this
+ * exercises the same building blocks directly — homeDashboardBlocks() with
+ * live data, and a savePrefs()/getPrefs() round-trip standing in for a modal
+ * submission, the way Scene 7 exercises the button layer.
+ */
+async function demoHomeAndSettings(ctx: TempoContext) {
+  const triage = await respond(ctx, "what needs me today?");
+  const commitments = await respond(ctx, "show my commitments");
+  renderBlocks(homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks }));
+
+  const before = resolveA11yPrefs(getPrefs(ctx.subjectUserId));
+  console.log(`\n  [Settings] before: verbosity=${before.verbosity} maxItems=${before.maxItems} readAloud=${before.readAloud}`);
+
+  const modal = settingsModalView({ ...before, focusDefaultMins: getPrefs(ctx.subjectUserId)?.focusDefaultMins });
+  console.log(`  Settings modal has ${modal.blocks.length} fields: verbosity, reading level, max items, focus length, read-aloud.`);
+
+  savePrefs(ctx.subjectUserId, { verbosity: "brief", maxItems: 1, focusDefaultMins: 45, readAloud: true });
+  const after = resolveA11yPrefs(getPrefs(ctx.subjectUserId));
+  console.log(`  [Settings] saved: verbosity=${after.verbosity} maxItems=${after.maxItems} readAloud=${after.readAloud} focusDefaultMins=${getPrefs(ctx.subjectUserId)?.focusDefaultMins}`);
+
+  const triageAfter = await respond(ctx, "what needs me today?");
+  console.log(`  Triage now respects the saved prefs — fallback text: "${triageAfter.text}"`);
+}
+
 async function main() {
   console.log(`\nTEMPO — executive-function co-pilot for Slack`);
   console.log(`(RTS=${config.runtime.rts}, AI=${config.ai.mode})`);
@@ -113,6 +142,9 @@ async function main() {
 
   rule('7. Tapping a button — Snooze / Done / Nudge / Renegotiate');
   await demoButtonLayer(ctx);
+
+  rule('8. App Home dashboard — live, reflects the snooze/renegotiate above');
+  await demoHomeAndSettings(ctx);
 
   console.log("\n" + "─".repeat(72));
   console.log("  Nothing above was sent or changed without Sam's tap. Nothing RTS");
