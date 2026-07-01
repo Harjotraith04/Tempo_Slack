@@ -93,6 +93,8 @@ npm test          # 155 tests: RTS, MCP, the five modules, native surfaces, pers
 
 This is also why the **for-Good / accessibility** framing is clean: it's a *personal* assistant on personal data — not surveillance of others.
 
+**Team mode is opt-in, aggregated, and anonymized.** The default posture is a *personal* agent on *personal* data. With `TEMPO_TEAM=on` + an explicit opt-in roster, `/tempo team` shows an **aggregate-only** view (team load, response fairness, focus health) computed from the counts Tempo already keeps — **never** any individual's messages or a single person's numbers, and **k-anonymity-redacted** below 3 opted-in members so no one can be inferred (`src/modules/team/`, asserted in tests).
+
 **Proactive, but calm (opt-in).** With `TEMPO_PROACTIVE=on`, the morning digest folds in a gentle **overload heads-up** ("your week looks heavy — 9 open obligations, no focus time protected; want me to block some?") and **batches non-urgent FYIs** into one section instead of interrupting for each. It's computed from the **counts** Tempo already keeps (`src/modules/intelligence/load.ts`), never message content, and only ever *notifies* — never acts.
 
 **Learns from you (privately).** Tempo tunes triage ranking and tone-read confidence to *you* — but it learns **only from your own taps** (snooze / mark-done / draft), stored as **counts per sender id**, never from message content. The learned weight is bounded, so it reorders near-ties without ever overriding a genuine urgent ask. Those per-sender signals appear in your data export and are erased by "Delete everything," like everything else.

@@ -18,6 +18,7 @@ import type { ReentryBrief } from "../../../modules/reentry.js";
 import type { UserMetrics } from "../../../ports/store.js";
 import type { HandoffSuggestion } from "../../../modules/handoff/index.js";
 import type { LoadAssessment } from "../../../modules/intelligence/index.js";
+import type { TeamLoadResult } from "../../../modules/team/index.js";
 
 const CAT_LABEL: Record<TriageItem["category"], string> = {
   ACT: "Needs a reply",
@@ -202,6 +203,32 @@ export function batchedFyiBlocks(items: TriageItem[]): KnownBlock[] {
         shown.map((i) => `• *${i.authorName ?? "someone"}* in #${i.channelName ?? "dm"}: ${i.reason}`).join("\n") +
         (more > 0 ? `\n• …and ${more} more` : ""),
     ),
+  ];
+}
+
+// ── Team & manager mode (v3.6) ───────────────────────────────────────────────
+
+/** The anonymized team view — aggregates only, or a calm k-anonymity redaction. */
+export function teamLoadBlocks(r: TeamLoadResult): KnownBlock[] {
+  if (r.redacted) {
+    return [
+      header("Team view — keeping everyone anonymous"),
+      section(
+        `To protect individual privacy, the team view only appears with at least *${r.minMembers}* opted-in ` +
+          `members (currently *${r.memberCount}*). No one person's data is ever shown.`,
+      ),
+    ];
+  }
+  return [
+    header("Team view (anonymized)"),
+    section(
+      `Across *${r.memberCount}* opted-in members this week:\n` +
+        `• *${r.totalObligations}* open obligations — avg *${r.avgObligations}*/person\n` +
+        `• *${r.totalFocusMinutes}* focus minutes protected — avg *${r.avgFocusMinutes}*/person\n` +
+        `• *${r.totalMessagesTriaged}* messages triaged`,
+    ),
+    section(`Load is *${r.loadDistribution}* across the team; work owed is *${r.responseFairness}* shared.`),
+    context("Aggregates only — never any individual's messages, and never a single person's numbers."),
   ];
 }
 

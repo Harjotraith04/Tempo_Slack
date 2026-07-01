@@ -24,4 +24,7 @@ export const flags = {
   /** Proactive intelligence (v3.4) — opt-in overload heads-up + smart batching
    * in the morning digest. Default OFF: proactive care is opt-in. */
   proactive: flag("TEMPO_PROACTIVE", false),
+  /** Team & manager mode (v3.6) — opt-in, aggregated + anonymized team view.
+   * Default OFF: the personal-agent posture is the default. */
+  team: flag("TEMPO_TEAM", false),
 } as const;

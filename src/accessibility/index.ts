@@ -84,6 +84,7 @@ export function toSpeech(input: SpeechInput): string {
     catchup: "Here's what you missed, calmly.",
     focus: "Your focus time is protected.",
     decode: "Here's what that message really means.",
+    team: "Here's the team, anonymized.",
     help: "Here's how I can help.",
   };
   const opener = lead[input.intent] ?? "Here's what I found.";

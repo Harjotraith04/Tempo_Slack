@@ -44,6 +44,8 @@ import { mintAgentToken, resolveMcpCaller } from "../src/platform/mcp/server/aut
 import { buildAgentforceDescriptor } from "../src/platform/agentforce/index.js";
 import { analyzeLoad } from "../src/modules/intelligence/index.js";
 import { buildProactiveBlocks } from "../src/application/use-cases/proactive.js";
+import { teamLoad } from "../src/application/use-cases/team.js";
+import { teamLoadBlocks } from "../src/platform/slack/blockkit/index.js";
 import { flags } from "../src/config.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
@@ -514,6 +516,24 @@ async function main() {
     // The one calm touchpoint that folds into the morning digest:
     const loadedCtx = buildContext({ subjectUserId: u, subjectName: "Sam" });
     renderBlocks(await buildProactiveBlocks(loadedCtx));
+  }
+
+  rule('24. Team & manager mode (opt-in) — aggregated + anonymized, with a k-anonymity guardrail');
+  {
+    console.log(`  Opt-in: TEMPO_TEAM=${flags.team ? "on" : "off (default)"} — the default stays a personal agent on personal data.\n`);
+
+    // An opt-in roster's counts-only data (nobody's included unless listed).
+    const roster = ["U_T1", "U_T2", "U_T3"];
+    await store.metrics.record("U_T1", { obligationsSurfaced: 2, focusMinutesProtected: 90, messagesTriaged: 40 });
+    await store.metrics.record("U_T2", { obligationsSurfaced: 5, focusMinutesProtected: 30, messagesTriaged: 70 });
+    await store.metrics.record("U_T3", { obligationsSurfaced: 3, focusMinutesProtected: 60, messagesTriaged: 55 });
+
+    const agg = await teamLoad(store, roster, 3);
+    console.log(`  Aggregated ${roster.length} opted-in members → any user id in the output? ${JSON.stringify(agg).includes("U_T1")}`);
+    renderBlocks(teamLoadBlocks(agg));
+
+    console.log("\n  Below the k-anonymity floor (only 2 opted in) the whole view is redacted — no individual can be inferred:");
+    renderBlocks(teamLoadBlocks(await teamLoad(store, ["U_T1", "U_T2"], 3)));
   }
 
   console.log("\n" + "─".repeat(72));

@@ -28,10 +28,13 @@ import {
   emptyStateBlocks,
 } from "../platform/slack/blockkit/index.js";
 import { detectHandoff } from "../modules/handoff/index.js";
+import { teamLoad } from "./use-cases/team.js";
+import { teamLoadBlocks } from "../platform/slack/blockkit/index.js";
+import { config, flags } from "../config.js";
 
 import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs } from "../accessibility/index.js";
 
-export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "help";
+export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "team" | "help";
 
 export interface TempoResponse {
   intent: Intent;
@@ -48,6 +51,7 @@ export function routeIntent(input: string): Intent {
   if (/\b(catch ?up|catch me up|missed|away|pto|vacation|back|re-?entry)/.test(t)) return "catchup";
   if (/\b(focus|deep work|block (my )?time|do not disturb|dnd|protect)/.test(t)) return "focus";
   if (/\b(decode|what does this mean|really mean|tone|subtext|passive)/.test(t)) return "decode";
+  if (/\b(team|manager mode|workload)\b/.test(t)) return "team";
   return "help";
 }
 
@@ -176,6 +180,21 @@ async function respondCore(
         familiarity: fam,
       });
       return { intent, text: `Probably means: ${d.impliedMeaning}`, blocks: decodeBlocks(d, text) };
+    }
+    case "team": {
+      // Opt-in, anonymized team view — the personal-agent posture is the default.
+      if (!flags.team) {
+        return {
+          intent: "help",
+          text: "Team mode is off. It's an opt-in, fully-anonymized view — ask an admin to enable TEMPO_TEAM.",
+          blocks: helpBlocks(),
+        };
+      }
+      const r = await teamLoad(ctx.store, config.team.members, config.team.minMembers);
+      const text = r.redacted
+        ? `The team view stays hidden until at least ${r.minMembers} members opt in (currently ${r.memberCount}) — to keep everyone anonymous.`
+        : `Team (anonymized): ${r.totalObligations} open obligations across ${r.memberCount} members; load is ${r.loadDistribution}.`;
+      return { intent: "team", text, blocks: teamLoadBlocks(r) };
     }
     default:
       return { intent: "help", text: "Here's what I can do.", blocks: helpBlocks() };

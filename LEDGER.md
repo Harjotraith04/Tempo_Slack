@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v3.4.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off
+**Current version:** v3.6.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -23,6 +23,7 @@
 - **Phase 10 / v3.0.0 — Tempo as an MCP server:** DONE (`tempo_triage`/`tempo_commitments`/`tempo_decode`/`tempo_focus` exposed at `/api/mcp/server` over Streamable HTTP · SDK-isolated · derived-facts-only · acts as the initiating user · shared read-models extracted).
 - **Phase 11 / v3.2.0 — Agentforce integration:** DONE (default-deny per-caller identity via signed per-user agent tokens · Agentforce Employee Agent descriptor packaging the tools+persona+trust · graceful @mention handoff routing; also fixed the v3.0 MCP-server fail-open/ambient-authority security findings).
 - **Phase 12 / v3.4.0 — Proactive intelligence:** DONE (opt-in overload/burnout early-warning `analyzeLoad` from counts only · smart batching of non-urgent FYIs · folded into the one calm morning-digest touchpoint behind `TEMPO_PROACTIVE` · notifies only, never acts, never stores content).
+- **Phase 13 / v3.6.0 — Team & manager mode:** DONE (opt-in, aggregated + anonymized `aggregateTeamLoad` over the counts-only stores · k-anonymity redaction below 3 members · `/tempo team` surface gated by `TEMPO_TEAM` · never any individual content or per-person number; personal-agent posture stays the default).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -38,17 +39,17 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → Phase 13 / v3.6.0 "Team & manager mode"
-See `MASTER_PLAN.md` → Part V, Year 3, Phase 13. Everything to date is a *personal* agent on *personal* data.
-Next, an opt-in, **aggregated + anonymized** team view — never exposing any individual's message content, and
-defaulting to the personal posture:
-- [ ] **Aggregated team load** — roll up the counts-only metrics/signals across an opt-in team into anonymized
-  aggregates (response fairness, load distribution, knowledge bus-factor) — a pure aggregation over the
-  existing per-user stores; a `team` repository keyed by team, counts only.
-- [ ] **Manager mode surface** — a calm, aggregate-only view (never per-person message content); gated by an
-  explicit opt-in + a `TEMPO_TEAM` flag (default off), honoring the same never-store-RTS invariant.
-- [ ] **Privacy guardrails** — assert in tests that the team view can *never* surface an individual's content
-  or a single-person aggregate below a k-anonymity threshold.
+## Next up → Phase 14 / v3.8.0 "Enterprise & Global"
+See `MASTER_PLAN.md` → Part V, Year 3, Phase 14. Tempo is feature-complete for individuals + teams; next,
+make it enterprise- and globally-ready:
+- [ ] **True multilingual** across all surfaces — the accessibility spine already has an `i18n` seam; wire a
+  message catalog so triage/ledger/decode/re-entry render in the user's locale (a `locale` pref → a `t()`
+  lookup over the response assembly), plus cross-language tone decode. Default English; mock catalog for the
+  zero-cred demo/tests.
+- [ ] **Enterprise Grid posture** — org-wide install notes, admin/audit-log hooks (counts-only), and a data-
+  residency seam (the `TEMPO_STORE` seam already abstracts persistence; document the residency story).
+- [ ] **Accessibility certification pass** — extend the a11y audit (screen-reader semantics, contrast, plain-
+  language coverage) with an automated check over every response's speech script + reading level.
 - [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 native-surface
   `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, the v2.6 web app's
   SSR/cookie behavior, and the v3.0 inbound MCP `Server`/transport — all built/typed, unverified against a
@@ -57,6 +58,37 @@ defaulting to the personal posture:
 ---
 
 ## History
+
+### v3.6.0 — 2026-07-02 — Team & manager mode: opt-in, aggregated, anonymized (k-anonymity guardrail)
+**Built:** the first *team* view — and it holds the line on privacy hard. The default posture stays a personal
+agent on personal data; team mode is **opt-in** (`TEMPO_TEAM`, default off) + an **explicit roster** (nobody's
+included unless listed), **aggregate-only**, and **k-anonymity-redacted** below 3 members so no individual can
+ever be inferred.
+- **Pure anonymizing aggregation** (`modules/team/domain.ts`) — `aggregateTeamLoad(members, {minMembers})`
+  rolls up the counts-only data Tempo already keeps (weekly metrics + per-sender signals, reusing v3.4's
+  `analyzeLoad` for a per-member load score) into a `TeamLoadResult`: team totals + per-person averages + a
+  **coarse distribution** (balanced / uneven / concentrated via coefficient-of-variation) for load and
+  response-fairness. The aggregator takes **no user id** (only `{metrics, signals}` per member), so identity
+  can't leak into the output even by accident. Below the k floor it returns a fully **redacted** result (no
+  aggregates at all).
+- **Opt-in roster + gate** — `config.team.members` (the explicit opt-in list) + `config.team.minMembers`
+  (k, default 3) + `flags.team` (`TEMPO_TEAM`, default off). `teamLoad(store, roster, k)` gathers the roster's
+  metrics/signals and aggregates; a new `/tempo team` orchestrator intent renders it (or "team mode is off"
+  when the flag is down — the default).
+- **`teamLoadBlocks`** — the anonymized aggregate card, or a calm redaction card, always ending "aggregates
+  only — never any individual's messages, and never a single person's numbers."
+**Quality:** **254 tests** passing (up from 245) across 43 files — the standout is `team.test.ts`, the
+**privacy guardrail**: redacts below k · aggregates at/above k · asserts the output contains **no user id and
+no per-person value** (an outlier's number never appears) · coarse-distribution descriptors only. Plus the
+`teamLoad` use-case (roster gather + redaction), `teamLoadBlocks` render, and an orchestrator test that team
+mode is **off by default**. Typecheck clean · root build clean · `npm run demo` extended to **24 scenes** (an
+anonymized 3-member aggregate proving no id leaks, then a 2-member redaction) · web app still builds.
+**Open seams:** membership is a config roster (an explicit, admin-configured opt-in); a per-user prefs toggle
+("include me in team aggregates") + a manager-only gate on the surface are future refinements. The k floor is
+a simple count threshold (no differential-privacy noise) — sufficient for count aggregates, conservative by
+default. Aggregation is over the current rolling week (like the metrics store).
+**Next:** Phase 14 / v3.8 — Enterprise & Global (true multilingual · Enterprise Grid posture · accessibility
+certification).
 
 ### v3.4.0 — 2026-07-02 — Proactive intelligence: opt-in overload early-warning + smart batching
 **Built:** the first *proactive* care in Tempo — everything before was reactive (you ask) or scheduled (the

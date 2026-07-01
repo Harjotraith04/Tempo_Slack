@@ -5,6 +5,7 @@ import {
   droppedBallBlocks,
   overloadBlocks,
   batchedFyiBlocks,
+  teamLoadBlocks,
   decodeBlocks,
   draftCheckBlocks,
   focusBlocks,
@@ -191,6 +192,29 @@ describe("proactive blocks (v3.4)", () => {
 
   it("batchedFyiBlocks is empty with no items", () => {
     expect(batchedFyiBlocks([])).toEqual([]);
+  });
+
+  it("teamLoadBlocks shows a k-anonymity redaction, or aggregates only (no per-person)", () => {
+    const redacted = flat(teamLoadBlocks({ redacted: true, memberCount: 2, minMembers: 3 }));
+    expect(redacted).toContain("at least *3*");
+    expect(redacted.toLowerCase()).toContain("no one person's data");
+
+    const agg = flat(
+      teamLoadBlocks({
+        redacted: false,
+        memberCount: 4,
+        totalObligations: 20,
+        totalFocusMinutes: 300,
+        totalMessagesTriaged: 200,
+        avgObligations: 5,
+        avgFocusMinutes: 75,
+        loadDistribution: "uneven",
+        responseFairness: "concentrated",
+      }),
+    );
+    expect(agg).toContain("4* opted-in members");
+    expect(agg).toContain("20* open obligations");
+    expect(agg.toLowerCase()).toContain("never a single person's numbers");
   });
 });
 

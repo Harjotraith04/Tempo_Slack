@@ -93,6 +93,12 @@ export const config = {
       user: opt("TEMPO_MCP_SERVER_USER"),
     },
   },
+  // Team & manager mode (v3.6) — the opt-in roster (explicit consent: nobody is
+  // aggregated unless listed) + the k-anonymity floor. Off unless TEMPO_TEAM=on.
+  team: {
+    members: (opt("TEMPO_TEAM_MEMBERS") ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    minMembers: Number(opt("TEMPO_TEAM_MIN") ?? 3),
+  },
   // Persistence — where tokens/prefs/commitments/snoozes/metrics/surfaces live.
   // file = JSON files under TEMPO_STORE_DIR (default; the zero-credential
   // demo/tests). postgres = Neon behind the same repository interfaces. File

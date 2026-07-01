@@ -77,6 +77,12 @@ describe("orchestrator + per-user prefs", () => {
     expect(res.intent).toBe("catchup");
   });
 
+  it("team mode is off by default — a personal agent on personal data", async () => {
+    const ctx = buildContext({ subjectUserId: "U_TEAM", subjectName: "Sam" });
+    const res = await respond(ctx, "show me the team workload");
+    expect(res.text.toLowerCase()).toContain("team mode is off");
+  });
+
   it("brief verbosity condenses the fallback text", async () => {
     const ctxStandard = buildContext({ subjectUserId: "U_VERBOSE_STD", subjectName: "Sam" });
     const ctxBrief = buildContext({ subjectUserId: "U_VERBOSE_BRIEF", subjectName: "Sam" });
