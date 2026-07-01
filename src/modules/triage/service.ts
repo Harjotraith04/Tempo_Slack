@@ -73,6 +73,7 @@ export async function runTriage(
         channelType: m.channelType,
         authorName: m.authorRealName ?? m.authorName,
         authorId: m.authorId,
+        source: m.source,
         excerpt: truncate(m.text, 220),
         category: c.category,
         urgency: c.urgency,

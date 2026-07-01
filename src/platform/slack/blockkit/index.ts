@@ -71,8 +71,9 @@ export function triageBlocks(r: TriageResult, opts: { maxItems?: number } = {}):
     blocks.push(divider);
     blocks.push(
       section(
-        `*${CAT_LABEL[item.category]}* · ${item.authorName ?? "someone"} in *#${item.channelName ?? "dm"}*\n` +
-          `> ${item.excerpt}\n` +
+        `*${CAT_LABEL[item.category]}* · ${item.authorName ?? "someone"} in *#${item.channelName ?? "dm"}*` +
+          (item.source && item.source !== "slack" ? ` · _via ${item.source}_` : "") +
+          `\n> ${item.excerpt}\n` +
           `_Why this matters:_ ${item.reason}`,
       ),
     );

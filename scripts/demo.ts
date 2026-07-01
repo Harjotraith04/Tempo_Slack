@@ -46,6 +46,7 @@ import { analyzeLoad } from "../src/modules/intelligence/index.js";
 import { buildProactiveBlocks } from "../src/application/use-cases/proactive.js";
 import { teamLoad } from "../src/application/use-cases/team.js";
 import { teamLoadBlocks } from "../src/platform/slack/blockkit/index.js";
+import { MultiSourceRtsClient, MockEmailSource, MockCalendarSource } from "../src/platform/sources/index.js";
 import { flags } from "../src/config.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs, auditResponse, DEFAULT_PREFS } from "../src/accessibility/index.js";
@@ -556,6 +557,27 @@ async function main() {
       if (auditResponse(r, DEFAULT_PREFS).length === 0) passed++;
     }
     console.log(`\n  Accessibility audit: ${passed}/${prompts.length} response types pass — speech present, markdown-free, buttons labeled, plain language. Certified.`);
+  }
+
+  rule('26. Attention OS (v4.0) — one calm working memory across Slack + email + calendar');
+  {
+    console.log(`  Opt-in: TEMPO_ATTENTION_OS=${flags.attentionOs ? "on" : "off (default)"} — Slack is the sole source unless enabled.\n`);
+
+    // Ground triage across Slack (ctx.rts) + a mock email + a mock calendar as
+    // ONE ranked list — the same domain, unchanged, now spans work tools.
+    const multi = new MultiSourceRtsClient(ctx.rts, [
+      { name: "email", client: new MockEmailSource() },
+      { name: "calendar", client: new MockCalendarSource() },
+    ]);
+    const r = await runTriage(multi, ctx.llm, { afterTs: afterTsOf(ctx) });
+    const bySource = new Map<string, number>();
+    for (const i of r.needsYou) bySource.set(i.source ?? "slack", (bySource.get(i.source ?? "slack") ?? 0) + 1);
+    console.log(`  Triaged across sources → ${[...bySource].map(([s, n]) => `${n} from ${s}`).join(", ")}:`);
+    for (const i of r.needsYou.slice(0, 6)) {
+      console.log(`    • [${i.category} ${String(i.urgency).padStart(2)}] ${(i.source ?? "slack").padEnd(8)} ${i.authorName} — "${i.excerpt.slice(0, 40)}…"`);
+    }
+    console.log(`\n  Tempo becomes the permission-aware working memory across your work tools — the Attention OS.`);
+    console.log(`  The arc: v0.1 five modules → v1.0 real in Slack → v2.x native+persistent+MCP → v3.x agent+proactive+team+global → v4.0 Attention OS.`);
   }
 
   console.log("\n" + "─".repeat(72));

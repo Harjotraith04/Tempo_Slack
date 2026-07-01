@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v3.8.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en
+**Current version:** v4.0.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en, ATTENTION_OS=off
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -25,6 +25,7 @@
 - **Phase 12 / v3.4.0 — Proactive intelligence:** DONE (opt-in overload/burnout early-warning `analyzeLoad` from counts only · smart batching of non-urgent FYIs · folded into the one calm morning-digest touchpoint behind `TEMPO_PROACTIVE` · notifies only, never acts, never stores content).
 - **Phase 13 / v3.6.0 — Team & manager mode:** DONE (opt-in, aggregated + anonymized `aggregateTeamLoad` over the counts-only stores · k-anonymity redaction below 3 members · `/tempo team` surface gated by `TEMPO_TEAM` · never any individual content or per-person number; personal-agent posture stays the default).
 - **Phase 14 / v3.8.0 — Enterprise & Global:** DONE (true multilingual `i18n` catalog + `t()` + `locale` pref, localized read-aloud in en/es · automated accessibility certification `auditResponse` over every response type · `ENTERPRISE.md` for Grid/residency/audit; SCIM/DLP left as owner-only integrations).
+- **Phase 15 / v4.0.0 — Attention OS + ecosystem:** DONE (`MultiSourceRtsClient` grounds triage/ledger/re-entry across Slack + mock email/calendar as one working memory behind the same `RtsClient` port · open accessibility SDK doc · capstone demo). **The 3-year roadmap is complete.**
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -40,26 +41,53 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → Phase 15 / v4.0.0 "Attention OS + ecosystem" (the finale)
-See `MASTER_PLAN.md` → Part V, Year 3, Phase 15. The last phase: Tempo becomes the permission-aware
-working-memory layer across work tools, plus an open accessibility SDK others build on:
-- [ ] **Attention OS — unify sources beyond Slack** — generalize the `RtsClient` port into a `SourceClient`
-  seam so triage/commitments/re-entry can ground across Slack + (mock) email/calendar/docs/tickets via MCP,
-  merged into one calm working-memory. Slack stays the default source; a mock second source for the zero-cred
-  demo/tests, proving the abstraction.
-- [ ] **Open accessibility SDK** — extract the calm-UX primitives (verbosity/reading-level/plainify/speech/
-  i18n/`auditResponse`) into a documented, reusable `@tempo/accessibility` surface others can build calm,
-  neurodivergent-friendly agent UIs on; a README + a tiny example.
-- [ ] **The 4.0 story** — a capstone demo scene tying the whole arc together (Slack + a second source → one
-  triage), and an impact/roadmap note.
-- [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 native-surface
-  `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, the v2.6 web app's
-  SSR/cookie behavior, and the v3.0 inbound MCP `Server`/transport — all built/typed, unverified against a
-  real client/browser/workspace.
+## Next up → the 3-year roadmap is COMPLETE (v4.0). What remains is real-world hardening, not new phases.
+Every one of the 15 planned phases (v0.1 → v4.0) is built, tested, and green. The remaining work is the
+**owner-only live verification** the mocks stand in for — none of it is code you write blind:
+- [ ] **Run the live seams against real services** — flip each mock/live gate and verify: live RTS field
+  mapping (`verify:rts`), live Claude, live Slack write-actions (canvas/list/reminder/bookmark/dnd/status),
+  the v2.2 outbound MCP `callTool` (`verify:mcp`), the v2.4 Postgres transport (`verify:postgres`), the v3.0
+  inbound MCP server (`verify:mcp-server`), and the v2.6 web app SSR/cookie flow against a real browser.
+- [ ] **Marketplace + hackathon submission logistics** — the owner-only items in the sections above
+  (`docs/marketplace-listing.md`): a real sandbox, seeded data, judging access, screenshots, the video, and
+  10+ active workspaces.
+- [ ] **Real-workspace polish** — additional locale catalogs, per-user opt-ins (proactive/team) in the
+  settings UI, and a load-history store for trend-based overload detection — all sketched in prior "Open
+  seams" notes, each a small, well-scoped follow-up.
 
 ---
 
 ## History
+
+### v4.0.0 — 2026-07-02 — Attention OS + ecosystem (the finale): one working memory across work tools
+**Built:** the capstone. Tempo generalizes beyond Slack into the permission-aware **working-memory layer across
+work tools** — and the whole 3-year, 15-phase roadmap is now complete, green, and demoable credential-free.
+- **Multi-source grounding** (`src/platform/sources/`) — `MultiSourceRtsClient` implements the *same*
+  `RtsClient` port the domain already depends on, but fans one search across a primary (Slack RTS) + extra
+  sources (mock email/calendar today; MCP-backed adapters in production), tags each result with its `source`,
+  and merges/dedupes into one calm list. Because it's just another `RtsClient`, **triage / commitments /
+  re-entry ground across every source with zero domain change** — `RtsMessage.source` + `TriageItem.source`
+  carry provenance, surfaced as "· via email" in the card. Gated by `flags.attentionOs` (`TEMPO_ATTENTION_OS`,
+  default off, so Slack stays the sole source); `buildContext` wraps the primary in `MultiSourceRtsClient` only
+  when extras are configured. The same never-persist-content invariant holds for every source.
+- **Open accessibility SDK** (`docs/accessibility-sdk.md`) — the calm-UX primitives (`resolveA11yPrefs` ·
+  `condense` · `plainify`/`applyReadingLevel` · `toSpeech` · `t`/i18n · `auditResponse`) documented as a pure,
+  dependency-free, framework-agnostic surface (`@tempo/accessibility`) others can build calm, neurodivergent-
+  friendly agent UIs on — with a worked example and the design principles baked in.
+- **Capstone** — a 26th demo scene grounds triage across Slack + a mock email + a mock calendar as one ranked
+  list (email/calendar items surface as ACT alongside Slack), and prints the whole arc.
+**Quality:** **273 tests** passing (up from 268) across 46 files — `multi.test.ts` (merge + source-tagging +
+dedupe · keeps the primary's identity/mode · **triage grounds across sources** so an email item surfaces
+alongside Slack · flag-gated default = no extras) · typecheck clean · root build clean · `npm run demo`
+extended to **26 scenes** (Slack + email + calendar → one triage) · web app still builds. The multi-source
+wrap is behind a default-off flag, so every prior test/behavior is byte-for-byte unchanged.
+**Open seams:** the extra sources are deterministic mocks (a real deployment swaps them for MCP-backed source
+adapters — the same live-seam posture as the outbound MCP client); dedupe is by source+permalink; the accessibility
+SDK is documented in-repo, not yet a published package. Cross-source ranking uses the existing per-sender
+learning + urgency (source-agnostic).
+**Milestone:** with v4.0 the **entire 3-year roadmap (Phases 0–15, v0.1 → v4.0) is complete** — every phase
+built, tested, green, and shippable credential-free. What remains is owner-only live verification (flipping the
+mock/live gates against real services) + the Marketplace/hackathon submission logistics.
 
 ### v3.8.0 — 2026-07-02 — Enterprise & Global: true multilingual + automated accessibility certification
 **Built:** the global + enterprise-readiness layer — the two pillars that make the "for-Good / assistive tech"

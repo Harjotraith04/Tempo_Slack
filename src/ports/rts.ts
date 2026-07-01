@@ -34,6 +34,9 @@ export interface RtsMessage {
   channelId: string;
   channelName?: string;
   channelType: ChannelType;
+  /** Which source this came from — "slack" (default) or, in Attention-OS mode,
+   * another work tool (email / calendar / docs / tickets) grounded via MCP. */
+  source?: string;
   authorId: string;
   authorName?: string;
   authorRealName?: string;

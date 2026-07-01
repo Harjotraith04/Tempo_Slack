@@ -27,4 +27,7 @@ export const flags = {
   /** Team & manager mode (v3.6) — opt-in, aggregated + anonymized team view.
    * Default OFF: the personal-agent posture is the default. */
   team: flag("TEMPO_TEAM", false),
+  /** Attention OS (v4.0) — ground across sources beyond Slack (mock email /
+   * calendar via MCP). Default OFF: Slack is the sole source unless enabled. */
+  attentionOs: flag("TEMPO_ATTENTION_OS", false),
 } as const;

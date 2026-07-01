@@ -10,6 +10,7 @@
 import { config } from "../config.js";
 import type { RtsClient } from "../platform/slack/rts/index.js";
 import { CachingRtsClient } from "../platform/slack/rts/caching.js";
+import { MultiSourceRtsClient, getExtraSources } from "../platform/sources/index.js";
 import type { LlmPort } from "../ports/ai.js";
 import type { Store } from "../ports/store.js";
 import { createContainer, type Container } from "./container.js";
@@ -51,13 +52,17 @@ export function buildContext(opts: BuildContextOpts = {}): TempoContext {
   const lastActiveTs =
     opts.lastActiveTs ?? (live ? nowTs - 7 * 24 * 3600 : SAM_LAST_ACTIVE);
   const container = opts.container ?? createContainer();
+  // Attention OS (v4.0): when extra sources are configured, ground across Slack
+  // + them (email/calendar/…) as one working memory; otherwise Slack is the sole
+  // source (identical to every prior version).
+  const primary = container.rts({ userToken: opts.userToken, subjectUserId: opts.subjectUserId });
+  const extras = getExtraSources();
+  const grounded = extras.length ? new MultiSourceRtsClient(primary, extras) : primary;
   return {
     // Wrap the resolved client in a per-request cache: a single turn often
     // searches RTS for the same thing more than once (module + decode/draft
     // lookups). The cache lives only as long as this context.
-    rts: new CachingRtsClient(
-      container.rts({ userToken: opts.userToken, subjectUserId: opts.subjectUserId }),
-    ),
+    rts: new CachingRtsClient(grounded),
     llm: opts.llm ?? container.llm(),
     container,
     store: container.store(),

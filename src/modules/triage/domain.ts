@@ -16,6 +16,8 @@ export interface TriageItem {
   authorName?: string;
   /** The sender's stable Slack id — the key for learned per-sender urgency. */
   authorId?: string;
+  /** Which source it came from ("slack" default, or email/calendar in Attention-OS mode). */
+  source?: string;
   excerpt: string;
   category: TriageCategory;
   /** 0-100; higher = more it needs you, sooner. */
