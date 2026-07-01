@@ -9,12 +9,11 @@
 
 import type { KnownBlock } from "@slack/types";
 import { afterTsOf, type TempoContext } from "./context.js";
-import { runTriage } from "../modules/triage.js";
-import { runLedger, detectFulfilledCommitments } from "../modules/ledger.js";
+import { liveTriage, liveCommitments } from "./read-models.js";
 import { decodeMessage } from "../modules/decoder.js";
 import { runReentry } from "../modules/reentry.js";
 import { planFocusBlock } from "../modules/focus.js";
-import { buildWeightMap, familiarity as familiarityOf } from "../modules/intelligence/index.js";
+import { familiarity as familiarityOf } from "../modules/intelligence/index.js";
 // The application layer wires outbound adapters to the ports the domain modules
 // declare; the per-turn container (on ctx) resolves mock/live by config, and
 // ctx.store is the resolved persistence adapter (file or Postgres).
@@ -68,25 +67,6 @@ export async function respond(
   return { ...r, text, speech: toSpeech({ intent: r.intent, text }) };
 }
 
-/** Filters out anything the user snoozed/marked done, and blends the learned
- * per-sender weight into ranking — the way every triage render must. */
-async function liveTriage(ctx: TempoContext) {
-  const [sigs, active] = await Promise.all([
-    ctx.store.signals.forUser(ctx.subjectUserId),
-    ctx.store.snoozes.active(ctx.subjectUserId, ctx.nowTs),
-  ]);
-  const weights = buildWeightMap(sigs);
-  const raw = await runTriage(ctx.rts, ctx.llm, {
-    afterTs: afterTsOf(ctx),
-    senderAdjust: (id) => (id ? weights.get(id) ?? 0 : 0),
-  });
-  const suppressed = new Set(active.map((s) => s.permalink));
-  return {
-    ...raw,
-    needsYou: raw.needsYou.filter((i) => !suppressed.has(i.permalink)),
-  };
-}
-
 /** The "show the rest" path — same live triage, no maxItems cap. Not reachable
  * through free-text routing; app.ts's "show_rest" button calls this directly. */
 export async function triageAll(ctx: TempoContext): Promise<TempoResponse> {
@@ -127,12 +107,7 @@ async function respondCore(
       };
     }
     case "commitments": {
-      const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
-      // Auto-close promises the user has since delivered, so the Ledger self-cleans.
-      for (const pl of await detectFulfilledCommitments(ctx.rts, fresh, { afterTs: after })) {
-        await ctx.store.commitments.markDone(ctx.subjectUserId, pl);
-      }
-      const c = await ctx.store.commitments.sync(ctx.subjectUserId, fresh);
+      const c = await liveCommitments(ctx);
       if (record) await ctx.store.metrics.record(ctx.subjectUserId, { obligationsSurfaced: c.length });
       return {
         intent,

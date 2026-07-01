@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v2.9.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
+**Current version:** v3.0.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -20,6 +20,7 @@
 - **Phase 7 / v2.6.0 — Web companion:** DONE (Next.js app under `web/` · privacy dashboard · data export/delete · web settings editor · signed-cookie session · all logic shared from `src/` so the root zero-cred gates stay green).
 - **Phase 8 / v2.8.0 — Intelligence:** DONE (learned per-sender urgency store keyed by authorId, blended into triage ranking + tone-decoder confidence · fed by snooze/done/draft taps · dropped-ball digest nudges · keyword commitment-fulfillment auto-close · counts-only, in the export + erasable).
 - **Phase 9 / v2.9.0 — Marketplace-readiness:** DONE *code/docs* (least-privilege scopes as a single source of truth + drift test · data-governance completeness guard · `PRIVACY.md`/`SECURITY.md` · web `/privacy-policy` page · listing package); submission logistics deferred to the owner (below).
+- **Phase 10 / v3.0.0 — Tempo as an MCP server:** DONE (`tempo_triage`/`tempo_commitments`/`tempo_decode`/`tempo_focus` exposed at `/api/mcp/server` over Streamable HTTP · SDK-isolated · derived-facts-only · acts as the initiating user · shared read-models extracted).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -35,24 +36,57 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → Phase 10 / v3.0.0 "Tempo as an MCP server"
-See `MASTER_PLAN.md` → Part V, Year 3, Phase 10. Tempo has been an MCP *client* since v2.2; now expose it as
-an MCP *server* so Agentforce / Claude / Cursor / ChatGPT can call Tempo — turning it from an app into
-infrastructure, honoring the same trust model (acts as the initiating user; stores nothing from RTS):
-- [ ] **Inbound MCP server** — expose `tempo.triage` · `tempo.commitments` · `tempo.decode` · `tempo.focus`
-  as MCP tools over Streamable HTTP (`@modelcontextprotocol/sdk` `Server`), in a new `platform/mcp/server/`
-  (mirror the client's SDK-isolation: one file imports the SDK, lazily). Each tool composes the existing
-  domain use-case behind the orchestrator — no new reasoning.
-- [ ] **Per-tool auth** — the caller supplies (or is mapped to) a user identity + token so RTS runs as the
-  initiating user; reuse the token store. Mock server for the zero-cred demo/tests; live gated by config.
-- [ ] **`api/mcp/server.ts`** Vercel entry + a `verify:mcp-server` script (mirror `verify:mcp`).
+## Next up → Phase 11 / v3.2.0 "Agentforce integration"
+See `MASTER_PLAN.md` → Part V, Year 3, Phase 11. Tempo is now callable as an MCP server (v3.0); next, make it
+a first-class **Agentforce** collaborator:
+- [ ] **@mention handoffs** — route work between Tempo and other agents in-conversation; Tempo answers when
+  @-mentioned and can hand a sub-task to another agent, honoring the trust layer (acts as the initiating user).
+- [ ] **Tempo as an Agentforce Employee Agent** — package the four MCP tools + a system persona so Agentforce
+  can invoke Tempo's triage/ledger/decode/focus as skills, mapping the Agentforce user → the Tempo token store.
+- [ ] **Per-caller identity mapping** — replace the single-configured-user seam in `api/mcp/server.ts` with a
+  real caller→user resolution (bearer/OIDC → the initiating user's stored token).
 - [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 native-surface
-  `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, and the v2.6 web app's
-  SSR/cookie behavior — all built/typed, unverified against a real workspace/browser.
+  `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, the v2.6 web app's
+  SSR/cookie behavior, and now the **v3.0 inbound MCP `Server`/transport** (`mcp/server/serve.ts`,
+  `verify:mcp-server`) — all built/typed, unverified against a real MCP client.
 
 ---
 
 ## History
+
+### v3.0.0 — 2026-07-02 — Tempo as an MCP server (inbound): triage/commitments/decode/focus as MCP tools
+**Built:** Tempo has been an MCP *client* since v2.2; v3.0 makes it an MCP **server** too, so external agents
+(Agentforce / Claude / Cursor / ChatGPT) can call `tempo_triage` · `tempo_commitments` · `tempo_decode` ·
+`tempo_focus` — Tempo becomes *infrastructure*, not just an app, honoring the same trust model (acts as the
+initiating user; returns derived facts only; stores nothing from RTS).
+- **Shared read-models** (`src/application/read-models.ts`) — extracted `liveTriage` (suppression + learned
+  weight blend) and `liveCommitments` (local overrides + fulfillment auto-close) that the orchestrator and
+  the native-surface use-cases had each duplicated; both now delegate. Behavior-preserving (all 214 prior
+  tests stayed green), and it gives the MCP tools the exact same reads every other surface uses.
+- **SDK-free tool definitions** (`platform/mcp/server/tools.ts`) — the four tools as pure
+  `(args, ctx) => { summary, data }` over the domain, so the whole inbound surface is unit-testable and
+  demoable with **no SDK and no credentials**. Each returns **derived facts only** — triage omits the raw
+  excerpt, commitments omit `sourceText`, decode operates on caller-supplied text — so no RTS content ever
+  crosses the MCP boundary (asserted in tests).
+- **SDK-isolated server** (`platform/mcp/server/serve.ts`) — the ONLY inbound file touching
+  `@modelcontextprotocol/sdk`; `handleMcpHttp` lazily `await import`s `McpServer` +
+  `StreamableHTTPServerTransport` on the first request, registers the tools, and serves statelessly. Same
+  isolation discipline as the outbound `mcp/connect.ts` — the SDK never loads on the zero-credential path.
+- **HTTP entry + gate** — `api/mcp/server.ts` (Streamable HTTP), off unless `TEMPO_MCP_SERVER=on`, bearer-
+  gated by `TEMPO_MCP_SERVER_TOKEN`; acts as a configured initiating user (their token drives RTS). New
+  `config.mcp.server` block + `isMcpServerEnabled()`. `scripts/verify-mcp-server.ts` (`npm run
+  verify:mcp-server`) enumerates the exposed tools + reports the endpoint's enabled/gated state.
+**Quality:** **220 tests** passing (up from 214) across 36 files — a new `server/tools.test.ts` runs all four
+tools against a mock context and asserts the structured output + the never-leak-RTS invariant (no excerpt, no
+`sourceText`) + the server-off-by-default gate; the read-model extraction kept every existing suite green ·
+typecheck clean · root build clean · `npm run demo` extended to **21 scenes** (the four tools invoked exactly
+as the server invokes them, proving derived-facts-only output) · web app still builds.
+**Open seams:** the inbound `McpServer`/transport (`serve.ts`) + the `api/mcp/server.ts` HTTP wiring are
+**contract-shaped but unverified against a real MCP client** (same posture as the outbound client and the
+other live seams); `verify:mcp-server` lists the contract but doesn't round-trip. Caller identity is a single
+configured user for now — real per-caller→user mapping is v3.2 (Agentforce). Only Streamable HTTP transport.
+**Next:** Phase 11 / v3.2 — Agentforce integration (@mention handoffs · Tempo as an Employee Agent ·
+per-caller identity mapping).
 
 ### v2.9.0 — 2026-07-02 — Marketplace-readiness: least-privilege scopes · data-governance guard · privacy/security
 **Built:** the buildable half of Marketplace prep — the engineering, tests, and docs — with the real-workspace

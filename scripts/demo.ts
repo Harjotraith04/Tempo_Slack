@@ -39,6 +39,7 @@ import { droppedBallBlocks } from "../src/platform/slack/blockkit/index.js";
 import type { RtsMessage } from "../src/ports/rts.js";
 import { SCOPES, USER_SCOPES, BOT_SCOPES } from "../src/platform/slack/oauth/scopes.js";
 import manifest from "../manifest.json" with { type: "json" };
+import { TEMPO_TOOLS } from "../src/platform/mcp/server/index.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
@@ -446,6 +447,31 @@ async function main() {
       eq(manifest.oauth_config.scopes.user, USER_SCOPES) &&
       eq(manifest.oauth_config.scopes.bot, BOT_SCOPES);
     console.log(`  Manifest requests exactly this set — no over- or under-request: ${matches}. Marketplace-ready.`);
+  }
+
+  rule('21. Tempo as an MCP server — external agents (Agentforce / Claude / Cursor) can call Tempo');
+  {
+    // The SDK-free tools, invoked exactly as the MCP server invokes them — no
+    // SDK, no credentials. Each acts as the initiating user; derived facts only.
+    const call = (name: string, args: Record<string, unknown>) =>
+      TEMPO_TOOLS.find((t) => t.name === name)!.run(args, ctx);
+
+    console.log(`  Exposes ${TEMPO_TOOLS.length} tools: ${TEMPO_TOOLS.map((t) => t.name).join(", ")}\n`);
+
+    const triage = await call("tempo_triage", { limit: 3 });
+    console.log(`  tempo_triage       → "${triage.summary.slice(0, 74)}…" (${(triage.data.needsYou as any[]).length} items)`);
+
+    const commitments = await call("tempo_commitments", {});
+    const leak = JSON.stringify(commitments.data).includes("sourceText");
+    console.log(`  tempo_commitments  → "${commitments.summary}" — leaks raw text? ${leak}`);
+
+    const decode = await call("tempo_decode", { text: "No rush 🙂 whenever you get a chance.", from: "Marco" });
+    const d = decode.data as { impliedMeaning: string; confidence: number };
+    console.log(`  tempo_decode       → "${d.impliedMeaning}" (confidence ${Math.round(d.confidence * 100)}%)`);
+
+    const focus = await call("tempo_focus", { minutes: 60 });
+    console.log(`  tempo_focus        → "${focus.summary.slice(0, 74)}…"`);
+    console.log(`  Served at /api/mcp/server (Streamable HTTP), off unless TEMPO_MCP_SERVER=on — acts as the user, stores nothing from RTS.`);
   }
 
   console.log("\n" + "─".repeat(72));

@@ -78,6 +78,7 @@ npm test          # 155 tests: RTS, MCP, the five modules, native surfaces, pers
 ### How each required technology is used
 - **RTS API** — `src/rts/` calls `assistant.search.context` for every read (triage candidates, commitment language, relationship history, re-entry). Live results are grounded into the model **in-memory and discarded**.
 - **MCP** — `src/platform/mcp/` makes Tempo an MCP *client* for outward actions (calendar block, task creation). **Mock by default; real via `@modelcontextprotocol/sdk`** — set `TEMPO_MCP=live` + a Streamable-HTTP server URL per client (`TEMPO_MCP_CALENDAR_URL` / `TEMPO_MCP_TASKS_URL`) to act through a real Google Calendar / Notion / Linear / GitHub MCP server. The SDK is dynamically imported, so the zero-credential path never loads it; verify a live wiring with `npm run verify:mcp`.
+  - **MCP *server* (v3.0)** — Tempo is *also* an MCP server: `src/platform/mcp/server/` exposes `tempo_triage` / `tempo_commitments` / `tempo_decode` / `tempo_focus` at `/api/mcp/server` (Streamable HTTP) so Agentforce / Claude / Cursor / ChatGPT can call Tempo. Each tool acts as the initiating user and returns **derived facts only** (never raw RTS content). Off unless `TEMPO_MCP_SERVER=on`; `npm run verify:mcp-server` lists the tools.
 - **Slack AI / Assistant** — `src/app.ts` wires the Assistant pane (suggested prompts, status), `/tempo`, App Home, and Block Kit.
 
 ---

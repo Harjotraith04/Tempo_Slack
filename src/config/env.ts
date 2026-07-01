@@ -81,6 +81,13 @@ export const config = {
     tasksToken: opt("TEMPO_MCP_TASKS_TOKEN"),
     tasksTool: opt("TEMPO_MCP_TASKS_TOOL") ?? "create_task",
     tasksProvider: opt("TEMPO_MCP_TASKS_PROVIDER") ?? "notion",
+    // Inbound: Tempo exposed AS an MCP server (v3.0) so external agents
+    // (Agentforce / Claude / Cursor / ChatGPT) can call tempo.triage/etc.
+    // Off by default; `token` gates the HTTP endpoint (like CRON_SECRET).
+    server: {
+      enabled: opt("TEMPO_MCP_SERVER") === "on",
+      token: opt("TEMPO_MCP_SERVER_TOKEN"),
+    },
   },
   // Persistence — where tokens/prefs/commitments/snoozes/metrics/surfaces live.
   // file = JSON files under TEMPO_STORE_DIR (default; the zero-credential

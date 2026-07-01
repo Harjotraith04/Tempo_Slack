@@ -25,6 +25,9 @@ export const isLiveSlackActions = () => config.runtime.slackActions === "live";
 export const isLiveTts = () => config.tts.mode === "live";
 export const isLiveMcp = () => config.mcp.mode === "live";
 
+/** True when Tempo should serve its inbound MCP endpoint (v3.0). */
+export const isMcpServerEnabled = () => config.mcp.server.enabled;
+
 /** Persistence posture. Storage isn't a "live Slack" posture, so it stays a
  * standalone predicate and does NOT feed isLivePosture(). The factory still
  * double-gates on a configured DATABASE_URL (see platform/persistence). */

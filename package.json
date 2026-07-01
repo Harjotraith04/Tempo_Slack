@@ -1,6 +1,6 @@
 {
   "name": "tempo",
-  "version": "2.9.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "description": "Tempo — an executive-function co-pilot for Slack. Assistive tech that triages the firehose, remembers your commitments, decodes tone, and protects your attention. Built on the Slack RTS API + MCP + Slack AI.",
@@ -19,6 +19,7 @@
     "verify:rts": "tsx scripts/verify-live-rts.ts",
     "verify:mcp": "tsx scripts/verify-live-mcp.ts",
     "verify:postgres": "tsx scripts/verify-live-postgres.ts",
+    "verify:mcp-server": "tsx scripts/verify-mcp-server.ts",
     "web:dev": "npm --prefix web run dev",
     "web:build": "npm --prefix web run build"
   },
