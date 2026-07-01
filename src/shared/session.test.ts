@@ -7,6 +7,11 @@ import {
   parseCookies,
   userIdFromCookieHeader,
   SESSION_COOKIE,
+  OAUTH_STATE_COOKIE,
+  newOAuthState,
+  serializeStateCookie,
+  clearStateCookie,
+  statesMatch,
 } from "./session.js";
 
 describe("signed session", () => {
@@ -66,5 +71,35 @@ describe("session cookie helpers", () => {
     expect(parseCookies(header)[SESSION_COOKIE]).toBe(token);
     expect(userIdFromCookieHeader(header, now + 5)).toBe("U_XYZ");
     expect(userIdFromCookieHeader("nothing=here", now + 5)).toBeNull();
+  });
+});
+
+describe("OAuth CSRF state", () => {
+  it("mints unique, non-trivial state tokens", () => {
+    const a = newOAuthState();
+    const b = newOAuthState();
+    expect(a).not.toBe(b);
+    expect(a.length).toBeGreaterThan(20);
+  });
+
+  it("statesMatch only accepts an exact, both-present match", () => {
+    const s = newOAuthState();
+    expect(statesMatch(s, s)).toBe(true);
+    expect(statesMatch(s, s + "x")).toBe(false);
+    expect(statesMatch(s, newOAuthState())).toBe(false);
+    expect(statesMatch(undefined, s)).toBe(false);
+    expect(statesMatch(s, undefined)).toBe(false);
+    expect(statesMatch(undefined, undefined)).toBe(false);
+    expect(statesMatch("", "")).toBe(false); // empty is never a valid match
+  });
+
+  it("state cookie is HttpOnly/Secure/Lax and short-lived; clear expires it", () => {
+    const c = serializeStateCookie("abc", 600);
+    expect(c).toContain(`${OAUTH_STATE_COOKIE}=abc`);
+    expect(c).toContain("HttpOnly");
+    expect(c).toContain("Secure");
+    expect(c).toContain("SameSite=Lax");
+    expect(c).toContain("Max-Age=600");
+    expect(clearStateCookie()).toContain("Max-Age=0");
   });
 });

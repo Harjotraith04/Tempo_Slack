@@ -22,13 +22,15 @@ export const USER_SCOPES = [
 
 export const BOT_SCOPES = ["assistant:write", "chat:write", "im:write", "commands", "users:read"].join(",");
 
-/** The Slack authorize URL to redirect the browser to. */
-export function buildAuthorizeUrl(redirectUri: string): string {
+/** The Slack authorize URL to redirect the browser to. Pass a `state` (from
+ * `newOAuthState()`) to enable CSRF protection on the callback. */
+export function buildAuthorizeUrl(redirectUri: string, state?: string): string {
   return (
     `https://slack.com/oauth/v2/authorize?client_id=${config.slack.clientId ?? ""}` +
     `&scope=${encodeURIComponent(BOT_SCOPES)}` +
     `&user_scope=${encodeURIComponent(USER_SCOPES)}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}`
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    (state ? `&state=${encodeURIComponent(state)}` : "")
   );
 }
 

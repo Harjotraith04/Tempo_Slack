@@ -6,10 +6,14 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { buildAuthorizeUrl } from "../../src/platform/slack/oauth/index.js";
+import { newOAuthState, serializeStateCookie } from "../../src/shared/session.js";
 
 export default function handler(req: IncomingMessage, res: ServerResponse) {
   const redirectUri = `${process.env.PUBLIC_URL ?? ""}/api/oauth/callback`;
+  // CSRF protection: remember a random state and echo it to Slack.
+  const state = newOAuthState();
   res.statusCode = 302;
-  res.setHeader("Location", buildAuthorizeUrl(redirectUri));
+  res.setHeader("Set-Cookie", serializeStateCookie(state));
+  res.setHeader("Location", buildAuthorizeUrl(redirectUri, state));
   res.end();
 }

@@ -6,12 +6,27 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { getStore } from "../../src/platform/persistence/index.js";
 import { exchangeCode } from "../../src/platform/slack/oauth/index.js";
+import {
+  parseCookies,
+  statesMatch,
+  clearStateCookie,
+  OAUTH_STATE_COOKIE,
+} from "../../src/shared/session.js";
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  const code = new URL(req.url ?? "", "http://localhost").searchParams.get("code");
+  const url = new URL(req.url ?? "", "http://localhost");
+  const code = url.searchParams.get("code");
   if (!code) {
     res.statusCode = 400;
     res.end("Missing code");
+    return;
+  }
+
+  // CSRF: the query `state` must match the state cookie set at /api/oauth/start.
+  const cookieState = parseCookies(req.headers.cookie)[OAUTH_STATE_COOKIE];
+  if (!statesMatch(url.searchParams.get("state"), cookieState)) {
+    res.statusCode = 400;
+    res.end("Invalid OAuth state");
     return;
   }
 
@@ -22,6 +37,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (userId && userToken) await getStore().tokens.save(userId, teamId ?? "", userToken);
 
     res.statusCode = 200;
+    res.setHeader("Set-Cookie", clearStateCookie()); // single-use
     res.setHeader("Content-Type", "text/html");
     res.end(
       `<html><body style="font-family:system-ui;padding:48px;max-width:520px;margin:auto">` +

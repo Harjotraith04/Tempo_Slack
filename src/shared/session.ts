@@ -10,11 +10,13 @@
  * posture. No RTS content is involved — the payload is just `userId.exp`.
  */
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { config } from "../config.js";
 
 export const SESSION_COOKIE = "tempo_session";
+export const OAUTH_STATE_COOKIE = "tempo_oauth_state";
 const DEFAULT_TTL_SECS = 30 * 24 * 3600; // 30 days
+const STATE_TTL_SECS = 600; // 10 minutes — an OAuth round-trip is seconds
 
 function key(): Buffer {
   return createHash("sha256").update(config.runtime.encryptionKey).digest();
@@ -94,4 +96,33 @@ export function userIdFromCookieHeader(
   nowTs?: number,
 ): string | null {
   return verifySession(parseCookies(header)[SESSION_COOKIE], nowTs);
+}
+
+// ── OAuth CSRF `state` ────────────────────────────────────────────────────────
+// A random, single-use value set as a short-lived cookie when the OAuth flow
+// starts and echoed back by the provider; the callback rejects the request
+// unless the query `state` matches the cookie. Prevents login CSRF (an attacker
+// completing the flow in a victim's browser).
+
+/** A fresh, cryptographically-random state token. */
+export function newOAuthState(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+/** `Set-Cookie` value that stores the OAuth state (HttpOnly, Secure, Lax, short-lived). */
+export function serializeStateCookie(state: string, ttlSecs: number = STATE_TTL_SECS): string {
+  return `${OAUTH_STATE_COOKIE}=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${ttlSecs}`;
+}
+
+/** `Set-Cookie` value that clears the state cookie (consumed on success). */
+export function clearStateCookie(): string {
+  return `${OAUTH_STATE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+}
+
+/** Constant-time equality for the query state vs the cookie state. */
+export function statesMatch(a: string | undefined | null, b: string | undefined | null): boolean {
+  if (!a || !b) return false;
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
 }

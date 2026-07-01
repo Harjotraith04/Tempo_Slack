@@ -70,8 +70,12 @@ zero-credential gates (`npm test`/`typecheck`/`build`/`demo`) stay green and rea
   SameSite=Lax` cookie over the user id, keyed off the **same** `SHA-256(encryptionKey)` idiom the token store
   uses (no new secret). `verifySession` is constant-time (`timingSafeEqual`) + expiry-checked. This is what
   scopes "delete all my data" to the authenticated user only.
-- **Shared OAuth helpers** (`src/platform/slack/oauth/`) — extracted `buildAuthorizeUrl` + `exchangeCode` from
-  the root `api/oauth/*` (behavior-preserving) and reused by both the Slack-install flow and the web app.
+- **OAuth CSRF `state`** — both the web and the root Slack-install flows now mint a random single-use `state`
+  (short-lived `HttpOnly; SameSite=Lax` cookie set at `/start`), and the callback rejects (400) unless the
+  query `state` matches the cookie constant-time (`statesMatch`) — closing an OAuth login-CSRF hole flagged in
+  review of the initial v2.6 commit.
+- **Shared OAuth helpers** (`src/platform/slack/oauth/`) — extracted `buildAuthorizeUrl(redirectUri, state?)` +
+  `exchangeCode` from the root `api/oauth/*` (behavior-preserving) and reused by both flows.
 - **The `web/` Next.js app** (its own `package.json`/build, **not** an npm workspace — root `npm ci` stays
   react-free) shares `src/` via `next.config.mjs`'s `experimental.externalDir` + a `.js`→`.ts` `extensionAlias`,
   through a single bridge file `web/lib/domain.ts`. Surfaces: a landing/"Sign in with Slack" page, a
