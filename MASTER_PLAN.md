@@ -5,7 +5,7 @@
 >
 > This file is the source of truth for **what to build**. [`LEDGER.md`](LEDGER.md) tracks **what's already built** and **what's next**. The build loop is in **Part VI**.
 
-**Contents:** [I. Vision & Hackathon Strategy](#part-i--vision--hackathon-strategy) · [II. Product](#part-ii--product) · [III. Architecture](#part-iii--architecture-professional-modular-monolith) · [IV. Code Structure](#part-iv--code-structure-the-monolith-tree) · [V. 3-Year Roadmap](#part-v--the-3-year-roadmap) · [VI. Build Loop](#part-vi--the-build-loop)
+**Contents:** [I. Vision & Hackathon Strategy](#part-i--vision--hackathon-strategy) · [II. Product](#part-ii--product) · [III. Architecture](#part-iii--architecture-professional-modular-monolith) · [IV. Code Structure](#part-iv--code-structure-the-monolith-tree) · [V. 3-Year Roadmap](#part-v--the-3-year-roadmap) · [VI. Build Loop](#part-vi--the-build-loop) · [**VII. Submission Master Plan**](#part-vii--submission-master-plan-the-final-mile)
 
 ---
 
@@ -319,6 +319,120 @@ Tempo is built as a **continuously buildable** product. There is no separate pro
 
 ### Versioning
 Semver tied to phases. `package.json` `version` is canonical; `LEDGER.md` is the human history.
+
+---
+
+# Part VII — Submission Master Plan (the final mile)
+
+> Written 2026-07-02 from a full audit of the repo + a fresh read of the Devpost rules and Slack docs.
+> **The verdict:** all 15 phases are *built* and green (273 tests · typecheck · build · 26-scene demo · web builds), but **nothing is live**. Zero deployments, placeholder manifest URLs, every integration in mock mode, no video, no diagram, no sandbox, no judge access. The remaining work is not "more features" — it is **bring-up, verification, and assets**. This part is the single execution plan to the submission.
+
+## 7.0 Hard external facts (verified 2026-07-02)
+
+1. **Deadline: Monday, July 13, 2026 @ 5:00 PM PDT** (= Tue Jul 14, 5:30 AM IST). Plan for **July 12** so the last day is buffer. *(The "Jul 14" on the page is the IST rendering — do not plan against it.)*
+2. **Agent for Good track needs NO Marketplace submission.** Deliverables: text description + explicit impact statement · demo video **under 3 minutes** (public YouTube/Vimeo, real working footage, no copyrighted music) · **architecture diagram** · **sandbox access for `slackhack@salesforce.com` + `testing@devpost.com`** · Slack Developer Program membership.
+3. **RTS API access:** GA (Feb 2026) for directory-published **and internal** apps — an internal app in your own sandbox qualifies. Bot tokens need an `action_token`; **user tokens don't** (our architecture is correct). Scopes: `search:read.public` required + the granular privates. **But semantic search requires a Slack-AI-Search-enabled sandbox, requested from the Slack partnerships team via the Developer Program** — this is the longest external lead time in the whole plan. Standard (non-semantic) RTS in a normal sandbox is undocumented → **test on day 1**. Limits: 20 results/request, ~10 req/min per user.
+4. **The Assistant experience we built against is deprecated for new apps.** New apps must use the **Agent experience**: manifest `agent_view` + `agent_description` (not `assistant_view`/`assistant_description`), events `app_home_opened` + `message.im` (not `assistant_thread_started`/`assistant_thread_context_changed`). Our `manifest.json:18` and `app.ts` assistant handlers must be migrated (Bolt 4.x supports it). Slack may reject app creation from the old manifest outright.
+5. **Sandboxes:** free via the Developer Program — 8 users max, 3 workspaces, 6-month life. Judges are invited as ordinary members (2 of the 8 seats).
+6. **Hosting:** Slack events need a stable public HTTPS URL and a **3-second ack**. Vercel ships an official **`@vercel/slack-bolt`** adapter (Fluid Compute + `waitUntil`: ack fast, keep working) — strictly better than our raw `ExpressReceiver` + `processBeforeResponse: true`, which does full RTS+LLM work before responding and will blow the 3 s window live.
+
+## 7.1 Gap audit — what is missing / half-built / wrong
+
+### A. Not there at all (blocking submission)
+| Gap | Evidence |
+|---|---|
+| **No deployment, anywhere** | no `.vercel/` at root or `web/`; no real URL in any file |
+| **Real manifest URLs** | `manifest.json:83-84,114,126` = `https://YOUR_DEPLOYMENT/...` placeholders |
+| **Sandbox + app install + judge access** | nothing exists; Developer Program membership unconfirmed |
+| **Architecture diagram file** | required by Devpost; only ASCII art exists — no image/mermaid file in repo |
+| **Demo video** | none |
+| **Devpost write-up + impact statement** | none (raw material exists in Part I + README) |
+| **Live proof of ANY seam** | every `verify:*` script exists but none has ever been run against a real service |
+
+### B. Half-built (works in mock, unverified or absent live)
+| Item | State |
+|---|---|
+| Live RTS field mapping | `rts/live.ts` payload shape is *guessed* (`:10-12`); the single riskiest unknown |
+| Live Slack write-actions | canvas/lists/reminders/bookmarks via untyped `apiCall`, best-effort shapes (`webapi/live.ts:96+`); Lists API shape explicitly a guess |
+| MCP outbound | live adapter exists, never connected to a real server (`mcp/connect.ts:11`) |
+| MCP inbound server | complete + default-deny auth, never hit by a real MCP client (`serve.ts:11`) |
+| Postgres store | full adapter, never run against a real Neon DB (`pg/connect.ts:10`) |
+| Attention-OS extra sources | **mock-only — no live email/calendar adapter exists at all** (`sources/index.ts:16-22`); fine for demo, must be framed honestly |
+| i18n | en/es, 9 speech keys only; visible card text localizes only via live Claude |
+| Agentforce | descriptor generator only (`platform/agentforce/descriptor.ts`) — no Salesforce API; frame as "integration-ready descriptor," not an integration |
+| Web companion on Vercel | builds locally; needs its own Vercel project (Root Dir `web`) + "include files outside root" ON for the `externalDir` import of `../src` — never attempted |
+
+### C. Wrong (must fix before going live)
+1. **Fail-open secrets gate on the real prod entrypoint** — `createExpressApp()` (`app.ts:389`) is what Vercel serves, but `isLivePosture()` (`modes.ts:41-47`) is false under default env (`TEMPO_RECEIVER=socket`, mocks) → `assertSecretsHardened()` no-ops while serving real HTTP with the `dev-insecure-key-change-me-please` default key (`env.ts:59`).
+2. **Empty signing-secret fallback** — `signingSecret: config.slack.signingSecret ?? ""` (`app.ts:392`): unset secret ⇒ signature verification against `""` instead of a crash. `assertSlackRuntime()` is never called on this path.
+3. **3-second ack** — `processBeforeResponse: true` + full RTS+LLM inside `app_mention`/`app_home_opened` handlers ⇒ timeouts + Slack retries on the live path. Migrate the events route to `@vercel/slack-bolt` (or ack-first + `waitUntil`).
+4. **File store dies on Vercel** — default `TEMPO_STORE=file` writes `.tempo-store.json` to CWD (`file/tokens.ts:18`); Vercel FS is read-only ⇒ OAuth callback + cron `EROFS`. Prod must run `TEMPO_STORE=postgres` (Neon), and the app should **fail loudly** if a live posture resolves to the file store.
+5. **Deprecated agent surface** — `assistant_view` + `assistant_thread_*` (manifest + `app.ts`) → migrate to `agent_view` + `app_home_opened`/`message.im` (fact 7.0-4).
+6. **`socket_mode_enabled: true`** in the manifest contradicts the HTTP deployment (`manifest.json:128`).
+7. **`api/cron/morning-digest.test.ts` is inside `api/`** ⇒ Vercel deploys it as a live route. Move to `src/` or add `.vercelignore`.
+8. **Seed script needs scopes the manifest doesn't grant** — `conversations.create/list`, `chat.postMessage` with `username`/`icon_emoji` ⇒ needs `channels:manage`, `channels:read`, `chat:write.customize` (seed-time only; document or add to the sandbox app). |
+9. Minor: TTS live returns mp3 but is uploaded as `tempo-read-aloud.wav` (`app.ts:497` vs `tts/live.ts:33-46`); version drift (root 4.0.0 / web 2.6.0 / MCP server 3.2.0); cron auth optional when `CRON_SECRET` unset.
+
+### D. Already fine (don't touch)
+Scopes ↔ manifest drift-tested and consistent · repo hygiene clean (`dist/`, `.tempo-*.json` properly ignored) · CI green (typecheck→test→build→demo) · privacy invariants proven in tests · zero-credential demo is genuinely excellent.
+
+## 7.2 The plan — three workstreams
+
+### W1 · Code fixes (P0, ~1 day, Claude-buildable, no credentials needed)
+- [ ] **Agent-experience migration:** manifest `agent_view`/`agent_description`; `app.ts` handlers moved off `assistant_thread_*` onto `app_home_opened` + `message.im` (keep the Assistant-class code path where Bolt maps it); `socket_mode_enabled: false` in the prod manifest.
+- [ ] **Serverless receiver:** migrate `api/slack/events.ts` to `@vercel/slack-bolt` (ack-fast + `waitUntil`); keep `createExpressApp` for non-Vercel use.
+- [ ] **Close the fail-open gates:** `createExpressApp`/the Vercel entry treats itself as live posture (e.g. `process.env.VERCEL` or `TEMPO_RECEIVER=http` forced) → `assertSlackRuntime()` + `assertSecretsHardened()` actually fire; throw on empty signing secret; throw if live posture + file store.
+- [ ] **Housekeeping:** move `api/cron/morning-digest.test.ts` out of `api/`; fix TTS extension/mime; align versions; document seed-only scopes in the manifest comment or a sandbox-app note.
+- [ ] Keep all 273 tests + demo green; add tests for the new gates.
+
+### W2 · Live bring-up (owner accounts + Claude, days 2–6 — **start the two slow externals on day 1**)
+Order matters; each step de-risks the next:
+1. **Day 1, in parallel (owner):** join the **Slack Developer Program** → provision sandbox → **immediately request the Slack-AI-Search (semantic RTS) sandbox from the partnerships team** (longest lead time; non-semantic RTS may work meanwhile — test it day 1 with `verify:rts`). Get: Anthropic API key, Neon database (free tier), Vercel account.
+2. **Deploy root app to Vercel:** link project → set env (`SLACK_*`, `ANTHROPIC_API_KEY`, `TEMPO_ENCRYPTION_KEY` (real 32+ chars), `DATABASE_URL`, `TEMPO_STORE=postgres`, `TEMPO_RECEIVER=http`, `TEMPO_RTS=live`, `TEMPO_SLACK_ACTIONS=live`, `CRON_SECRET`) → `npm run verify:postgres`.
+3. **Create the Slack app in the sandbox from the fixed manifest** with the real `https://<app>.vercel.app` URLs → install → OAuth (`/api/oauth/start`) → token stored in Neon.
+4. **Seed the sandbox** (`npm run seed -- --execute`, with the seed scopes) so RTS has the demo story.
+5. **`npm run verify:rts` → fix `rts/live.ts` field mapping against real payloads.** This is the make-or-break step; budget a full session.
+6. **Flip + verify each remaining seam:** live Claude (already auto-on with the key) → live Slack actions in the sandbox (dnd/status/canvas/Lists — expect to patch the guessed Lists shapes; if Lists misbehaves, `TEMPO_LISTS=off` is the cut line) → `verify:mcp` against one real MCP server (calendar; cut line = keep MCP outbound mock and lean on the inbound server) → `verify:mcp-server` with MCP Inspector → TTS optional.
+7. **Deploy `web/`** as a second Vercel project (Root Dir `web`, include-files-outside-root ON) → set the second redirect URL in the manifest → walk the OAuth + privacy-dashboard flow in a real browser.
+8. **End-to-end dress rehearsal:** the §1.6 storyline, live in the sandbox, all five modules + cron digest.
+
+### W3 · Submission assets (days 6–10, can start once W2 step 6 is stable)
+- [ ] **Architecture diagram:** draw Part III §3.2 + §3.4 as one clean diagram (Mermaid → SVG/PNG, committed to `docs/`); show RTS + MCP(in/out) + Slack AI surfaces explicitly — judges score "uses all three."
+- [ ] **~3-min video** on the §1.6 beats, recorded against the **live sandbox** (the 26-scene `npm run demo` is the storyboard, not the footage). Public YouTube link, no copyrighted audio.
+- [ ] **Devpost draft:** description (from Part I + README) · **explicit impact statement** (the "for Good" scoring lever: neurodivergent users, non-native speakers, burnout; cite the accessibility spine §2.3) · call out all three technologies prominently · honest framing for mock-only pieces (Attention-OS sources = "architecture demonstrated over deterministic fixtures").
+- [ ] **Invite `slackhack@salesforce.com` + `testing@devpost.com`** to the sandbox; verify the invites landed; leave a pinned `#start-here` channel with a 5-line "how to try Tempo in 2 minutes" note + suggested prompts (judges spend ~5–7 min).
+- [ ] Screenshots for the gallery; submit by **July 12**, keep July 13 as pure buffer.
+
+## 7.3 Calendar (deadline Mon Jul 13, 5 PM PDT — submit Sun Jul 12)
+
+| Date | Focus |
+|---|---|
+| **Jul 2** | This plan. Owner: Developer Program + sandbox + **partnerships request for semantic RTS** + API keys. |
+| **Jul 3** | W1 complete (P0 fixes, tests green). Vercel root deploy + Neon. |
+| **Jul 4** | App created in sandbox from fixed manifest · OAuth · seed · **first live `verify:rts`**. |
+| **Jul 5–6** | Fix RTS mapping · live Claude · live Slack actions · Lists/canvas patches. |
+| **Jul 7** | MCP out + MCP-server verification · web companion deploy · cron dress rehearsal. |
+| **Jul 8** | Full live E2E of the video storyline. Freeze features. |
+| **Jul 9** | Architecture diagram + screenshots + Devpost draft. |
+| **Jul 10** | Record + edit the video. |
+| **Jul 11** | Judge invites + `#start-here` + fresh-eyes run-through as a judge. |
+| **Jul 12** | **Submit.** |
+| **Jul 13** | Buffer only (fix rejects, re-render video, etc.). |
+
+## 7.4 Risk register & cut lines
+
+| Risk | Likelihood | Mitigation / cut line |
+|---|---|---|
+| Semantic-RTS sandbox not granted in time | Medium | Non-semantic RTS still returns real, permission-aware results — triage/ledger/re-entry work, ranking is keyword-flavored. **Never demo on mock RTS in the video.** |
+| `assistant.search.context` unavailable even non-semantically in sandbox | Low | Escalate via Developer Program support immediately (day-1 test exists precisely for this). |
+| Live Lists/canvas API shapes wrong | High (explicitly guessed) | Patch on live evidence; cut line `TEMPO_LISTS=off` / canvas off — neither is core to the five modules. |
+| 3-s ack still flaky after adapter migration | Low | Suggested prompts + `/tempo` (acks first) carry the demo; App Home publishes async. |
+| Agent-experience migration breaks the pane UX | Medium | Do it first (W1) so all live testing happens on the final surface. |
+| MCP outbound has no easy real server | Medium | Inbound MCP server (verifiable with Inspector) already proves the MCP tech box; outbound stays honest-mock. |
+| Time | — | The five modules live + RTS + one working MCP direction + video + diagram is a complete winning submission; everything else is polish. |
+
+## 7.5 Definition of done (the judge's 7 minutes)
+A judge added to the sandbox can, without help: open Tempo → see onboarding → type "what needs me?" in the agent pane → get a real RTS-grounded triage card with working buttons → `/tempo commitments` → see the ledger with nudge/renegotiate drafts → "block 2 hours" → watch DND + status flip → open App Home → live dashboard + settings modal → and the video + diagram + write-up tell the same story they just experienced. Every claim in the write-up is demonstrable in that sandbox.
 
 ---
 

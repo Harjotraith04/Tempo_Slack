@@ -41,19 +41,24 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → the 3-year roadmap is COMPLETE (v4.0). What remains is real-world hardening, not new phases.
-Every one of the 15 planned phases (v0.1 → v4.0) is built, tested, and green. The remaining work is the
-**owner-only live verification** the mocks stand in for — none of it is code you write blind:
-- [ ] **Run the live seams against real services** — flip each mock/live gate and verify: live RTS field
-  mapping (`verify:rts`), live Claude, live Slack write-actions (canvas/list/reminder/bookmark/dnd/status),
-  the v2.2 outbound MCP `callTool` (`verify:mcp`), the v2.4 Postgres transport (`verify:postgres`), the v3.0
-  inbound MCP server (`verify:mcp-server`), and the v2.6 web app SSR/cookie flow against a real browser.
-- [ ] **Marketplace + hackathon submission logistics** — the owner-only items in the sections above
-  (`docs/marketplace-listing.md`): a real sandbox, seeded data, judging access, screenshots, the video, and
-  10+ active workspaces.
-- [ ] **Real-workspace polish** — additional locale catalogs, per-user opt-ins (proactive/team) in the
-  settings UI, and a load-history store for trend-based overload detection — all sketched in prior "Open
-  seams" notes, each a small, well-scoped follow-up.
+## Next up → **execute `MASTER_PLAN.md` Part VII — the Submission Master Plan** (audited 2026-07-02)
+The 3-year feature roadmap (v0.1 → v4.0) is complete and green, but a 2026-07-02 full audit found **nothing is
+live**: no deployment, placeholder manifest URLs, every seam mocked, no video/diagram/sandbox/judge access —
+and the real Devpost deadline is **Mon Jul 13, 5 PM PDT** (submit Jul 12). Part VII is the single execution
+plan; work it top-to-bottom:
+- [ ] **W1 · P0 code fixes (Claude-buildable now):** migrate `assistant_view`/`assistant_thread_*` → the new
+  **Agent experience** (`agent_view`, `app_home_opened`+`message.im`); move `api/slack/events.ts` to
+  `@vercel/slack-bolt` (3-s ack via `waitUntil`); close the fail-open gates (`assertSecretsHardened` no-ops on
+  the Vercel path, `signingSecret ?? ""`, live-posture-with-file-store); `socket_mode_enabled: false`; move
+  `api/cron/morning-digest.test.ts` out of `api/`; TTS mp3/wav mismatch; seed-scope note.
+- [ ] **W2 · Live bring-up (owner + Claude):** Developer Program + sandbox + **day-1 partnerships request for
+  the semantic-RTS sandbox** → Vercel deploy (+ Neon, real key, `TEMPO_STORE=postgres`) → app from fixed
+  manifest → OAuth → seed → **`verify:rts` and fix the guessed field mapping** → live Slack actions →
+  `verify:mcp`/`verify:mcp-server`/`verify:postgres` → web companion deploy → full live E2E by Jul 8.
+- [ ] **W3 · Submission assets:** architecture diagram (Mermaid→SVG in `docs/`) · ~3-min live-footage video on
+  the §1.6 beats · Devpost write-up + explicit impact statement · judge invites (`slackhack@salesforce.com`,
+  `testing@devpost.com`) + `#start-here` channel · screenshots · **submit Jul 12**.
+Cut lines + risk register + day-by-day calendar: `MASTER_PLAN.md` §7.3–7.5.
 
 ---
 
