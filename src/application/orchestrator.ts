@@ -24,8 +24,10 @@ import {
   reentryBlocks,
   focusBlocks,
   helpBlocks,
+  handoffBlocks,
   emptyStateBlocks,
 } from "../platform/slack/blockkit/index.js";
+import { detectHandoff } from "../modules/handoff/index.js";
 
 import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs } from "../accessibility/index.js";
 
@@ -91,6 +93,23 @@ async function respondCore(
   const after = afterTsOf(ctx);
   const prefs = await ctx.store.prefs.get(ctx.subjectUserId);
   const a11y = resolveA11yPrefs(prefs);
+
+  // A clearly out-of-scope request — one that only grazed a broad catch-up
+  // keyword (e.g. "roll *back* the deploy", "file my PTO *request*") or matched
+  // nothing — is handed off gracefully rather than guessed. The precise intents
+  // (triage/commitments/decode/focus) are never intercepted.
+  if (intent === "catchup" || intent === "help") {
+    const handoff = detectHandoff(input);
+    if (handoff) {
+      return {
+        intent: "help",
+        text:
+          `That looks like a ${handoff.category} task — not something I do. ` +
+          `I focus on: ${handoff.capabilities.join(", ")}. Try ${handoff.suggestion}.`,
+        blocks: handoffBlocks(handoff),
+      };
+    }
+  }
 
   switch (intent) {
     case "triage": {

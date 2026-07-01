@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v3.0.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off
+**Current version:** v3.2.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -21,6 +21,7 @@
 - **Phase 8 / v2.8.0 — Intelligence:** DONE (learned per-sender urgency store keyed by authorId, blended into triage ranking + tone-decoder confidence · fed by snooze/done/draft taps · dropped-ball digest nudges · keyword commitment-fulfillment auto-close · counts-only, in the export + erasable).
 - **Phase 9 / v2.9.0 — Marketplace-readiness:** DONE *code/docs* (least-privilege scopes as a single source of truth + drift test · data-governance completeness guard · `PRIVACY.md`/`SECURITY.md` · web `/privacy-policy` page · listing package); submission logistics deferred to the owner (below).
 - **Phase 10 / v3.0.0 — Tempo as an MCP server:** DONE (`tempo_triage`/`tempo_commitments`/`tempo_decode`/`tempo_focus` exposed at `/api/mcp/server` over Streamable HTTP · SDK-isolated · derived-facts-only · acts as the initiating user · shared read-models extracted).
+- **Phase 11 / v3.2.0 — Agentforce integration:** DONE (default-deny per-caller identity via signed per-user agent tokens · Agentforce Employee Agent descriptor packaging the tools+persona+trust · graceful @mention handoff routing; also fixed the v3.0 MCP-server fail-open/ambient-authority security findings).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -36,23 +37,59 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → Phase 11 / v3.2.0 "Agentforce integration"
-See `MASTER_PLAN.md` → Part V, Year 3, Phase 11. Tempo is now callable as an MCP server (v3.0); next, make it
-a first-class **Agentforce** collaborator:
-- [ ] **@mention handoffs** — route work between Tempo and other agents in-conversation; Tempo answers when
-  @-mentioned and can hand a sub-task to another agent, honoring the trust layer (acts as the initiating user).
-- [ ] **Tempo as an Agentforce Employee Agent** — package the four MCP tools + a system persona so Agentforce
-  can invoke Tempo's triage/ledger/decode/focus as skills, mapping the Agentforce user → the Tempo token store.
-- [ ] **Per-caller identity mapping** — replace the single-configured-user seam in `api/mcp/server.ts` with a
-  real caller→user resolution (bearer/OIDC → the initiating user's stored token).
+## Next up → Phase 12 / v3.4.0 "Proactive intelligence"
+See `MASTER_PLAN.md` → Part V, Year 3, Phase 12. Everything so far is reactive (you ask, Tempo answers) or
+scheduled (the morning digest). Next, opt-in *proactive* care that stays private and calm:
+- [ ] **Overload / burnout early-warning** — from the counts-only signals Tempo already keeps (metrics +
+  per-sender engagement), detect a rising-load trend and surface a gentle, opt-in heads-up. No new content
+  storage; a pure trend function over the existing stores + a `TEMPO_PROACTIVE` opt-in flag (default off).
+- [ ] **Meeting-load balancing / smart batching** — batch non-urgent NOISE/FYI into fewer, calmer touchpoints
+  (extend the morning digest) instead of interrupting; a batching policy over triage output.
+- [ ] **Proactive nudges honor the trust layer** — everything stays human-in-the-loop and opt-in; never acts,
+  only notifies; counts-only, never message content.
 - [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 native-surface
   `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, the v2.6 web app's
-  SSR/cookie behavior, and now the **v3.0 inbound MCP `Server`/transport** (`mcp/server/serve.ts`,
-  `verify:mcp-server`) — all built/typed, unverified against a real MCP client.
+  SSR/cookie behavior, and the v3.0 inbound MCP `Server`/transport (`verify:mcp-server`) — all built/typed,
+  unverified against a real client/browser/workspace.
 
 ---
 
 ## History
+
+### v3.2.0 — 2026-07-02 — Agentforce integration: per-caller identity · Employee Agent · graceful handoff
+**Built:** the three Phase 11 bullets — making Tempo a first-class agent collaborator — and, in the process,
+**fixed the v3.0 MCP-server security findings** a review flagged (fail-open auth + hardcoded-fixture ambient
+authority).
+- **Per-caller identity, DEFAULT-DENY** (`platform/mcp/server/auth.ts`) — the inbound MCP endpoint no longer
+  acts as one hardcoded fixture user with a shared secret. `resolveMcpCaller` resolves a caller to the user it
+  may act as via (1) a **signed per-user agent token** (`mintAgentToken`, reusing the v2.6 `signSession`/
+  `verifySession` HMAC) → *that* user, their own stored token driving RTS (no ambient authority); or (2) a
+  shared gate token accepted **only** when both `TEMPO_MCP_SERVER_TOKEN` **and** an explicit
+  `TEMPO_MCP_SERVER_USER` are configured. No credential / invalid / expired / shared-token-without-user →
+  `null` → 401. `api/mcp/server.ts` rewritten to this (removing the fail-open `if (token && …)` and the
+  `SUBJECT_USER_ID` binding); a per-user caller can never fall back to the demo token.
+- **Tempo as an Agentforce Employee Agent** (`platform/agentforce/descriptor.ts`) — `buildAgentforceDescriptor`
+  packages the four MCP tools (derived from `TEMPO_TOOLS`, so they can't drift), a system **persona** stating
+  the trust rules, the trust contract (`actsAsInitiatingUser`/`neverStoresRtsContent`/`humanInTheLoop`), and
+  the MCP connection (`streamable-http` + `bearer-agent-token`). Pure + snapshot-tested.
+- **Graceful @mention handoff** (`modules/handoff/`) — Tempo now knows its boundaries: `detectHandoff`
+  classifies an out-of-scope request (time-off / expenses / ops / issue-tracking / data / scheduling) and the
+  orchestrator hands it off ("that's an ops task — try your on-call agent") instead of guessing. Wired **before**
+  the switch for the ambiguous `catchup`/`help` intents so a request that merely grazed a broad catch-up
+  keyword ("roll *back* the deploy", "file my PTO *request*") routes correctly, while precise intents
+  (triage/commitments/decode/focus) and legit re-entry ("I had PTO, catch me up") are never intercepted.
+**Quality:** **234 tests** passing (up from 220) across 39 files — `auth.test.ts` (default-deny · agent-token
+→ user · expired/garbage denied · shared-gate only with token+user), `descriptor.test.ts` (packages every
+tool · trust contract · persona), `handoff.test.ts` (out-of-scope detection · never hijacks capabilities or
+re-entry), and orchestrator handoff/catch-up routing tests · typecheck clean · root build clean · `npm run
+demo` extended to **22 scenes** (mint→resolve an agent token with default-deny, the Employee Agent descriptor,
+and an out-of-scope handoff) · web app still builds.
+**Open seams:** the inbound `McpServer`/transport is still contract-shaped, **unverified against a real MCP
+client**; caller→user is signed-token-based now, but issuing agent tokens to users (a web "connect an agent"
+flow) is a future nicety. Handoff routing is keyword-based (deliberately conservative). The live Agentforce
+*registration* (a Salesforce org + Agentforce setup) is owner-only.
+**Next:** Phase 12 / v3.4 — Proactive intelligence (opt-in overload early-warning · smart batching · calm
+touchpoints), counts-only and human-in-the-loop.
 
 ### v3.0.0 — 2026-07-02 — Tempo as an MCP server (inbound): triage/commitments/decode/focus as MCP tools
 **Built:** Tempo has been an MCP *client* since v2.2; v3.0 makes it an MCP **server** too, so external agents

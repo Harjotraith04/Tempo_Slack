@@ -40,6 +40,8 @@ import type { RtsMessage } from "../src/ports/rts.js";
 import { SCOPES, USER_SCOPES, BOT_SCOPES } from "../src/platform/slack/oauth/scopes.js";
 import manifest from "../manifest.json" with { type: "json" };
 import { TEMPO_TOOLS } from "../src/platform/mcp/server/index.js";
+import { mintAgentToken, resolveMcpCaller } from "../src/platform/mcp/server/auth.js";
+import { buildAgentforceDescriptor } from "../src/platform/agentforce/index.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
@@ -472,6 +474,24 @@ async function main() {
     const focus = await call("tempo_focus", { minutes: 60 });
     console.log(`  tempo_focus        → "${focus.summary.slice(0, 74)}…"`);
     console.log(`  Served at /api/mcp/server (Streamable HTTP), off unless TEMPO_MCP_SERVER=on — acts as the user, stores nothing from RTS.`);
+  }
+
+  rule('22. Agentforce — per-caller identity · packaged as an Employee Agent · graceful handoff');
+  {
+    // (a) Per-caller identity (default-deny): an agent presents a signed token;
+    // the server acts as THAT user. No token / bad token → denied.
+    const caller = resolveMcpCaller(`Bearer ${mintAgentToken("U_PRIYA")}`);
+    const denied = resolveMcpCaller("Bearer not-a-real-token") === null && resolveMcpCaller(undefined) === null;
+    console.log(`  Agent token for U_PRIYA → acts as "${caller?.userId}" (via ${caller?.via}); no/bad credential → ${denied ? "denied ✅" : "ALLOWED ✗"}`);
+
+    // (b) Packaged as an Agentforce Employee Agent — tools + persona + trust.
+    const d = buildAgentforceDescriptor({ endpoint: "https://tempo.example.com/api/mcp/server" });
+    console.log(`  Employee Agent "${d.name}" exposes ${d.tools.length} tools (${d.tools.map((t) => t.name).join(", ")}) over ${d.connection.transport}.`);
+    console.log(`  Trust contract: acts-as-user=${d.trust.actsAsInitiatingUser}, never-stores-RTS=${d.trust.neverStoresRtsContent}, human-in-the-loop=${d.trust.humanInTheLoop}.`);
+
+    // (c) Graceful handoff: an out-of-scope @mention is routed elsewhere, not guessed.
+    const res = await respond(ctx, "hey Tempo, roll back the deploy — we have an incident");
+    console.log(`  Out-of-scope request → "${res.text.slice(0, 92)}…"`);
   }
 
   console.log("\n" + "─".repeat(72));

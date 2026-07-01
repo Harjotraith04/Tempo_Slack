@@ -14,7 +14,7 @@ import { config, isMcpServerEnabled } from "../../src/config.js";
 import { buildContext } from "../../src/application/context.js";
 import { getStore } from "../../src/platform/persistence/index.js";
 import { handleMcpHttp } from "../../src/platform/mcp/server/index.js";
-import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
+import { resolveMcpCaller } from "../../src/platform/mcp/server/auth.js";
 
 async function readJson(req: IncomingMessage): Promise<unknown> {
   const pre = (req as unknown as { body?: unknown }).body;
@@ -31,23 +31,25 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     res.end("Not found");
     return;
   }
-  const token = config.mcp.server.token;
-  if (token && req.headers["authorization"] !== `Bearer ${token}`) {
+
+  // Default-deny: resolve the caller to a specific user it may act as, or reject.
+  const caller = resolveMcpCaller(req.headers["authorization"]);
+  if (!caller) {
     res.statusCode = 401;
     res.end("unauthorized");
     return;
   }
 
-  // Acts as the initiating user. For now a single configured identity; a future
-  // phase maps the authenticated caller to a specific user's stored token.
-  const userId = SUBJECT_USER_ID;
-  const userToken = (await getStore().tokens.get(userId)) ?? config.slack.userToken;
+  // Act as the resolved user — their own stored token drives RTS. Only the
+  // explicitly-configured shared-gate user may fall back to the demo token.
+  const stored = await getStore().tokens.get(caller.userId);
+  const userToken = stored ?? (caller.via === "shared-gate" ? config.slack.userToken : undefined);
 
   try {
     const body = await readJson(req);
     await handleMcpHttp(req, res, body, {
-      buildContext: () => buildContext({ subjectUserId: userId, userToken }),
-      version: "3.0.0",
+      buildContext: () => buildContext({ subjectUserId: caller.userId, userToken }),
+      version: "3.2.0",
     });
   } catch (err) {
     console.error("mcp server error", err);

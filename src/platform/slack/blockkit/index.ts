@@ -16,6 +16,7 @@ import type { ToneDecode, DraftCheck } from "../../../modules/decoder.js";
 import type { FocusPlan } from "../../../modules/focus.js";
 import type { ReentryBrief } from "../../../modules/reentry.js";
 import type { UserMetrics } from "../../../ports/store.js";
+import type { HandoffSuggestion } from "../../../modules/handoff/index.js";
 
 const CAT_LABEL: Record<TriageItem["category"], string> = {
   ACT: "Needs a reply",
@@ -306,6 +307,19 @@ export function homeBlocks(): KnownBlock[] {
 
 export function helpBlocks(): KnownBlock[] {
   return homeBlocks();
+}
+
+/** A graceful "that's not mine — here's who to ask" card when a request is
+ * outside Tempo's four capabilities (v3.2 handoff routing). */
+export function handoffBlocks(h: HandoffSuggestion): KnownBlock[] {
+  return [
+    header("Not my area — let me hand it off"),
+    section(
+      `This looks like a *${h.category}* request. I'm an executive-function co-pilot, so I focus on:\n` +
+        h.capabilities.map((c) => `• ${c}`).join("\n"),
+    ),
+    context(`For this one, try ${h.suggestion}. Ask me anything in my wheelhouse and I've got you. 🫶`),
+  ];
 }
 
 /** The App Home tab — live triage + commitments, reusing the same renders the

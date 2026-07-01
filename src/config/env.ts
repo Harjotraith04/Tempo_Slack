@@ -83,10 +83,14 @@ export const config = {
     tasksProvider: opt("TEMPO_MCP_TASKS_PROVIDER") ?? "notion",
     // Inbound: Tempo exposed AS an MCP server (v3.0) so external agents
     // (Agentforce / Claude / Cursor / ChatGPT) can call tempo.triage/etc.
-    // Off by default; `token` gates the HTTP endpoint (like CRON_SECRET).
+    // Off by default, and DEFAULT-DENY when on: a caller must present a signed
+    // per-user agent token, OR the shared `token` — and the shared token only
+    // grants access when an explicit `user` is also configured (no ambient
+    // authority, no hardcoded identity).
     server: {
       enabled: opt("TEMPO_MCP_SERVER") === "on",
       token: opt("TEMPO_MCP_SERVER_TOKEN"),
+      user: opt("TEMPO_MCP_SERVER_USER"),
     },
   },
   // Persistence — where tokens/prefs/commitments/snoozes/metrics/surfaces live.

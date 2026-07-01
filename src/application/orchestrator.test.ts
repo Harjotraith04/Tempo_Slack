@@ -61,6 +61,22 @@ describe("orchestrator + per-user prefs", () => {
     expect(actionsBlocks(all.blocks).some((b) => b.elements.some((e: any) => e.action_id === "show_rest"))).toBe(false);
   });
 
+  it("hands off an out-of-scope request instead of guessing", async () => {
+    const ctx = buildContext({ subjectUserId: "U_HANDOFF", subjectName: "Sam" });
+    // "roll back the deploy" grazes the catch-up keyword "back" — must hand off.
+    const res = await respond(ctx, "hey Tempo, roll back the deploy");
+    expect(res.intent).toBe("help");
+    expect(res.text.toLowerCase()).toContain("ops / on-call");
+    const headers = res.blocks.filter((b: any) => b.type === "header").map((b: any) => b.text.text);
+    expect(headers.some((h: string) => /hand it off/i.test(h))).toBe(true);
+  });
+
+  it("still handles a real catch-up request (handoff never intercepts it)", async () => {
+    const ctx = buildContext({ subjectUserId: "U_CATCHUP", subjectName: "Sam" });
+    const res = await respond(ctx, "I had PTO last week, catch me up");
+    expect(res.intent).toBe("catchup");
+  });
+
   it("brief verbosity condenses the fallback text", async () => {
     const ctxStandard = buildContext({ subjectUserId: "U_VERBOSE_STD", subjectName: "Sam" });
     const ctxBrief = buildContext({ subjectUserId: "U_VERBOSE_BRIEF", subjectName: "Sam" });
