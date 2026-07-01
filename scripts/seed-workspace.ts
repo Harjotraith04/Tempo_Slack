@@ -13,7 +13,7 @@
  */
 
 import { WebClient } from "@slack/web-api";
-import { CHANNELS, MESSAGES, USERS, DEMO_NOW } from "../src/rts/fixtures.js";
+import { CHANNELS, MESSAGES, USERS, DEMO_NOW } from "../src/platform/slack/rts/fixtures.js";
 import { config } from "../src/config.js";
 
 const EXECUTE = process.argv.includes("--execute");

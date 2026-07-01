@@ -9,8 +9,8 @@
  * MCP server when configured) — Tempo acting in the world, not just reading.
  */
 
-import { getMcpClients, type CalendarResult, type TaskResult } from "../mcp/index.js";
-import { getSlackActions, type SlackActionsClient } from "../slack/index.js";
+import type { CalendarResult, McpClients, TaskResult } from "../ports/mcp.js";
+import type { SlackActionsClient } from "../ports/slack.js";
 import type { TriageItem } from "./triage.js";
 
 export interface FocusPlan {
@@ -45,11 +45,13 @@ export async function planFocusBlock(opts: {
   due?: number;
   subjectUserId?: string;
   userToken?: string;
-  /** Injectable for tests; defaults to getSlackActions({ userToken }). */
-  slack?: SlackActionsClient;
+  /** Outbound adapters, injected by the application layer (dependency rule:
+   * this domain module depends only on the ports, never on `platform/`). */
+  mcp: McpClients;
+  slack: SlackActionsClient;
 }): Promise<FocusPlan> {
-  const { calendar, tasks } = getMcpClients();
-  const slack = opts.slack ?? getSlackActions({ userToken: opts.userToken });
+  const { calendar, tasks } = opts.mcp;
+  const slack = opts.slack;
   const duration = (opts.durationMins ?? 90) * 60;
   const startTs = nextSlot(opts.nowTs);
   const endTs = startTs + duration;

@@ -6,12 +6,12 @@ const { listInstalledUsersMock, getUserTokenMock, respondMock } = vi.hoisted(() 
   respondMock: vi.fn(),
 }));
 
-vi.mock("../../src/db/tokens.js", () => ({
+vi.mock("../../src/platform/persistence/tokens.js", () => ({
   listInstalledUsers: listInstalledUsersMock,
   getUserToken: getUserTokenMock,
 }));
 
-vi.mock("../../src/agent/orchestrator.js", () => ({
+vi.mock("../../src/application/orchestrator.js", () => ({
   respond: respondMock,
 }));
 

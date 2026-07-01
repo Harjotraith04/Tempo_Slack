@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MockRtsClient } from "../rts/mock.js";
-import { SAM_LAST_ACTIVE } from "../rts/fixtures.js";
+import { MockRtsClient } from "../platform/slack/rts/mock.js";
+import { SAM_LAST_ACTIVE } from "../platform/slack/rts/fixtures.js";
 import { runTriage } from "./triage.js";
 
 const rts = new MockRtsClient();

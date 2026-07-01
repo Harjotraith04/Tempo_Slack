@@ -11,22 +11,22 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildContext, afterTsOf, type TempoContext } from "../src/agent/context.js";
-import { respond } from "../src/agent/orchestrator.js";
+import { buildContext, afterTsOf, type TempoContext } from "../src/application/context.js";
+import { respond } from "../src/application/orchestrator.js";
 import { checkDraft } from "../src/modules/decoder.js";
 import { runTriage } from "../src/modules/triage.js";
 import { runLedger } from "../src/modules/ledger.js";
 import { draftNudge, draftRenegotiation } from "../src/modules/draft.js";
-import { snoozeItem, markItemDone, isSuppressed } from "../src/db/snoozes.js";
-import { syncCommitments, markRenegotiating } from "../src/db/commitments.js";
-import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/blocks/index.js";
-import { getPrefs, savePrefs } from "../src/db/prefs.js";
-import { getMetrics } from "../src/db/metrics.js";
-import { resolveA11yPrefs } from "../src/a11y/index.js";
-import { getTtsClient } from "../src/a11y/tts/index.js";
+import { snoozeItem, markItemDone, isSuppressed } from "../src/platform/persistence/snoozes.js";
+import { syncCommitments, markRenegotiating } from "../src/platform/persistence/commitments.js";
+import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
+import { getPrefs, savePrefs } from "../src/platform/persistence/prefs.js";
+import { getMetrics } from "../src/platform/persistence/metrics.js";
+import { resolveA11yPrefs } from "../src/accessibility/index.js";
+import { getTtsClient } from "../src/accessibility/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../src/modules/onboarding.js";
-import { CachingRtsClient } from "../src/rts/caching.js";
-import type { RtsClient } from "../src/rts/index.js";
+import { CachingRtsClient } from "../src/platform/slack/rts/caching.js";
+import type { RtsClient } from "../src/platform/slack/rts/index.js";
 import { config } from "../src/config.js";
 
 // Repeated `npm run demo` runs must never write into the project root: point
@@ -133,7 +133,7 @@ async function main() {
 
   rule('3. "How will my reply land?" — Draft check');
   renderBlocks(
-    (await import("../src/blocks/index.js")).draftCheckBlocks(await checkDraft("No.")),
+    (await import("../src/platform/slack/blockkit/index.js")).draftCheckBlocks(await checkDraft("No.")),
   );
 
   rule('4. "What did I promise?" — Commitment Ledger');

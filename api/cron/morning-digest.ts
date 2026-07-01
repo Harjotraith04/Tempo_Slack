@@ -19,10 +19,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { WebClient } from "@slack/web-api";
 import { config } from "../../src/config.js";
-import { buildContext } from "../../src/agent/context.js";
-import { respond } from "../../src/agent/orchestrator.js";
-import { SUBJECT_USER_ID } from "../../src/rts/fixtures.js";
-import { listInstalledUsers, getUserToken } from "../../src/db/tokens.js";
+import { buildContext } from "../../src/application/context.js";
+import { respond } from "../../src/application/orchestrator.js";
+import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
+import { listInstalledUsers, getUserToken } from "../../src/platform/persistence/tokens.js";
 
 interface DigestTarget {
   userId: string;

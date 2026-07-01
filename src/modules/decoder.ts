@@ -14,8 +14,8 @@
  */
 
 import { z } from "zod";
-import { structured } from "../agent/llm.js";
-import type { RtsClient } from "../rts/index.js";
+import { structured } from "../platform/ai/llm.js";
+import type { RtsClient } from "../ports/rts.js";
 
 export interface ToneDecode {
   literalMeaning: string;

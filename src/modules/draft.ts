@@ -4,7 +4,7 @@
  * the human-in-the-loop guarantee that makes Tempo safe to trust.
  */
 
-import { text } from "../agent/llm.js";
+import { text } from "../platform/ai/llm.js";
 import type { Commitment } from "./ledger.js";
 
 const SYSTEM = `You are Tempo, drafting a short Slack reply on behalf of Sam Rivera (a PM). Match a warm, professional, concise Slack voice. If the original implies frustration or a missed commitment, acknowledge it briefly and give a concrete next step or ETA. Never over-apologise. Output only the message text.`;

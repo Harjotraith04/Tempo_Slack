@@ -14,8 +14,8 @@
 
 import * as chrono from "chrono-node";
 import { z } from "zod";
-import { structured } from "../agent/llm.js";
-import type { RtsClient, RtsMessage } from "../rts/index.js";
+import { structured } from "../platform/ai/llm.js";
+import type { RtsClient, RtsMessage } from "../ports/rts.js";
 
 export type CommitmentDirection = "i_owe" | "owed_to_me";
 export type CommitmentStatus = "open" | "at_risk" | "overdue" | "done" | "renegotiating";

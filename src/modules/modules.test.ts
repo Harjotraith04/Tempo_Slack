@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { MockRtsClient } from "../rts/mock.js";
-import { DEMO_NOW, SAM_LAST_ACTIVE } from "../rts/fixtures.js";
+import { MockRtsClient } from "../platform/slack/rts/mock.js";
+import { DEMO_NOW, SAM_LAST_ACTIVE } from "../platform/slack/rts/fixtures.js";
+import { getMcpClients } from "../platform/mcp/index.js";
+import { getSlackActions } from "../platform/slack/webapi/index.js";
 import { runLedger } from "./ledger.js";
 import { decodeMessage, checkDraft } from "./decoder.js";
 import { runReentry } from "./reentry.js";
 import { planFocusBlock, whatBreaksThrough } from "./focus.js";
 import { runTriage } from "./triage.js";
 import { isFirstRun, welcomeMessage } from "./onboarding.js";
-import type { UserPrefs } from "../db/prefs.js";
+import type { UserPrefs } from "../platform/persistence/prefs.js";
 
 const rts = new MockRtsClient();
 const afterTs = `${SAM_LAST_ACTIVE}.000000`;
@@ -49,7 +51,7 @@ describe("reentry", () => {
 
 describe("focus", () => {
   it("plans a focus block and creates a task via MCP", async () => {
-    const p = await planFocusBlock({ nowTs: DEMO_NOW, durationMins: 90, title: "Write Atlas spec", taskTitle: "Atlas API spec" });
+    const p = await planFocusBlock({ nowTs: DEMO_NOW, durationMins: 90, title: "Write Atlas spec", taskTitle: "Atlas API spec", mcp: getMcpClients(), slack: getSlackActions({}) });
     expect(p.endTs - p.startTs).toBe(90 * 60);
     expect(p.calendar.eventId).toMatch(/^evt_/);
     expect(p.task?.taskId).toMatch(/^task_/);

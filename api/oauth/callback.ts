@@ -6,7 +6,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { WebClient } from "@slack/web-api";
 import { config } from "../../src/config.js";
-import { saveUserToken } from "../../src/db/tokens.js";
+import { saveUserToken } from "../../src/platform/persistence/tokens.js";
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const code = new URL(req.url ?? "", "http://localhost").searchParams.get("code");

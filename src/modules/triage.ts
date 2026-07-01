@@ -11,8 +11,8 @@
  */
 
 import { z } from "zod";
-import { structured } from "../agent/llm.js";
-import type { RtsClient, RtsMessage } from "../rts/index.js";
+import { structured } from "../platform/ai/llm.js";
+import type { RtsClient, RtsMessage } from "../ports/rts.js";
 
 export type TriageCategory = "ACT" | "BLOCKER" | "FYI" | "NOISE";
 

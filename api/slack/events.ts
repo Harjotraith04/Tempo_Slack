@@ -5,6 +5,6 @@
  * Exports the Bolt ExpressReceiver's Express app, which Vercel serves directly.
  */
 
-import { createExpressApp } from "../../src/app.js";
+import { createExpressApp } from "../../src/main/app.js";
 
 export default createExpressApp();

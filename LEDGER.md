@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v1.5.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
+**Current version:** v1.8.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -13,6 +13,7 @@
 - **Phase 1c / v0.4.0 — Read-aloud audio (TTS) + first-run onboarding:** DONE.
 - **Phase 1 / v1.0.0 — Hackathon Winner:** *code* DONE (all five modules real inside Slack); submission logistics deferred to the owner (see below).
 - **Phase 2 / v1.5.0 — Hardening:** DONE.
+- **Phase 3 / v1.8.0 — Monolith refactor:** DONE (layered Part-IV tree · ports/adapters · dependency rule).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -23,17 +24,26 @@ These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack 
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
-## Next up → Phase 3 / v1.8.0 "Monolith refactor"
-See `MASTER_PLAN.md` → Part V, Year 1, Phase 3 for full detail. Behavior-preserving restructure to the Part-IV architecture (ports/adapters, DI container, layered `inbound → application → modules → ports`) with full test parity — no feature change:
-- [ ] `agent/orchestrator` → `application/` (orchestrator · router · response · use-cases)
-- [ ] `rts` → `platform/slack/rts`; `slack` (actions) → `platform/slack/webapi`; `blocks` → `platform/slack/blockkit`; `app.ts` → `main/` + `platform/slack/inbound`
-- [ ] `db` → `platform/persistence/repositories`; `mcp` → `platform/mcp`; `a11y` → `accessibility/`
-- [ ] Introduce a DI container / composition root (`main/container.ts`); modules stop importing `platform/`
-- [ ] Keep the zero-credential demo + all tests green throughout
+## Next up → Phase 4 / v2.0.0 "Native Surfaces"
+See `MASTER_PLAN.md` → Part V, Year 2, Phase 4 for full detail. Now that the architecture is layered, build deeper into Slack's native surfaces:
+- [ ] **Tempo Canvas** — a living personal command center auto-updated with today's triage/commitments/focus (`canvases.create`/`edit`)
+- [ ] **Workflow Builder custom steps** — *Summarize what I missed* · *Draft a reply* · *Block focus time* · *Add a commitment* (manifest `functions` + `function_executed` listeners)
+- [ ] **Slack Lists** sync of the Commitment Ledger
+- [ ] Bookmarks / reminders; richer Block Kit
+- [ ] Carry-over from v1.8: finish the hexagonal inversion — a real `LlmPort` injected into modules (today `structured`/`text` are imported from `platform/ai`), a threaded DI container, per-module `domain/service/ports` split, and `config.ts` → `config/`.
 
 ---
 
 ## History
+
+### v1.8.0 — 2026-07-01 — Monolith refactor (layered Part-IV tree · ports/adapters · dependency rule)
+**Built:** a behavior-preserving restructure of the flat `src/` tree into the professional Part-IV modular-monolith layout — **no feature change, full test parity** (108 tests stayed green throughout, `npm run demo` unchanged at 11 scenes).
+- **Layered tree:** `agent/` → `application/` (orchestrator + TempoContext); `rts/` → `platform/slack/rts/`; `slack/` (write-actions) → `platform/slack/webapi/`; `blocks/` → `platform/slack/blockkit/`; `agent/llm.ts` → `platform/ai/`; `mcp/` → `platform/mcp/`; `db/` → `platform/persistence/`; `a11y/` → `accessibility/`; `app.ts`/`dev.ts` → `main/`. All ~40 source files moved via `git mv` (history preserved); ~90 relative imports across `src/`, `api/`, `scripts/` rewritten; `package.json` dev/start paths updated. The dependency direction is now `inbound (main) → application → modules → ports`, with `platform/*` implementing the ports.
+- **Ports extracted:** the port interfaces now live in `src/ports/` (`rts.ts` ← old `rts/types.ts`, `slack.ts` ← old `slack/types.ts`, `mcp.ts` ← interfaces split out of the MCP adapter), with an `index.ts` barrel. Adapters import the ports and implement them.
+- **Dependency rule enforced:** domain `modules/` no longer import `platform/` for their outbound needs — they import only `ports/`. `focus.ts` (the one module that used runtime adapters) is now fully dependency-inverted: it receives its `McpClients` + `SlackActionsClient` by injection, and the application layer (`orchestrator`) wires the concrete adapters via the platform factories (which resolve mock/live from config). `modules.test.ts` injects mocks the same way.
+**Quality:** 108 tests passing across 21 files (unchanged) · typecheck clean · build clean · demo unchanged. The only test edits were mechanical: import-path updates + repointing `api/cron/morning-digest.test.ts`'s `vi.mock()` targets to the new module paths. No test logic or assertion changed — the proof the refactor preserved behavior.
+**Open seams (deliberate deferrals, tracked in Next up):** the LLM is still reached as the `structured`/`text` free-functions in `platform/ai` rather than a fully-injected `LlmPort` (the per-call `mock()` oracle already gives testability); no threaded DI container (the platform `get*` factories serve as the mock/live composition seam); domain modules remain single files rather than the `domain.ts`/`service.ts`/`ports.ts` triplet Part IV sketches; `config.ts` kept at `src/config.ts` (not `config/`) to avoid churn on the most-imported module. All pre-existing runtime seams (live RTS/Claude field mapping unverified; file-backed stores; keyword routing) are unchanged.
+**Next:** Phase 4 / v2.0 — Native Surfaces (Canvas, Workflow Builder steps, Slack Lists), plus finishing the hexagonal inversion above.
 
 ### v1.5.0 — 2026-07-01 — Hardening (rate-limit backoff · RTS pagination + caching · error/empty states · privacy-safe metrics · a11y audit · secrets · CI)
 **Built:** the production-hardening layer for the live path, with the mock path (and every invariant) untouched.

@@ -97,23 +97,30 @@ Every response is verified in tests to carry a non-empty fallback `text` and a s
 
 ---
 
-## Project layout
+## Project layout — a layered modular monolith
+
+Dependency rule: `inbound → application → modules → ports`; adapters in `platform/*`
+implement the ports; **domain `modules/` never import `platform/`** (they depend only on `ports/`).
 
 ```
 src/
-  config.ts            env + runtime modes (RTS live/mock, AI live/mock, receiver)
-  rts/                 RTS client: types, live (assistant.search.context), mock, fixtures
-  agent/               llm wrapper, TempoContext, orchestrator (intent routing)
-  modules/             triage · ledger · decoder · focus · reentry · draft
-  mcp/                 outward MCP clients (calendar/tasks) + real-MCP seam
-  blocks/              calm, accessible Block Kit builders (+ empty/error/metrics states)
-  a11y/                verbosity · reading level (plain) · read-aloud (TTS) script
-  shared/              cross-cutting: WebClient retry/backoff options · request cache
-  db/                  encrypted tokens · prefs · commitments · snoozes · metrics (counts only)
-  app.ts · dev.ts      Bolt wiring (socket + express) and local entrypoint
-api/                   Vercel: slack/events · oauth/{start,callback} · cron/morning-digest
-scripts/               demo.ts (narrative) · seed-workspace.ts (live sandbox seeding)
-manifest.json          Slack app manifest (scopes, assistant, /tempo, events)
+  main/            Bolt wiring (createApp/express) + local entrypoint (dev.ts)   ← inbound
+  application/     orchestrator (intent routing, response assembly) + TempoContext
+  modules/         DOMAIN: triage · ledger · decoder · focus · reentry · draft · onboarding
+  ports/           the interfaces the domain depends on: RtsClient · SlackActionsClient · Mcp
+  platform/        ADAPTERS (implement the ports; mock + live)
+    slack/rts/     RTS client: live (assistant.search.context) · mock · fixtures · caching
+    slack/webapi/  Slack write-actions: DND · status · scheduled digest
+    slack/blockkit/calm, accessible Block Kit builders (+ empty/error/metrics states)
+    ai/            LLM wrapper (Claude via AI SDK, or deterministic mock)
+    mcp/           outward MCP clients (calendar/tasks) + real-MCP seam
+    persistence/   encrypted tokens · prefs · commitments · snoozes · metrics (counts only)
+  accessibility/   verbosity · reading level (plain) · read-aloud (TTS)
+  shared/          cross-cutting: WebClient retry/backoff options · request cache
+  config.ts        env + runtime modes (RTS/AI/Slack-actions/TTS live-mock, receiver)
+api/               Vercel: slack/events · oauth/{start,callback} · cron/morning-digest
+scripts/           demo.ts (narrative) · seed-workspace.ts (live sandbox seeding)
+manifest.json      Slack app manifest (scopes, assistant, /tempo, events)
 ```
 
 ---
@@ -126,7 +133,7 @@ manifest.json          Slack app manifest (scopes, assistant, /tempo, events)
 4. Flip to live: set `TEMPO_RTS=live` (and `TEMPO_AI=live` if you have a key).
 5. `npm run dev` (Socket Mode) and open the Tempo assistant, or `/tempo triage`.
 
-> **Enabling live RTS:** `assistant.search.context` is available to directory-published or internal apps. Confirm access for your app first; until then `TEMPO_RTS=mock` runs the identical experience. The live response field mapping in `src/rts/live.ts` is defensive — verify field names against your first live call.
+> **Enabling live RTS:** `assistant.search.context` is available to directory-published or internal apps. Confirm access for your app first; until then `TEMPO_RTS=mock` runs the identical experience. The live response field mapping in `src/platform/slack/rts/live.ts` is defensive (and now follows `next_cursor` pagination) — verify field names against your first live call.
 
 ---
 

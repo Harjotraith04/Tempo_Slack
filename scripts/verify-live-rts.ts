@@ -15,9 +15,9 @@
  */
 
 import { config } from "../src/config.js";
-import { LiveRtsClient } from "../src/rts/live.js";
-import { SUBJECT_USER_ID } from "../src/rts/fixtures.js";
-import type { RtsMessage, RtsUser } from "../src/rts/types.js";
+import { LiveRtsClient } from "../src/platform/slack/rts/live.js";
+import { SUBJECT_USER_ID } from "../src/platform/slack/rts/fixtures.js";
+import type { RtsMessage, RtsUser } from "../src/ports/rts.js";
 
 const QUERIES = [
   "questions, requests, or decisions that mention me or are addressed to me",
