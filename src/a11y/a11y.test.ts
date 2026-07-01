@@ -1,7 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { condense, toSpeech } from "./index.js";
+import { condense, toSpeech, plainify, applyReadingLevel } from "./index.js";
 import { buildContext } from "../agent/context.js";
 import { respond } from "../agent/orchestrator.js";
+
+describe("plainify (reading level: plain)", () => {
+  it("breaks dense punctuation into short sentences without losing content", () => {
+    const dense = "Send the spec to Priya — she's blocked; then ping Dana";
+    const plain = plainify(dense);
+    expect(plain).not.toContain(";");
+    expect(plain).not.toContain("—");
+    // Every meaningful token survives.
+    for (const word of ["Send", "spec", "Priya", "blocked", "ping", "Dana"]) {
+      expect(plain).toContain(word);
+    }
+  });
+
+  it("preserves numbers, units, hyphenated words, and parentheticals", () => {
+    const text = "Block 45 min of deep-work time (protected by Tempo)";
+    const plain = plainify(text);
+    expect(plain).toContain("45 min");
+    expect(plain).toContain("deep-work");
+    expect(plain).toContain("(protected by Tempo)");
+  });
+
+  it("applyReadingLevel only transforms for the 'plain' level", () => {
+    const t = "A — B; C";
+    expect(applyReadingLevel(t, "standard")).toBe(t);
+    expect(applyReadingLevel(t, "plain")).toBe(plainify(t));
+  });
+});
 
 describe("a11y", () => {
   it("condenses prose for brief mode", () => {

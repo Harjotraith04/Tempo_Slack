@@ -13,15 +13,17 @@
  */
 
 import { App, Assistant, ExpressReceiver, LogLevel } from "@slack/bolt";
-import { config, assertSlackRuntime } from "./config.js";
+import { config, assertSlackRuntime, assertSecretsHardened } from "./config.js";
+import { webClientOptions } from "./shared/webClientOptions.js";
 import { buildContext } from "./agent/context.js";
 import { respond as tempoRespond, routeIntent, triageAll } from "./agent/orchestrator.js";
 import { draftReply, draftNudge, draftRenegotiation } from "./modules/draft.js";
-import { homeDashboardBlocks, onboardingBlocks, settingsModalView, type SettingsModalPrefs } from "./blocks/index.js";
+import { homeDashboardBlocks, onboardingBlocks, settingsModalView, errorBlocks, type SettingsModalPrefs } from "./blocks/index.js";
 import { getUserToken } from "./db/tokens.js";
 import { snoozeItem, markItemDone } from "./db/snoozes.js";
 import { getCommitmentByPermalink, markRenegotiating, markNudged } from "./db/commitments.js";
 import { getPrefs, savePrefs } from "./db/prefs.js";
+import { getMetrics, recordMetrics } from "./db/metrics.js";
 import { resolveA11yPrefs } from "./a11y/index.js";
 import { getTtsClient } from "./a11y/tts/index.js";
 import { isFirstRun, welcomeMessage } from "./modules/onboarding.js";
@@ -30,6 +32,34 @@ type BoltApp = InstanceType<typeof App>;
 
 /** How long a manual snooze hides a triage item before it resurfaces. */
 const DEFAULT_SNOOZE_SECS = 4 * 3600;
+
+/** Calm, honest failure copy — reassures the user nothing was changed. */
+const SNAG = "I hit a snag — nothing was changed. Try again in a moment.";
+
+/**
+ * Runs a handler's post-ack work, and on failure logs it and runs an optional
+ * recovery (e.g. a calm ephemeral) — a thrown error must never crash a Slack
+ * handler or leave the user staring at a dead button. Mirrors the try/catch the
+ * Assistant `userMessage` handler already uses.
+ */
+export async function safely(
+  label: string,
+  work: () => Promise<unknown>,
+  recover?: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await work();
+  } catch (err) {
+    console.error(`${label} error`, err);
+    if (recover) {
+      try {
+        await recover();
+      } catch (e) {
+        console.error(`${label} recovery failed`, e);
+      }
+    }
+  }
+}
 
 /** Prefer the user's stored OAuth token; fall back to the single demo token. */
 function resolveUserToken(slackUserId: string): string | undefined {
@@ -50,21 +80,31 @@ function contextFor(slackUserId: string) {
  * planning a focus block has real side effects (MCP + Slack DND/status), and
  * opening a tab must never act on the user's behalf. */
 async function publishHome(client: any, userId: string, opts: { showOnboarding?: boolean } = {}) {
-  const ctx = contextFor(userId);
-  const [triage, commitments] = await Promise.all([
-    tempoRespond(ctx, "what needs me today?"),
-    tempoRespond(ctx, "show my commitments"),
-  ]);
-  await client.views.publish({
-    user_id: userId,
-    view: {
-      type: "home",
-      blocks: [
-        ...(opts.showOnboarding ? onboardingBlocks() : []),
-        ...homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks }),
-      ] as any,
-    },
-  });
+  try {
+    const ctx = contextFor(userId);
+    // Passive refresh on tab open — don't count it toward the user's KPIs.
+    const [triage, commitments] = await Promise.all([
+      tempoRespond(ctx, "what needs me today?", { record: false }),
+      tempoRespond(ctx, "show my commitments", { record: false }),
+    ]);
+    await client.views.publish({
+      user_id: userId,
+      view: {
+        type: "home",
+        blocks: [
+          ...(opts.showOnboarding ? onboardingBlocks() : []),
+          ...homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks, metrics: getMetrics(userId) }),
+        ] as any,
+      },
+    });
+  } catch (err) {
+    // A blank Home tab reads as "broken"; publish a calm fallback instead.
+    console.error("publishHome error", err);
+    await client.views.publish({
+      user_id: userId,
+      view: { type: "home", blocks: errorBlocks() as any },
+    });
+  }
 }
 
 /** Register every Tempo handler on a Bolt app (receiver-agnostic). */
@@ -94,22 +134,37 @@ export function registerHandlers(app: BoltApp) {
 
   app.command("/tempo", async ({ command, ack, respond, client }) => {
     await ack();
-    const text = command.text?.trim() || "triage";
-    const res = await tempoRespond(contextFor(command.user_id), text);
-    await respond({ response_type: "ephemeral", text: res.text, blocks: res.blocks as any });
-    await maybeSendReadAloud(client, command.user_id, res.speech);
+    await safely(
+      "/tempo",
+      async () => {
+        const text = command.text?.trim() || "triage";
+        const res = await tempoRespond(contextFor(command.user_id), text);
+        await respond({ response_type: "ephemeral", text: res.text, blocks: res.blocks as any });
+        await maybeSendReadAloud(client, command.user_id, res.speech);
+      },
+      () => respond({ response_type: "ephemeral", text: SNAG }),
+    );
   });
 
   app.event("app_mention", async ({ event, say, client }) => {
     const userId = (event as any).user ?? "U_SAM";
-    const res = await tempoRespond(contextFor(userId), (event as any).text ?? "triage");
-    await say({ text: res.text, blocks: res.blocks as any, thread_ts: (event as any).ts });
-    await maybeSendReadAloud(client, userId, res.speech);
+    await safely(
+      "app_mention",
+      async () => {
+        const res = await tempoRespond(contextFor(userId), (event as any).text ?? "triage");
+        await say({ text: res.text, blocks: res.blocks as any, thread_ts: (event as any).ts });
+        await maybeSendReadAloud(client, userId, res.speech);
+      },
+      () => say({ text: SNAG, thread_ts: (event as any).ts }),
+    );
   });
 
   app.event("app_home_opened", async ({ event, client }) => {
     const userId = (event as any).user ?? "U_SAM";
-    await publishHome(client, userId, { showOnboarding: isFirstRun(getPrefs(userId)) });
+    // publishHome has its own fallback view, so no extra recovery needed here.
+    await safely("app_home_opened", () =>
+      publishHome(client, userId, { showOnboarding: isFirstRun(getPrefs(userId)) }),
+    );
   });
 
   app.action("complete_onboarding", async ({ ack, body, client }) => {
@@ -141,58 +196,78 @@ export function registerHandlers(app: BoltApp) {
   app.action("show_rest", async ({ ack, body, client }) => {
     await ack();
     const userId = (body as any)?.user?.id ?? "U_SAM";
-    const res = await triageAll(contextFor(userId));
-    await ephemeral(client, body, res.text, res.blocks as any);
-    await maybeSendReadAloud(client, userId, res.speech);
+    await safely(
+      "show_rest",
+      async () => {
+        const res = await triageAll(contextFor(userId));
+        await ephemeral(client, body, res.text, res.blocks as any);
+        await maybeSendReadAloud(client, userId, res.speech);
+      },
+      () => replyError(client, body),
+    );
   });
 
   app.action("draft_reply", async ({ ack, body, client }) => {
     await ack();
-    await postDraft(client, body);
+    await safely("draft_reply", () => postDraft(client, body), () => replyError(client, body));
   });
   app.action("draft_deliverable", async ({ ack, body, client }) => {
     await ack();
-    await postDraft(client, body);
+    await safely("draft_deliverable", () => postDraft(client, body), () => replyError(client, body));
   });
 
   app.action("snooze", async ({ ack, body, client }) => {
     await ack();
-    const { permalink, userId } = actionTarget(body);
-    if (permalink) snoozeItem(userId, permalink, Math.floor(Date.now() / 1000) + DEFAULT_SNOOZE_SECS);
-    await ephemeral(client, body, confirmation("snooze"));
+    await safely("snooze", async () => {
+      const { permalink, userId } = actionTarget(body);
+      if (permalink) {
+        snoozeItem(userId, permalink, Math.floor(Date.now() / 1000) + DEFAULT_SNOOZE_SECS);
+        recordMetrics(userId, { itemsRecovered: 1 });
+      }
+      await ephemeral(client, body, confirmation("snooze"));
+    }, () => replyError(client, body));
   });
 
   app.action("mark_done", async ({ ack, body, client }) => {
     await ack();
-    const { permalink, userId } = actionTarget(body);
-    if (permalink) markItemDone(userId, permalink);
-    await ephemeral(client, body, confirmation("mark_done"));
+    await safely("mark_done", async () => {
+      const { permalink, userId } = actionTarget(body);
+      if (permalink) {
+        markItemDone(userId, permalink);
+        recordMetrics(userId, { itemsRecovered: 1 });
+      }
+      await ephemeral(client, body, confirmation("mark_done"));
+    }, () => replyError(client, body));
   });
 
   app.action("nudge", async ({ ack, body, client }) => {
     await ack();
-    const { permalink, userId } = actionTarget(body);
-    const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
-    if (!c) {
-      await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
-      return;
-    }
-    markNudged(userId, permalink);
-    const draft = await draftNudge(c);
-    await postComposedDraft(client, body, draft);
+    await safely("nudge", async () => {
+      const { permalink, userId } = actionTarget(body);
+      const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+      if (!c) {
+        await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
+        return;
+      }
+      markNudged(userId, permalink);
+      const draft = await draftNudge(c);
+      await postComposedDraft(client, body, draft);
+    }, () => replyError(client, body));
   });
 
   app.action("renegotiate", async ({ ack, body, client }) => {
     await ack();
-    const { permalink, userId } = actionTarget(body);
-    const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
-    if (!c) {
-      await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
-      return;
-    }
-    markRenegotiating(userId, permalink);
-    const draft = await draftRenegotiation(c);
-    await postComposedDraft(client, body, draft);
+    await safely("renegotiate", async () => {
+      const { permalink, userId } = actionTarget(body);
+      const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+      if (!c) {
+        await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
+        return;
+      }
+      markRenegotiating(userId, permalink);
+      const draft = await draftRenegotiation(c);
+      await postComposedDraft(client, body, draft);
+    }, () => replyError(client, body));
   });
 
   for (const id of ["use_rewrite", "keep_draft"]) {
@@ -210,23 +285,26 @@ export function registerHandlers(app: BoltApp) {
 
 export function createApp(): BoltApp {
   assertSlackRuntime();
+  assertSecretsHardened();
   const app = new App({
     token: config.slack.botToken,
     signingSecret: config.slack.signingSecret,
     appToken: config.slack.appToken,
     socketMode: config.runtime.receiver === "socket",
     logLevel: LogLevel.INFO,
+    clientOptions: webClientOptions,
   });
   return registerHandlers(app);
 }
 
 /** HTTP receiver for Vercel/prod. Returns the Express app to export as handler. */
 export function createExpressApp() {
+  assertSecretsHardened();
   const receiver = new ExpressReceiver({
     signingSecret: config.slack.signingSecret ?? "",
     processBeforeResponse: true,
   });
-  const app = new App({ token: config.slack.botToken, receiver });
+  const app = new App({ token: config.slack.botToken, receiver, clientOptions: webClientOptions });
   registerHandlers(app);
   return receiver.app;
 }
@@ -277,6 +355,11 @@ async function sourceTextFor(ctx: ReturnType<typeof buildContext>, permalink: st
   if (!permalink) return undefined;
   const res = await ctx.rts.search({ query: "recent messages", limit: 50 });
   return res.messages.find((m) => m.permalink === permalink)?.text;
+}
+
+/** Calm error reply for a failed action — ephemeral in-channel, DM from Home. */
+async function replyError(client: any, body: any) {
+  await ephemeral(client, body, SNAG);
 }
 
 async function ephemeral(client: any, body: any, text: string, blocks?: any[]) {

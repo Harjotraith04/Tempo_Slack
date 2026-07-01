@@ -15,6 +15,7 @@
  */
 
 import { WebClient } from "@slack/web-api";
+import { webClientOptions } from "../shared/webClientOptions.js";
 import type {
   ChannelType,
   RtsClient,
@@ -29,37 +30,60 @@ interface LiveOpts {
   subjectUserId: string;
 }
 
+/** Cap on cursor-following so a broad query can never fan out unbounded. */
+const MAX_PAGES = 5;
+
 export class LiveRtsClient implements RtsClient {
   readonly subjectUserId: string;
   private readonly web: WebClient;
 
   constructor(opts: LiveOpts) {
     this.subjectUserId = opts.subjectUserId;
-    this.web = new WebClient(opts.userToken);
+    // Shared retry/backoff config so proactive triage survives rate limits.
+    this.web = new WebClient(opts.userToken, webClientOptions);
   }
 
   async search(params: RtsSearchParams): Promise<RtsSearchResult> {
-    const args: Record<string, unknown> = {
+    const limit = params.limit ?? 20;
+    const base: Record<string, unknown> = {
       query: params.query,
       content_types: (params.contentTypes ?? ["messages"]).join(","),
-      limit: params.limit ?? 20,
+      limit,
     };
-    if (params.channelTypes?.length) args.channel_types = params.channelTypes.join(",");
-    if (params.after) args.after = params.after;
-    if (params.before) args.before = params.before;
+    if (params.channelTypes?.length) base.channel_types = params.channelTypes.join(",");
+    if (params.after) base.after = params.after;
+    if (params.before) base.before = params.before;
 
-    // WebClient has no typed method for this yet — call it generically.
-    const res = (await this.web.apiCall("assistant.search.context", args)) as RtsRaw;
+    // Follow `next_cursor` until we have enough or run out of pages. Defensive:
+    // if RTS doesn't paginate this method, there's simply no cursor and we stop
+    // after one page — same behaviour as before.
+    const messages: RtsMessage[] = [];
+    const users: RtsUser[] = [];
+    let cursor: string | undefined;
 
-    const messages = normaliseMessages(res, this.subjectUserId);
-    const users = normaliseUsers(res);
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const args = cursor ? { ...base, cursor } : base;
+      // WebClient has no typed method for this yet — call it generically.
+      const res = (await this.web.apiCall("assistant.search.context", args)) as RtsRaw;
+      messages.push(...normaliseMessages(res, this.subjectUserId));
+      users.push(...normaliseUsers(res));
+      cursor = res.response_metadata?.next_cursor?.trim() || undefined;
+      if (!cursor || messages.length >= limit) break;
+    }
 
+    const capped = messages.slice(0, limit);
     return {
-      messages,
-      users,
-      meta: { source: "live", query: params.query, returned: messages.length },
+      messages: capped,
+      users: dedupeUsers(users),
+      meta: { source: "live", query: params.query, returned: capped.length },
     };
   }
+}
+
+function dedupeUsers(users: RtsUser[]): RtsUser[] {
+  const byId = new Map<string, RtsUser>();
+  for (const u of users) if (u.id && !byId.has(u.id)) byId.set(u.id, u);
+  return [...byId.values()];
 }
 
 // ── Defensive normalisation ──────────────────────────────────────────────────
@@ -73,6 +97,7 @@ interface RtsRaw {
   };
   messages?: RawMessage[];
   users?: RawUser[];
+  response_metadata?: { next_cursor?: string };
 }
 
 interface RawMessage {

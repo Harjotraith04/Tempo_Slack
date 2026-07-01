@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v0.4.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
+**Current version:** v1.5.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -11,9 +11,11 @@
 - **Phase 1a / v0.2.0 — Foundational slice (stores + Slack-native focus + real interactivity):** DONE.
 - **Phase 1b / v0.3.0 — Live App Home dashboard + a11y settings modal + "show the rest":** DONE.
 - **Phase 1c / v0.4.0 — Read-aloud audio (TTS) + first-run onboarding:** DONE.
+- **Phase 1 / v1.0.0 — Hackathon Winner:** *code* DONE (all five modules real inside Slack); submission logistics deferred to the owner (see below).
+- **Phase 2 / v1.5.0 — Hardening:** DONE.
 
-## Next up → Phase 1 / v1.0.0 "Hackathon Winner" (remaining)
-See `MASTER_PLAN.md` → Part V, Year 1, Phase 1 for full detail. Persistence, Slack-native focus, real interactivity, the App Home/settings surfaces, read-aloud audio, and first-run onboarding are all done (see History below); what's left is submission logistics, not code:
+## Owner-only submission logistics (need a real workspace + a human; can't be built)
+These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
 - [ ] Deploy to a Slack sandbox
 - [ ] Seed the sandbox (`npm run seed -- --execute`) so live RTS has data
 - [ ] Grant judging access (`slackhack@salesforce.com` + `testing@devpost.com`)
@@ -21,9 +23,30 @@ See `MASTER_PLAN.md` → Part V, Year 1, Phase 1 for full detail. Persistence, S
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
+## Next up → Phase 3 / v1.8.0 "Monolith refactor"
+See `MASTER_PLAN.md` → Part V, Year 1, Phase 3 for full detail. Behavior-preserving restructure to the Part-IV architecture (ports/adapters, DI container, layered `inbound → application → modules → ports`) with full test parity — no feature change:
+- [ ] `agent/orchestrator` → `application/` (orchestrator · router · response · use-cases)
+- [ ] `rts` → `platform/slack/rts`; `slack` (actions) → `platform/slack/webapi`; `blocks` → `platform/slack/blockkit`; `app.ts` → `main/` + `platform/slack/inbound`
+- [ ] `db` → `platform/persistence/repositories`; `mcp` → `platform/mcp`; `a11y` → `accessibility/`
+- [ ] Introduce a DI container / composition root (`main/container.ts`); modules stop importing `platform/`
+- [ ] Keep the zero-credential demo + all tests green throughout
+
 ---
 
 ## History
+
+### v1.5.0 — 2026-07-01 — Hardening (rate-limit backoff · RTS pagination + caching · error/empty states · privacy-safe metrics · a11y audit · secrets · CI)
+**Built:** the production-hardening layer for the live path, with the mock path (and every invariant) untouched.
+- **Rate-limit backoff** — a new `src/shared/webClientOptions.ts` (exponential backoff + jitter, `rejectRateLimitedCalls: false` so 429s reach the retry machinery and `Retry-After` is honored) is now the single `WebClient` config used by `LiveRtsClient`, `LiveSlackActions`, and both Bolt clients (`clientOptions`).
+- **RTS pagination + per-session cache** — `LiveRtsClient.search` follows `response_metadata.next_cursor` up to a 5-page cap and dedupes users; a new request-scoped `CachingRtsClient` decorator (+ `src/shared/cache.ts`'s `Memo`) wraps the resolved client in `buildContext`, so the repeated RTS hits a single `respond()` makes (module + decode/draft lookups) collapse to one call. In-memory, per-turn, discarded — never persisted.
+- **Error/empty states** — a shared `safely()` guard wraps the previously-unwrapped surfaces (`/tempo`, `app_mention`, `app_home_opened`, and every RTS/AI-touching action) so a thrown Slack/AI error becomes a calm "nothing was changed" card instead of a dead button; `publishHome` publishes a fallback Home view on failure. New `emptyStateBlocks(intent)` renders a warm "you're all caught up ✨" card (wired into triage/commitments/catchup when there's genuinely nothing) instead of an empty section list.
+- **Privacy-safe metrics** — a new counts-only `src/db/metrics.ts` (mirrors `db/prefs.ts`, weekly roll) tracks messages triaged / obligations surfaced / focus-minutes protected / items recovered; incremented from the orchestrator (user-initiated `respond` only — passive Home refreshes pass `record: false`) and from snooze/mark-done. Surfaced as a "Your week with Tempo" block in App Home. Integers + timestamps only; never RTS content.
+- **Accessibility audit** — `readingLevel: "plain"` is now live (was a stored-but-unused switch, like `readAloud` before v0.4): new `plainify()` breaks em-dash asides and `;`-joined lists into short one-idea sentences while preserving every number, unit, hyphenated word, and parenthetical; wired through `respond()`. Added the "Accessibility" section to the README.
+- **Secrets hardening** — `assertSecretsHardened()` throws at startup when in a live/prod posture (`http` receiver, or live RTS/Slack-actions) with the insecure default / placeholder / <32-char encryption key; called from `createApp`/`createExpressApp`. The dev default stays usable only in fully-mocked local/test runs.
+- **CI** — new `.github/workflows/ci.yml` (Node 20): `npm ci` → typecheck → test → build → the zero-credential `demo` as an e2e smoke test.
+**Quality:** 108 tests passing (up from 80) across 21 files — new suites for the retry policy, the request cache + `CachingRtsClient` call-count, live RTS cursor pagination (mocked `WebClient`), the metrics store (accumulate + weekly roll), empty/error/metrics blocks, the `safely()` guard, `assertSecretsHardened` across postures, and `plainify` · typecheck clean · build clean · `npm run demo` extended with an 11th scene (cache dedup, empty state, weekly impact, plain-vs-standard reading level).
+**Open seams:** RTS cursor pagination is defensive but unverified against live (same posture as the rest of `live.ts`); the per-session cache caches rejected promises too (fine — request-scoped, and a failed `respond` fails wholesale anyway); metrics/prefs/snoozes/commitments/tokens stores still assume a writable local filesystem (Vercel read-only FS → Neon swap deferred to Phase 6/v2.4); intent routing still keyword-only. Live RTS/Claude field mapping still unverified against a real workspace.
+**Next:** Phase 3 / v1.8 — the behavior-preserving monolith refactor to the Part-IV architecture.
 
 ### v0.4.0 — 2026-07-01 — Read-aloud audio (TTS) + first-run onboarding
 **Built:** a new `TtsClient` port (`a11y/tts/{types,mock,live,index}.ts`) following the same mock/live double-gate pattern as `rts/` and `slack/` — mock synthesizes a real, deterministic, valid (silent) WAV file with no I/O; live calls OpenAI's `tts-1` speech endpoint over the global `fetch` (no new npm dependency), gated by `TEMPO_TTS` / auto-detected from `OPENAI_API_KEY`, same convention as `TEMPO_AI`. `app.ts`'s new best-effort `maybeSendReadAloud()` checks the user's stored `readAloud` preference, synthesizes the response's existing speech script, and DMs the resulting audio file (`files.uploadV2`, new `files:write` bot scope) — wired into every surface that produces a `TempoResponse`: the Assistant pane, `/tempo`, `app_mention`, and "Show the rest". `UserPrefs.readAloud` is no longer a dead switch.

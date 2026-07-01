@@ -51,6 +51,26 @@ export function condense(text: string, verbosity: Verbosity): string {
   return first.replace(/[—–-].*$/, "").trim();
 }
 
+/**
+ * "Plain language" reading level: shorter, simpler sentences without losing any
+ * information. We only turn dense punctuation (em/en-dash asides, semicolon
+ * lists) into separate short sentences — every word, number, and parenthetical
+ * is preserved, so "45 min" and "(why this matters)" survive untouched.
+ */
+export function plainify(text: string): string {
+  return text
+    .replace(/\s*[—–]\s*/g, ". ") // asides → their own short sentence
+    .replace(/\s*;\s*/g, ". ") // list joins → short sentences
+    .replace(/\.\s*\.\s*/g, ". ") // collapse any doubled periods
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Applies the user's reading level to a piece of prose. */
+export function applyReadingLevel(text: string, level: ReadingLevel): string {
+  return level === "plain" ? plainify(text) : text;
+}
+
 export interface SpeechInput {
   intent: string;
   text: string;

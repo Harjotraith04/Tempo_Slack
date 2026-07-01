@@ -19,11 +19,14 @@ import { runLedger } from "../src/modules/ledger.js";
 import { draftNudge, draftRenegotiation } from "../src/modules/draft.js";
 import { snoozeItem, markItemDone, isSuppressed } from "../src/db/snoozes.js";
 import { syncCommitments, markRenegotiating } from "../src/db/commitments.js";
-import { homeDashboardBlocks, onboardingBlocks, settingsModalView } from "../src/blocks/index.js";
+import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/blocks/index.js";
 import { getPrefs, savePrefs } from "../src/db/prefs.js";
+import { getMetrics } from "../src/db/metrics.js";
 import { resolveA11yPrefs } from "../src/a11y/index.js";
 import { getTtsClient } from "../src/a11y/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../src/modules/onboarding.js";
+import { CachingRtsClient } from "../src/rts/caching.js";
+import type { RtsClient } from "../src/rts/index.js";
 import { config } from "../src/config.js";
 
 // Repeated `npm run demo` runs must never write into the project root: point
@@ -169,6 +172,46 @@ async function main() {
     renderBlocks(onboardingBlocks());
     savePrefs(newUserId, { onboardedAt: ctx.nowTs });
     console.log(`  After tapping "Got it — let's go": isFirstRun = ${isFirstRun(getPrefs(newUserId))}`);
+  }
+
+  rule('11. Resilient & private — caching, empty states, weekly impact, plain language');
+  {
+    // (a) Per-session cache: identical RTS searches within one turn hit once.
+    let underlyingCalls = 0;
+    const counting: RtsClient = {
+      subjectUserId: ctx.subjectUserId,
+      async search(p) {
+        underlyingCalls++;
+        return ctx.rts.search(p);
+      },
+    };
+    const cached = new CachingRtsClient(counting);
+    await cached.search({ query: "what needs me today" });
+    await cached.search({ query: "what needs me today" });
+    console.log(`  Per-session cache: 2 identical RTS searches → ${underlyingCalls} underlying call (deduped).`);
+
+    // (b) Live triage/actions ride on rate-limit backoff + cursor pagination
+    // (inert in mock mode); a thrown Slack call now surfaces as a calm card:
+    console.log("  Live WebClients share exponential backoff + Retry-After handling; RTS follows cursors up to 5 pages.");
+
+    // (c) Empty state — the calm card shown when there's genuinely nothing.
+    console.log("\n  Empty state (shown when you're all caught up):");
+    renderBlocks(emptyStateBlocks("triage"));
+
+    // (d) Weekly impact — privacy-safe counts only, never content.
+    console.log("\n  Weekly impact (privacy-safe counts, accumulated from the scenes above):");
+    renderBlocks(metricsBlocks(getMetrics(ctx.subjectUserId)));
+
+    // (e) Reading level "plain" shortens sentence structure, losing no meaning.
+    const stdUser = "U_STD_DEMO";
+    const plainUser = "U_PLAIN_DEMO";
+    savePrefs(stdUser, { readingLevel: "standard" });
+    savePrefs(plainUser, { readingLevel: "plain" });
+    const std = await respond(buildContext({ subjectUserId: stdUser }), "catch me up", { record: false });
+    const plain = await respond(buildContext({ subjectUserId: plainUser }), "catch me up", { record: false });
+    console.log(`\n  Reading level — standard (dense, ';'-joined): "${std.text}"`);
+    console.log(`  Reading level — plain (short sentences):      "${plain.text}"`);
+    console.log(`  → same information; plain uses no ';' joins: ${!plain.text.includes(";")}, none dropped: ${plain.text.includes("Atlas API spec")}`);
   }
 
   console.log("\n" + "─".repeat(72));

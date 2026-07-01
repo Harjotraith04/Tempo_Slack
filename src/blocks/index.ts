@@ -15,6 +15,7 @@ import type { Commitment } from "../modules/ledger.js";
 import type { ToneDecode, DraftCheck } from "../modules/decoder.js";
 import type { FocusPlan } from "../modules/focus.js";
 import type { ReentryBrief } from "../modules/reentry.js";
+import type { UserMetrics } from "../db/metrics.js";
 
 const CAT_LABEL: Record<TriageItem["category"], string> = {
   ACT: "Needs a reply",
@@ -210,6 +211,57 @@ export function reentryBlocks(b: ReentryBrief): KnownBlock[] {
   ];
 }
 
+// ── Empty & error states ─────────────────────────────────────────────────────
+
+/** A calm "nothing to do here" card. Empty is a *good* outcome for an attention
+ * tool — we say so warmly rather than showing a bare, anxious blank. */
+export function emptyStateBlocks(intent: "triage" | "commitments" | "catchup"): KnownBlock[] {
+  const copy: Record<typeof intent, { title: string; body: string }> = {
+    triage: {
+      title: "You're all caught up ✨",
+      body: "Nothing needs you right now. I'll keep scanning quietly and surface anything that does.",
+    },
+    commitments: {
+      title: "No open commitments",
+      body: "Nothing you promised is outstanding, and no one owes you anything I'm tracking. Nice.",
+    },
+    catchup: {
+      title: "Nothing major to catch up on",
+      body: "No big decisions or changes while you were away. You can ease back in.",
+    },
+  };
+  const c = copy[intent];
+  return [header(c.title), section(c.body)];
+}
+
+/** Shown when a surface hits an unexpected error — reassures the user that
+ * nothing was changed (Tempo never acts without a tap, errors included). */
+export function errorBlocks(): KnownBlock[] {
+  return [
+    header("I hit a snag"),
+    section("Something went wrong pulling that together — *nothing was changed*. Try again in a moment."),
+  ];
+}
+
+// ── Weekly impact (privacy-safe counts) ──────────────────────────────────────
+
+/** A gentle "your week with Tempo" summary. Counts only — never content. */
+export function metricsBlocks(m?: UserMetrics): KnownBlock[] {
+  if (!m || (m.messagesTriaged === 0 && m.obligationsSurfaced === 0 && m.focusMinutesProtected === 0 && m.itemsRecovered === 0)) {
+    return [context("_Your week with Tempo will show here as you use it — counts only, never message content._")];
+  }
+  const parts = [
+    `*${m.messagesTriaged}* messages triaged`,
+    `*${m.obligationsSurfaced}* commitments surfaced`,
+    `*${m.focusMinutesProtected}* focus-minutes protected`,
+    `*${m.itemsRecovered}* items recovered`,
+  ];
+  return [
+    section("*Your week with Tempo*\n" + parts.join(" · ")),
+    context("Privacy-safe counts only — Tempo never stores what it reads."),
+  ];
+}
+
 // ── App Home + help ──────────────────────────────────────────────────────────
 
 export function homeBlocks(): KnownBlock[] {
@@ -232,7 +284,11 @@ export function helpBlocks(): KnownBlock[] {
  * deliberately a static call-to-action, never a live block here: planning a
  * focus block has real side effects (MCP + Slack DND/status), and opening the
  * Home tab must never act without the user's explicit tap. */
-export function homeDashboardBlocks(opts: { triage: KnownBlock[]; commitments: KnownBlock[] }): KnownBlock[] {
+export function homeDashboardBlocks(opts: {
+  triage: KnownBlock[];
+  commitments: KnownBlock[];
+  metrics?: UserMetrics;
+}): KnownBlock[] {
   return [
     header("Tempo"),
     section("Your working memory for Slack — calm, live, and grounded in what's actually happening. I never act without your tap."),
@@ -240,6 +296,8 @@ export function homeDashboardBlocks(opts: { triage: KnownBlock[]; commitments: K
       type: "actions",
       elements: [btn("⚙️ Settings", "open_settings", "open_settings")],
     } as KnownBlock,
+    divider,
+    ...metricsBlocks(opts.metrics),
     divider,
     ...opts.triage,
     divider,

@@ -11,6 +11,7 @@
  */
 
 import { WebClient } from "@slack/web-api";
+import { webClientOptions } from "../shared/webClientOptions.js";
 import type {
   ScheduleDigestResult,
   SetFocusDndResult,
@@ -28,8 +29,8 @@ export class LiveSlackActions implements SlackActionsClient {
   private readonly botWeb?: WebClient;
 
   constructor(opts: LiveOpts) {
-    this.userWeb = new WebClient(opts.userToken);
-    this.botWeb = opts.botToken ? new WebClient(opts.botToken) : undefined;
+    this.userWeb = new WebClient(opts.userToken, webClientOptions);
+    this.botWeb = opts.botToken ? new WebClient(opts.botToken, webClientOptions) : undefined;
   }
 
   async setFocusDnd(opts: { minutes: number }): Promise<SetFocusDndResult> {

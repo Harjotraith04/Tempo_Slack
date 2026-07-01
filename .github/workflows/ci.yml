@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # The zero-credential demo doubles as an end-to-end smoke test — it runs
+      # the full pipeline (orchestrator → modules → mock RTS/AI/MCP) with no
+      # secrets, so CI proves the mock path never breaks.
+      - name: Demo (zero-credential smoke test)
+        run: npm run demo

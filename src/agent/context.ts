@@ -9,6 +9,7 @@
 
 import { config } from "../config.js";
 import { getRtsClient, type RtsClient } from "../rts/index.js";
+import { CachingRtsClient } from "../rts/caching.js";
 import { DEMO_NOW, SAM_LAST_ACTIVE, SUBJECT_USER_ID } from "../rts/fixtures.js";
 
 export interface TempoContext {
@@ -35,7 +36,12 @@ export function buildContext(opts: BuildContextOpts = {}): TempoContext {
   const lastActiveTs =
     opts.lastActiveTs ?? (live ? nowTs - 7 * 24 * 3600 : SAM_LAST_ACTIVE);
   return {
-    rts: getRtsClient({ userToken: opts.userToken, subjectUserId: opts.subjectUserId }),
+    // Wrap the resolved client in a per-request cache: a single turn often
+    // searches RTS for the same thing more than once (module + decode/draft
+    // lookups). The cache lives only as long as this context.
+    rts: new CachingRtsClient(
+      getRtsClient({ userToken: opts.userToken, subjectUserId: opts.subjectUserId }),
+    ),
     nowTs,
     lastActiveTs,
     awayDays: Math.max(1, Math.round((nowTs - lastActiveTs) / (24 * 3600))),

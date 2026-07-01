@@ -17,6 +17,7 @@ import { planFocusBlock } from "../modules/focus.js";
 import { isSuppressed } from "../db/snoozes.js";
 import { syncCommitments } from "../db/commitments.js";
 import { getPrefs } from "../db/prefs.js";
+import { recordMetrics } from "../db/metrics.js";
 import {
   triageBlocks,
   ledgerBlocks,
@@ -24,9 +25,10 @@ import {
   reentryBlocks,
   focusBlocks,
   helpBlocks,
+  emptyStateBlocks,
 } from "../blocks/index.js";
 
-import { toSpeech, condense, resolveA11yPrefs } from "../a11y/index.js";
+import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs } from "../a11y/index.js";
 
 export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "help";
 
@@ -48,10 +50,21 @@ export function routeIntent(input: string): Intent {
   return "help";
 }
 
-export async function respond(ctx: TempoContext, input: string): Promise<TempoResponse> {
+export interface RespondOpts {
+  /** Whether to count this call toward the user's weekly metrics. Passive
+   * surfaces (App Home auto-refresh) pass `false` so they don't inflate KPIs;
+   * user-initiated asks (Assistant / slash / mention) default to `true`. */
+  record?: boolean;
+}
+
+export async function respond(
+  ctx: TempoContext,
+  input: string,
+  opts: RespondOpts = {},
+): Promise<TempoResponse> {
   const a11y = resolveA11yPrefs(getPrefs(ctx.subjectUserId));
-  const r = await respondCore(ctx, input);
-  const text = condense(r.text, a11y.verbosity);
+  const r = await respondCore(ctx, input, opts.record ?? true);
+  const text = applyReadingLevel(condense(r.text, a11y.verbosity), a11y.readingLevel);
   return { ...r, text, speech: toSpeech({ intent: r.intent, text }) };
 }
 
@@ -82,6 +95,7 @@ export async function triageAll(ctx: TempoContext): Promise<TempoResponse> {
 async function respondCore(
   ctx: TempoContext,
   input: string,
+  record: boolean,
 ): Promise<Omit<TempoResponse, "speech">> {
   const intent = routeIntent(input);
   const after = afterTsOf(ctx);
@@ -92,29 +106,33 @@ async function respondCore(
     case "triage": {
       const r = await liveTriage(ctx);
       const top = r.needsYou.slice(0, a11y.maxItems);
+      if (record) recordMetrics(ctx.subjectUserId, { messagesTriaged: r.scanned });
       return {
         intent,
         text: top.length
           ? `${top.length} thing${top.length > 1 ? "s" : ""} need${top.length > 1 ? "" : "s"} you: ` +
             top.map((i) => `${i.suggestedAction} (${i.reason})`).join("; ")
           : "You're all caught up.",
-        blocks: triageBlocks(r, { maxItems: a11y.maxItems }),
+        blocks: top.length ? triageBlocks(r, { maxItems: a11y.maxItems }) : emptyStateBlocks("triage"),
       };
     }
     case "commitments": {
       const fresh = await runLedger(ctx.rts, { nowTs: ctx.nowTs });
       const c = syncCommitments(ctx.subjectUserId, fresh);
+      if (record) recordMetrics(ctx.subjectUserId, { obligationsSurfaced: c.length });
       return {
         intent,
         text:
           `You have ${c.filter((x) => x.direction === "i_owe").length} open promises and ` +
           `${c.filter((x) => x.direction === "owed_to_me").length} owed to you.`,
-        blocks: ledgerBlocks(c),
+        blocks: c.length ? ledgerBlocks(c) : emptyStateBlocks("commitments"),
       };
     }
     case "catchup": {
       const b = await runReentry(ctx.rts, { afterTs: after, awayDays: ctx.awayDays });
-      return { intent, text: "The 3 that matter most: " + b.topThree.join("; "), blocks: reentryBlocks(b) };
+      return b.topThree.length
+        ? { intent, text: "The 3 that matter most: " + b.topThree.join("; "), blocks: reentryBlocks(b) }
+        : { intent, text: "Nothing major to catch up on.", blocks: emptyStateBlocks("catchup") };
     }
     case "focus": {
       const mins = Number(input.match(/(\d{2,3})\s*(min|m)\b/)?.[1] ?? prefs?.focusDefaultMins ?? 90);
@@ -125,6 +143,7 @@ async function respondCore(
         subjectUserId: ctx.subjectUserId,
         userToken: ctx.userToken,
       });
+      if (record) recordMetrics(ctx.subjectUserId, { focusMinutesProtected: mins });
       return { intent, text: p.summary, blocks: focusBlocks(p) };
     }
     case "decode": {

@@ -39,7 +39,7 @@ The full pipeline ships with a seeded world ("Sam returns from a week off") and 
 ```bash
 npm install
 npm run demo      # runs the whole narrative through the real modules
-npm test          # 16 tests across RTS, all five modules, and a11y
+npm test          # 108 tests: RTS, the five modules, persistence, a11y, hardening
 ```
 
 `npm run demo` prints triage, tone decode, draft check, the commitment ledger (computing "overdue" from "by Friday"), the focus block + MCP task, and the re-entry brief — exactly what renders in Slack.
@@ -82,6 +82,21 @@ This is also why the **for-Good / accessibility** framing is clean: it's a *pers
 
 ---
 
+## Accessibility (a first-class constraint, audited)
+
+Accessibility is enforced on every surface, not bolted on:
+
+- **Adjustable verbosity** — `standard` or `brief` (one line), per user (`db/prefs.ts`).
+- **Reading level** — `plain` breaks dense punctuation (em-dashes, `;`-joined lists) into short, one-idea sentences **without dropping any information** — numbers, units, and parentheticals are preserved (`a11y/plainify`).
+- **Read-aloud** — every response carries a calm, markdown-free speech script; with the preference on, it's synthesized to real audio and DM'd (`a11y/tts/`).
+- **Ranked, capped output** — never more than the user's `maxItems`; a "show the rest" affordance rather than a firehose.
+- **Calm empty & error states** — "you're all caught up ✨" instead of a bare blank, and an honest "nothing was changed" card on failure (`blocks/emptyStateBlocks`, `errorBlocks`).
+- **Privacy-safe impact** — a weekly "your week with Tempo" summary is **counts only**; it never records message content (`db/metrics.ts`).
+
+Every response is verified in tests to carry a non-empty fallback `text` and a spoken `speech` script.
+
+---
+
 ## Project layout
 
 ```
@@ -91,9 +106,10 @@ src/
   agent/               llm wrapper, TempoContext, orchestrator (intent routing)
   modules/             triage · ledger · decoder · focus · reentry · draft
   mcp/                 outward MCP clients (calendar/tasks) + real-MCP seam
-  blocks/              calm, accessible Block Kit builders
-  a11y/                verbosity + read-aloud (TTS) script
-  db/tokens.ts         encrypted user-token store
+  blocks/              calm, accessible Block Kit builders (+ empty/error/metrics states)
+  a11y/                verbosity · reading level (plain) · read-aloud (TTS) script
+  shared/              cross-cutting: WebClient retry/backoff options · request cache
+  db/                  encrypted tokens · prefs · commitments · snoozes · metrics (counts only)
   app.ts · dev.ts      Bolt wiring (socket + express) and local entrypoint
 api/                   Vercel: slack/events · oauth/{start,callback} · cron/morning-digest
 scripts/               demo.ts (narrative) · seed-workspace.ts (live sandbox seeding)
@@ -117,7 +133,7 @@ manifest.json          Slack app manifest (scopes, assistant, /tempo, events)
 ## Submission checklist (Agent for Good)
 
 - [x] Uses ≥1 required tech — **all three** (RTS + MCP + Slack AI).
-- [x] Working product (`npm run demo`, 16 tests) + Slack surfaces.
+- [x] Working product (`npm run demo`, 108 tests) + Slack surfaces.
 - [ ] ~3-min demo video (storyboard below) with working footage.
 - [ ] Architecture diagram (above).
 - [ ] Sandbox URL with access to `slackhack@salesforce.com` + `testing@devpost.com`.
