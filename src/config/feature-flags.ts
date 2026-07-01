@@ -21,4 +21,7 @@ export const flags = {
   canvas: flag("TEMPO_CANVAS", true),
   /** Slack Lists sync of the Commitment Ledger. */
   lists: flag("TEMPO_LISTS", true),
+  /** Proactive intelligence (v3.4) — opt-in overload heads-up + smart batching
+   * in the morning digest. Default OFF: proactive care is opt-in. */
+  proactive: flag("TEMPO_PROACTIVE", false),
 } as const;

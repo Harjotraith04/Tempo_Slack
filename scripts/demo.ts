@@ -42,6 +42,9 @@ import manifest from "../manifest.json" with { type: "json" };
 import { TEMPO_TOOLS } from "../src/platform/mcp/server/index.js";
 import { mintAgentToken, resolveMcpCaller } from "../src/platform/mcp/server/auth.js";
 import { buildAgentforceDescriptor } from "../src/platform/agentforce/index.js";
+import { analyzeLoad } from "../src/modules/intelligence/index.js";
+import { buildProactiveBlocks } from "../src/application/use-cases/proactive.js";
+import { flags } from "../src/config.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
@@ -492,6 +495,25 @@ async function main() {
     // (c) Graceful handoff: an out-of-scope @mention is routed elsewhere, not guessed.
     const res = await respond(ctx, "hey Tempo, roll back the deploy — we have an incident");
     console.log(`  Out-of-scope request → "${res.text.slice(0, 92)}…"`);
+  }
+
+  rule('23. Proactive intelligence (opt-in) — an overload heads-up + smart batching, from counts only');
+  {
+    console.log(`  Opt-in: TEMPO_PROACTIVE=${flags.proactive ? "on" : "off (default)"} — proactive care never surprises you.\n`);
+
+    // A heavy week, computed from the SAME privacy-safe counts Tempo already
+    // keeps (metrics + per-sender signals) — never message content.
+    const u = "U_LOADED_DEMO";
+    await store.metrics.record(u, { obligationsSurfaced: 9, messagesTriaged: 80 });
+    for (let i = 0; i < 4; i++) await store.signals.record(u, "U_MARCO", "deprioritized");
+
+    const load = analyzeLoad(await store.metrics.get(u), await store.signals.forUser(u));
+    console.log(`  Load read → level "${load.level}" (score ${load.score}); drivers: ${load.drivers.join("; ")}`);
+    console.log(`  Gentle, opt-in suggestion (never acted on): "${load.suggestion}"\n`);
+
+    // The one calm touchpoint that folds into the morning digest:
+    const loadedCtx = buildContext({ subjectUserId: u, subjectName: "Sam" });
+    renderBlocks(await buildProactiveBlocks(loadedCtx));
   }
 
   console.log("\n" + "─".repeat(72));

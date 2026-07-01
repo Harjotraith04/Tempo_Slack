@@ -17,6 +17,7 @@ import type { FocusPlan } from "../../../modules/focus.js";
 import type { ReentryBrief } from "../../../modules/reentry.js";
 import type { UserMetrics } from "../../../ports/store.js";
 import type { HandoffSuggestion } from "../../../modules/handoff/index.js";
+import type { LoadAssessment } from "../../../modules/intelligence/index.js";
 
 const CAT_LABEL: Record<TriageItem["category"], string> = {
   ACT: "Needs a reply",
@@ -167,6 +168,39 @@ export function droppedBallBlocks(commitments: Commitment[]): KnownBlock[] {
     divider,
     section(
       `⚠️ *${commitments.length} commitment${many ? "s are" : " is"} slipping* — a gentle heads-up before ${many ? "they" : "it"} falls through:\n${lines}`,
+    ),
+  ];
+}
+
+// ── Proactive intelligence (v3.4) ────────────────────────────────────────────
+
+/** An opt-in, calm overload heads-up — only when the week reads busy/heavy, and
+ * only ever ending in a suggestion the user can tap (never an action). */
+export function overloadBlocks(a: LoadAssessment): KnownBlock[] {
+  if (a.level === "calm" || a.drivers.length === 0) return [];
+  const emoji = a.level === "heavy" ? "🌡️" : "📊";
+  return [
+    divider,
+    section(
+      `${emoji} *A gentle heads-up — your week looks ${a.level}.*\n` +
+        a.drivers.map((d) => `• ${d}`).join("\n"),
+    ),
+    ...(a.suggestion ? [context(`${a.suggestion} — only if you want; I won't do anything without your tap.`)] : []),
+  ];
+}
+
+/** Smart batching — non-urgent FYIs gathered into one calm section instead of
+ * interrupting for each. Derived facts only (author + the AI's one-line reason). */
+export function batchedFyiBlocks(items: TriageItem[]): KnownBlock[] {
+  if (items.length === 0) return [];
+  const shown = items.slice(0, 5);
+  const more = items.length - shown.length;
+  return [
+    divider,
+    section(
+      `📥 *${items.length} low-priority update${items.length > 1 ? "s" : ""} batched* — nothing urgent, here when you have a moment:\n` +
+        shown.map((i) => `• *${i.authorName ?? "someone"}* in #${i.channelName ?? "dm"}: ${i.reason}`).join("\n") +
+        (more > 0 ? `\n• …and ${more} more` : ""),
     ),
   ];
 }

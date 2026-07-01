@@ -93,6 +93,8 @@ npm test          # 155 tests: RTS, MCP, the five modules, native surfaces, pers
 
 This is also why the **for-Good / accessibility** framing is clean: it's a *personal* assistant on personal data — not surveillance of others.
 
+**Proactive, but calm (opt-in).** With `TEMPO_PROACTIVE=on`, the morning digest folds in a gentle **overload heads-up** ("your week looks heavy — 9 open obligations, no focus time protected; want me to block some?") and **batches non-urgent FYIs** into one section instead of interrupting for each. It's computed from the **counts** Tempo already keeps (`src/modules/intelligence/load.ts`), never message content, and only ever *notifies* — never acts.
+
 **Learns from you (privately).** Tempo tunes triage ranking and tone-read confidence to *you* — but it learns **only from your own taps** (snooze / mark-done / draft), stored as **counts per sender id**, never from message content. The learned weight is bounded, so it reorders near-ties without ever overriding a genuine urgent ask. Those per-sender signals appear in your data export and are erased by "Delete everything," like everything else.
 
 **Least-privilege scopes.** Every OAuth scope Tempo requests is declared and justified in one place (`src/platform/slack/oauth/scopes.ts`), and a test asserts `manifest.json` requests **exactly** that set — no more, no less. RTS runs on your own user token, scoped to what you can already see. See [`PRIVACY.md`](PRIVACY.md) and [`SECURITY.md`](SECURITY.md); the full listing package is in [`docs/marketplace-listing.md`](docs/marketplace-listing.md).

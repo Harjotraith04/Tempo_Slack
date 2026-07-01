@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v3.2.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off
+**Current version:** v3.4.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -22,6 +22,7 @@
 - **Phase 9 / v2.9.0 — Marketplace-readiness:** DONE *code/docs* (least-privilege scopes as a single source of truth + drift test · data-governance completeness guard · `PRIVACY.md`/`SECURITY.md` · web `/privacy-policy` page · listing package); submission logistics deferred to the owner (below).
 - **Phase 10 / v3.0.0 — Tempo as an MCP server:** DONE (`tempo_triage`/`tempo_commitments`/`tempo_decode`/`tempo_focus` exposed at `/api/mcp/server` over Streamable HTTP · SDK-isolated · derived-facts-only · acts as the initiating user · shared read-models extracted).
 - **Phase 11 / v3.2.0 — Agentforce integration:** DONE (default-deny per-caller identity via signed per-user agent tokens · Agentforce Employee Agent descriptor packaging the tools+persona+trust · graceful @mention handoff routing; also fixed the v3.0 MCP-server fail-open/ambient-authority security findings).
+- **Phase 12 / v3.4.0 — Proactive intelligence:** DONE (opt-in overload/burnout early-warning `analyzeLoad` from counts only · smart batching of non-urgent FYIs · folded into the one calm morning-digest touchpoint behind `TEMPO_PROACTIVE` · notifies only, never acts, never stores content).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -37,24 +38,53 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → Phase 12 / v3.4.0 "Proactive intelligence"
-See `MASTER_PLAN.md` → Part V, Year 3, Phase 12. Everything so far is reactive (you ask, Tempo answers) or
-scheduled (the morning digest). Next, opt-in *proactive* care that stays private and calm:
-- [ ] **Overload / burnout early-warning** — from the counts-only signals Tempo already keeps (metrics +
-  per-sender engagement), detect a rising-load trend and surface a gentle, opt-in heads-up. No new content
-  storage; a pure trend function over the existing stores + a `TEMPO_PROACTIVE` opt-in flag (default off).
-- [ ] **Meeting-load balancing / smart batching** — batch non-urgent NOISE/FYI into fewer, calmer touchpoints
-  (extend the morning digest) instead of interrupting; a batching policy over triage output.
-- [ ] **Proactive nudges honor the trust layer** — everything stays human-in-the-loop and opt-in; never acts,
-  only notifies; counts-only, never message content.
+## Next up → Phase 13 / v3.6.0 "Team & manager mode"
+See `MASTER_PLAN.md` → Part V, Year 3, Phase 13. Everything to date is a *personal* agent on *personal* data.
+Next, an opt-in, **aggregated + anonymized** team view — never exposing any individual's message content, and
+defaulting to the personal posture:
+- [ ] **Aggregated team load** — roll up the counts-only metrics/signals across an opt-in team into anonymized
+  aggregates (response fairness, load distribution, knowledge bus-factor) — a pure aggregation over the
+  existing per-user stores; a `team` repository keyed by team, counts only.
+- [ ] **Manager mode surface** — a calm, aggregate-only view (never per-person message content); gated by an
+  explicit opt-in + a `TEMPO_TEAM` flag (default off), honoring the same never-store-RTS invariant.
+- [ ] **Privacy guardrails** — assert in tests that the team view can *never* surface an individual's content
+  or a single-person aggregate below a k-anonymity threshold.
 - [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 native-surface
   `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, the v2.6 web app's
-  SSR/cookie behavior, and the v3.0 inbound MCP `Server`/transport (`verify:mcp-server`) — all built/typed,
-  unverified against a real client/browser/workspace.
+  SSR/cookie behavior, and the v3.0 inbound MCP `Server`/transport — all built/typed, unverified against a
+  real client/browser/workspace.
 
 ---
 
 ## History
+
+### v3.4.0 — 2026-07-02 — Proactive intelligence: opt-in overload early-warning + smart batching
+**Built:** the first *proactive* care in Tempo — everything before was reactive (you ask) or scheduled (the
+morning digest). It stays calm and honest: **opt-in** (`TEMPO_PROACTIVE`, default off), **notifies only**
+(never acts), and is computed **only from the counts Tempo already keeps** (never message content, Invariant 1).
+- **Overload / burnout early-warning** (`modules/intelligence/load.ts`) — a pure `analyzeLoad(metrics,
+  signals)` reads how loaded the user is from privacy-safe weekly metrics (obligations, firehose volume, focus
+  minutes protected) + aggregate per-sender deprioritization, returns a `LoadAssessment { level: calm|busy|
+  heavy, score, drivers[], suggestion }`. It's *structural*: it fires when the user takes on load faster than
+  they protect time for it, and every heavy/busy read ends in a **gentle, opt-in suggestion** ("want me to
+  block 90 min of focus?") — never an action.
+- **Smart batching** — non-urgent FYIs are gathered into ONE calm "N low-priority updates batched" section
+  (`batchedFyiBlocks`, derived facts only — author + the AI's one-line reason, never a raw excerpt) instead of
+  interrupting for each. `overloadBlocks` renders the heads-up.
+- **One calm touchpoint** — a `buildProactiveBlocks(ctx)` use-case (overload heads-up + batched FYIs) folded
+  into the **morning digest** cron behind `flags.proactive` (new `TEMPO_PROACTIVE`, default off), so proactive
+  care arrives in the single scheduled DM rather than as new interruptions.
+**Quality:** **245 tests** passing (up from 234) across 41 files — `load.test.ts` (calm/busy/heavy thresholds ·
+focus relieves load · batch-vs-focus suggestion · no-metrics user), `proactive.test.ts` (heavy week → opt-in
+heads-up + batched FYIs · no raw excerpt · calm user → no heads-up), and `overloadBlocks`/`batchedFyiBlocks`
+render tests (opt-in copy · never a raw excerpt) · typecheck clean · root build clean · `npm run demo` extended
+to **23 scenes** (a heavy-week load read from counts + the folded touchpoint) · web app still builds.
+**Open seams:** the load read is a *snapshot* heuristic over the current week (the metrics store keeps one
+rolling week, not history), so it's a structural early-warning rather than a week-over-week trend — a small
+load-history store would enable trend detection later. Proactive is a workspace-level opt-in flag; per-user
+opt-in (a prefs toggle in the settings modal / web) is a future refinement. Thresholds are deliberately
+conservative.
+**Next:** Phase 13 / v3.6 — Team & manager mode (opt-in, aggregated + anonymized; never individual content).
 
 ### v3.2.0 — 2026-07-02 — Agentforce integration: per-caller identity · Employee Agent · graceful handoff
 **Built:** the three Phase 11 bullets — making Tempo a first-class agent collaborator — and, in the process,

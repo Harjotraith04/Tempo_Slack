@@ -22,6 +22,7 @@ import { config, flags } from "../../src/config.js";
 import { buildContext } from "../../src/application/context.js";
 import { respond } from "../../src/application/orchestrator.js";
 import { updateCanvas, atRiskCommitments } from "../../src/application/use-cases/surfaces.js";
+import { buildProactiveBlocks } from "../../src/application/use-cases/proactive.js";
 import { droppedBallBlocks } from "../../src/platform/slack/blockkit/index.js";
 import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
 import { getStore } from "../../src/platform/persistence/index.js";
@@ -66,6 +67,17 @@ async function sendDigest(userId: string, token: string | undefined): Promise<vo
     console.error(`dropped-ball check failed for ${userId}`, err);
   }
 
+  // Proactive intelligence (opt-in): an overload heads-up + batched FYIs, folded
+  // into this one calm touchpoint. Off unless TEMPO_PROACTIVE is enabled.
+  let proactive: any[] = [];
+  if (flags.proactive) {
+    try {
+      proactive = await buildProactiveBlocks(ctx);
+    } catch (err) {
+      console.error(`proactive check failed for ${userId}`, err);
+    }
+  }
+
   if (config.slack.botToken && token) {
     const web = new WebClient(config.slack.botToken);
     const im = await web.conversations.open({ users: userId });
@@ -74,7 +86,7 @@ async function sendDigest(userId: string, token: string | undefined): Promise<vo
       await web.chat.postMessage({
         channel,
         text: `Good morning — ${digest.text}`,
-        blocks: [...(digest.blocks as any[]), ...droppedBall] as any,
+        blocks: [...(digest.blocks as any[]), ...droppedBall, ...proactive] as any,
       });
     }
   }

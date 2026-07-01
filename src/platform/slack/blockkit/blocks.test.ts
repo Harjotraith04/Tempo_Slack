@@ -3,6 +3,8 @@ import {
   triageBlocks,
   ledgerBlocks,
   droppedBallBlocks,
+  overloadBlocks,
+  batchedFyiBlocks,
   decodeBlocks,
   draftCheckBlocks,
   focusBlocks,
@@ -159,6 +161,36 @@ describe("droppedBallBlocks", () => {
     expect(text).toContain("Pricing review");
     // Never the raw message text.
     expect(text).not.toContain("I'll send the spec by Friday");
+  });
+});
+
+describe("proactive blocks (v3.4)", () => {
+  const flat = (b: any[]) =>
+    b.map((x) => (x.type === "section" ? x.text.text : x.type === "context" ? x.elements.map((e: any) => e.text).join(" ") : "")).join("\n");
+
+  it("overloadBlocks is empty when the week is calm", () => {
+    expect(overloadBlocks({ level: "calm", score: 0, drivers: [] })).toEqual([]);
+  });
+
+  it("overloadBlocks renders a heads-up + an opt-in (never-acts) suggestion when heavy", () => {
+    const t = flat(
+      overloadBlocks({ level: "heavy", score: 30, drivers: ["9 open obligations this week"], suggestion: "Want me to block focus?" }),
+    );
+    expect(t).toContain("heads-up");
+    expect(t).toContain("9 open obligations");
+    expect(t).toContain("without your tap");
+  });
+
+  it("batchedFyiBlocks is compact and never shows a raw excerpt", () => {
+    const items = [mkItem({ category: "FYI", authorName: "Ravi", channelName: "eng", reason: "staging fix landed", excerpt: "SECRET RAW TEXT" })];
+    const t = flat(batchedFyiBlocks(items));
+    expect(t).toContain("batched");
+    expect(t).toContain("staging fix landed");
+    expect(t).not.toContain("SECRET RAW TEXT");
+  });
+
+  it("batchedFyiBlocks is empty with no items", () => {
+    expect(batchedFyiBlocks([])).toEqual([]);
   });
 });
 
