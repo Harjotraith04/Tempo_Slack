@@ -8,6 +8,14 @@ describe("createContainer", () => {
     expect(typeof c.llm).toBe("function");
     expect(typeof c.slackActions).toBe("function");
     expect(typeof c.mcp).toBe("function");
+    expect(typeof c.store).toBe("function");
+  });
+
+  it("resolves a Store with all six repositories in the default (file) posture", () => {
+    const store = createContainer().store();
+    for (const repo of ["tokens", "prefs", "commitments", "snoozes", "metrics", "surfaces"] as const) {
+      expect(store[repo]).toBeTruthy();
+    }
   });
 
   it("resolves the mock Slack-actions adapter in the default posture (all new methods present)", async () => {

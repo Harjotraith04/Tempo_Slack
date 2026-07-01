@@ -17,9 +17,9 @@ afterAll(() => {
 });
 
 const { registerHandlers } = await import("./app.js");
-const { isSuppressed } = await import("../platform/persistence/snoozes.js");
-const { syncCommitments, getCommitmentByPermalink } = await import("../platform/persistence/commitments.js");
-const { getPrefs } = await import("../platform/persistence/prefs.js");
+const { getStore } = await import("../platform/persistence/index.js");
+// The same singleton the handlers resolve — file store under TEMPO_STORE_DIR.
+const store = getStore();
 
 /** Minimal stand-in for the slice of the Bolt App surface registerHandlers uses. */
 function fakeApp() {
@@ -95,7 +95,7 @@ describe("snooze / mark_done", () => {
     const body = { actions: [{ value: "https://a/1" }], user: { id: "U1" }, channel: { id: "C1" } };
     await app.actions.snooze!({ ack: vi.fn(), body, client });
 
-    expect(isSuppressed("U1", "https://a/1", Math.floor(Date.now() / 1000))).toBe(true);
+    expect(await store.snoozes.isSuppressed("U1", "https://a/1", Math.floor(Date.now() / 1000))).toBe(true);
     expect(client.chat.postEphemeral).toHaveBeenCalledWith(
       expect.objectContaining({ channel: "C1", user: "U1", text: expect.stringContaining("Snoozed") }),
     );
@@ -106,7 +106,7 @@ describe("snooze / mark_done", () => {
     const body = { actions: [{ value: "https://a/2" }], user: { id: "U2" }, channel: { id: "C1" } };
     await app.actions.mark_done!({ ack: vi.fn(), body, client });
 
-    expect(isSuppressed("U2", "https://a/2", 99_999_999_999)).toBe(true);
+    expect(await store.snoozes.isSuppressed("U2", "https://a/2", 99_999_999_999)).toBe(true);
     expect(client.chat.postEphemeral).toHaveBeenCalledWith(
       expect.objectContaining({ text: expect.stringContaining("Marked done") }),
     );
@@ -116,7 +116,7 @@ describe("snooze / mark_done", () => {
 describe("nudge / renegotiate", () => {
   it("nudge drafts a message and posts it back to the requesting user, never to a third party", async () => {
     const c = mkCommitment({ direction: "owed_to_me", counterparty: "Jordan Park" });
-    syncCommitments("U3", [c]);
+    await store.commitments.sync("U3", [c]);
 
     const client = fakeClient();
     const body = { actions: [{ value: c.permalink }], user: { id: "U3" }, channel: { id: "C1" } };
@@ -130,13 +130,13 @@ describe("nudge / renegotiate", () => {
 
   it("renegotiate flips the stored status and drafts a push-back message", async () => {
     const c = mkCommitment({ direction: "i_owe" });
-    syncCommitments("U4", [c]);
+    await store.commitments.sync("U4", [c]);
 
     const client = fakeClient();
     const body = { actions: [{ value: c.permalink }], user: { id: "U4" }, channel: { id: "C1" } };
     await app.actions.renegotiate!({ ack: vi.fn(), body, client });
 
-    expect(getCommitmentByPermalink("U4", c.permalink)?.status).toBe("renegotiating");
+    expect((await store.commitments.getByPermalink("U4", c.permalink))?.status).toBe("renegotiating");
     expect(client.chat.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ channel: "C1", text: expect.stringContaining("review and send it yourself") }),
     );
@@ -161,7 +161,7 @@ describe("App Home actions without a channel context fall back to a DM", () => {
     const body = { actions: [{ value: "https://home/1" }], user: { id: "U6" }, container: { type: "view", view_id: "V1" } };
     await app.actions.snooze!({ ack: vi.fn(), body, client });
 
-    expect(isSuppressed("U6", "https://home/1", Math.floor(Date.now() / 1000))).toBe(true);
+    expect(await store.snoozes.isSuppressed("U6", "https://home/1", Math.floor(Date.now() / 1000))).toBe(true);
     expect(client.chat.postEphemeral).not.toHaveBeenCalled();
     expect(client.conversations.open).toHaveBeenCalledWith({ users: "U6" });
     expect(client.chat.postMessage).toHaveBeenCalledWith(expect.objectContaining({ channel: "D1", text: expect.stringContaining("Snoozed") }));
@@ -169,7 +169,7 @@ describe("App Home actions without a channel context fall back to a DM", () => {
 
   it("nudge DMs the draft instead of posting in-channel when there's no channel", async () => {
     const c = mkCommitment({ direction: "owed_to_me", counterparty: "Jordan Park", permalink: "https://home/2" });
-    syncCommitments("U7", [c]);
+    await store.commitments.sync("U7", [c]);
 
     const client = fakeClient();
     const body = { actions: [{ value: c.permalink }], user: { id: "U7" }, container: { type: "view", view_id: "V2" } };
@@ -199,8 +199,7 @@ describe("show_rest", () => {
 
 describe("read-aloud delivery", () => {
   it("DMs a synthesized audio file when the user has readAloud on", async () => {
-    const { savePrefs } = await import("../platform/persistence/prefs.js");
-    savePrefs("U_RA1", { readAloud: true });
+    await store.prefs.save("U_RA1", { readAloud: true });
 
     const client = fakeClient();
     const body = { actions: [{ value: "show_rest" }], user: { id: "U_RA1" }, channel: { id: "C1" } };
@@ -225,8 +224,7 @@ describe("read-aloud delivery", () => {
 
 describe("settings: open_settings + settings_modal submission", () => {
   it("open_settings opens a modal pre-filled with the user's current prefs", async () => {
-    const { savePrefs } = await import("../platform/persistence/prefs.js");
-    savePrefs("U9", { verbosity: "brief", maxItems: 2 });
+    await store.prefs.save("U9", { verbosity: "brief", maxItems: 2 });
 
     const client = fakeClient();
     const body = { user: { id: "U9" }, trigger_id: "T1" };
@@ -263,7 +261,7 @@ describe("settings: open_settings + settings_modal submission", () => {
     };
     await app.views.settings_modal!({ ack: vi.fn(), body, view });
 
-    const saved = getPrefs("U10");
+    const saved = await store.prefs.get("U10");
     expect(saved).toMatchObject({
       verbosity: "brief",
       readingLevel: "plain",
@@ -274,8 +272,7 @@ describe("settings: open_settings + settings_modal submission", () => {
   });
 
   it("leaving the focus-minutes field blank clears the saved default", async () => {
-    const { savePrefs } = await import("../platform/persistence/prefs.js");
-    savePrefs("U11", { focusDefaultMins: 60 });
+    await store.prefs.save("U11", { focusDefaultMins: 60 });
 
     const client = fakeClient();
     const body = { user: { id: "U11" } };
@@ -292,7 +289,7 @@ describe("settings: open_settings + settings_modal submission", () => {
     };
     await app.views.settings_modal!({ ack: vi.fn(), body, view });
 
-    expect(getPrefs("U11")?.focusDefaultMins).toBeUndefined();
+    expect((await store.prefs.get("U11"))?.focusDefaultMins).toBeUndefined();
   });
 });
 
@@ -321,8 +318,7 @@ describe("app_home_opened", () => {
   });
 
   it("does not show the onboarding banner for a user who already onboarded", async () => {
-    const { savePrefs } = await import("../platform/persistence/prefs.js");
-    savePrefs("U_RETURNING", { onboardedAt: Math.floor(Date.now() / 1000) });
+    await store.prefs.save("U_RETURNING", { onboardedAt: Math.floor(Date.now() / 1000) });
 
     const client = fakeClient();
     const event = { user: "U_RETURNING" };
@@ -340,7 +336,7 @@ describe("complete_onboarding", () => {
     const body = { user: { id: "U_NEW2" } };
     await app.actions.complete_onboarding!({ ack: vi.fn(), body, client });
 
-    expect(getPrefs("U_NEW2")?.onboardedAt).toBeGreaterThan(0);
+    expect((await store.prefs.get("U_NEW2"))?.onboardedAt).toBeGreaterThan(0);
     expect(client.views.publish).toHaveBeenCalledTimes(1);
     const call = client.views.publish.mock.calls[0]![0];
     expect(call.user_id).toBe("U_NEW2");
@@ -380,7 +376,7 @@ describe("v2.0 native surfaces — App Home actions", () => {
 
   it("remind_commitment sets a reminder for a cached commitment", async () => {
     const c = mkCommitment({ permalink: "https://a/remind1" });
-    syncCommitments("U_S3", [c]);
+    await store.commitments.sync("U_S3", [c]);
     const client = fakeClient();
     const body = { user: { id: "U_S3" }, channel: { id: "C1" }, actions: [{ value: c.permalink }] };
     await app.actions.remind_commitment!({ ack: vi.fn(), body, client });

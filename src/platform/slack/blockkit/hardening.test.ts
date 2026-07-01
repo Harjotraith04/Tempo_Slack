@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyStateBlocks, errorBlocks, metricsBlocks } from "./index.js";
-import type { UserMetrics } from "../../../platform/persistence/metrics.js";
+import type { UserMetrics } from "../../../ports/store.js";
 
 function text(blocks: any[]): string {
   return blocks

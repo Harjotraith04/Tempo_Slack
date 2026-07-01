@@ -22,11 +22,7 @@ import { updateCanvas, syncCommitmentsToList, remindAboutCommitment } from "../a
 import { registerWorkflowSteps } from "../platform/slack/inbound/workflow-steps.js";
 import { draftReply, draftNudge, draftRenegotiation } from "../modules/draft.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, errorBlocks, type SettingsModalPrefs } from "../platform/slack/blockkit/index.js";
-import { getUserToken } from "../platform/persistence/tokens.js";
-import { snoozeItem, markItemDone } from "../platform/persistence/snoozes.js";
-import { getCommitmentByPermalink, markRenegotiating, markNudged } from "../platform/persistence/commitments.js";
-import { getPrefs, savePrefs } from "../platform/persistence/prefs.js";
-import { getMetrics, recordMetrics } from "../platform/persistence/metrics.js";
+import { getStore } from "../platform/persistence/index.js";
 import { resolveA11yPrefs } from "../accessibility/index.js";
 import { getTtsClient } from "../accessibility/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../modules/onboarding.js";
@@ -65,18 +61,18 @@ export async function safely(
 }
 
 /** Prefer the user's stored OAuth token; fall back to the single demo token. */
-function resolveUserToken(slackUserId: string): string | undefined {
-  return getUserToken(slackUserId) ?? config.slack.userToken;
+async function resolveUserToken(slackUserId: string): Promise<string | undefined> {
+  return (await getStore().tokens.get(slackUserId)) ?? config.slack.userToken;
 }
 
 /** Composition root for the inbound layer — one container shared by every
  * handler; each per-user context reuses it (see contextFor). */
 const container = createContainer();
 
-function contextFor(slackUserId: string) {
+async function contextFor(slackUserId: string) {
   return buildContext({
     subjectUserId: slackUserId,
-    userToken: resolveUserToken(slackUserId),
+    userToken: await resolveUserToken(slackUserId),
     container,
   });
 }
@@ -89,11 +85,12 @@ function contextFor(slackUserId: string) {
  * opening a tab must never act on the user's behalf. */
 async function publishHome(client: any, userId: string, opts: { showOnboarding?: boolean } = {}) {
   try {
-    const ctx = contextFor(userId);
+    const ctx = await contextFor(userId);
     // Passive refresh on tab open — don't count it toward the user's KPIs.
-    const [triage, commitments] = await Promise.all([
+    const [triage, commitments, metrics] = await Promise.all([
       tempoRespond(ctx, "what needs me today?", { record: false }),
       tempoRespond(ctx, "show my commitments", { record: false }),
+      getStore().metrics.get(userId),
     ]);
     await client.views.publish({
       user_id: userId,
@@ -104,7 +101,7 @@ async function publishHome(client: any, userId: string, opts: { showOnboarding?:
           ...homeDashboardBlocks({
             triage: triage.blocks,
             commitments: commitments.blocks,
-            metrics: getMetrics(userId),
+            metrics,
             surfaces: { canvas: flags.canvas, lists: flags.lists },
           }),
         ] as any,
@@ -125,7 +122,7 @@ export function registerHandlers(app: BoltApp) {
   const assistant = new Assistant({
     threadStarted: async ({ event, say, setSuggestedPrompts }) => {
       const userId = event.assistant_thread?.user_id ?? "U_SAM";
-      const welcome = welcomeMessage(isFirstRun(getPrefs(userId)));
+      const welcome = welcomeMessage(isFirstRun(await getStore().prefs.get(userId)));
       await say(welcome.text);
       await setSuggestedPrompts({ title: "Start here", prompts: welcome.prompts });
     },
@@ -134,7 +131,7 @@ export function registerHandlers(app: BoltApp) {
       const userId = (message as any).user ?? "U_SAM";
       await setStatus("is thinking…");
       try {
-        const res = await tempoRespond(contextFor(userId), text);
+        const res = await tempoRespond(await contextFor(userId), text);
         await say({ text: res.text, blocks: res.blocks as any });
         await maybeSendReadAloud(client, userId, res.speech);
       } catch (err) {
@@ -151,7 +148,7 @@ export function registerHandlers(app: BoltApp) {
       "/tempo",
       async () => {
         const text = command.text?.trim() || "triage";
-        const res = await tempoRespond(contextFor(command.user_id), text);
+        const res = await tempoRespond(await contextFor(command.user_id), text);
         await respond({ response_type: "ephemeral", text: res.text, blocks: res.blocks as any });
         await maybeSendReadAloud(client, command.user_id, res.speech);
       },
@@ -164,7 +161,7 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "app_mention",
       async () => {
-        const res = await tempoRespond(contextFor(userId), (event as any).text ?? "triage");
+        const res = await tempoRespond(await contextFor(userId), (event as any).text ?? "triage");
         await say({ text: res.text, blocks: res.blocks as any, thread_ts: (event as any).ts });
         await maybeSendReadAloud(client, userId, res.speech);
       },
@@ -175,15 +172,15 @@ export function registerHandlers(app: BoltApp) {
   app.event("app_home_opened", async ({ event, client }) => {
     const userId = (event as any).user ?? "U_SAM";
     // publishHome has its own fallback view, so no extra recovery needed here.
-    await safely("app_home_opened", () =>
-      publishHome(client, userId, { showOnboarding: isFirstRun(getPrefs(userId)) }),
+    await safely("app_home_opened", async () =>
+      publishHome(client, userId, { showOnboarding: isFirstRun(await getStore().prefs.get(userId)) }),
     );
   });
 
   app.action("complete_onboarding", async ({ ack, body, client }) => {
     await ack();
     const userId = (body as any)?.user?.id ?? "U_SAM";
-    savePrefs(userId, { onboardedAt: Math.floor(Date.now() / 1000) });
+    await getStore().prefs.save(userId, { onboardedAt: Math.floor(Date.now() / 1000) });
     // Re-publish immediately so the banner disappears without requiring a
     // tab close/reopen.
     await publishHome(client, userId);
@@ -194,7 +191,7 @@ export function registerHandlers(app: BoltApp) {
     const userId = (body as any)?.user?.id ?? "U_SAM";
     const triggerId = (body as any)?.trigger_id;
     if (!triggerId) return;
-    const stored = getPrefs(userId);
+    const stored = await getStore().prefs.get(userId);
     const a11y = resolveA11yPrefs(stored);
     const view = settingsModalView({ ...a11y, focusDefaultMins: stored?.focusDefaultMins });
     await client.views.open({ trigger_id: triggerId, view });
@@ -203,7 +200,7 @@ export function registerHandlers(app: BoltApp) {
   app.view("settings_modal", async ({ ack, body, view }) => {
     await ack();
     const userId = (body as any)?.user?.id ?? "U_SAM";
-    savePrefs(userId, parseSettingsSubmission(view));
+    await getStore().prefs.save(userId, parseSettingsSubmission(view));
   });
 
   app.action("show_rest", async ({ ack, body, client }) => {
@@ -212,7 +209,7 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "show_rest",
       async () => {
-        const res = await triageAll(contextFor(userId));
+        const res = await triageAll(await contextFor(userId));
         await ephemeral(client, body, res.text, res.blocks as any);
         await maybeSendReadAloud(client, userId, res.speech);
       },
@@ -234,8 +231,8 @@ export function registerHandlers(app: BoltApp) {
     await safely("snooze", async () => {
       const { permalink, userId } = actionTarget(body);
       if (permalink) {
-        snoozeItem(userId, permalink, Math.floor(Date.now() / 1000) + DEFAULT_SNOOZE_SECS);
-        recordMetrics(userId, { itemsRecovered: 1 });
+        await getStore().snoozes.snooze(userId, permalink, Math.floor(Date.now() / 1000) + DEFAULT_SNOOZE_SECS);
+        await getStore().metrics.record(userId, { itemsRecovered: 1 });
       }
       await ephemeral(client, body, confirmation("snooze"));
     }, () => replyError(client, body));
@@ -246,8 +243,8 @@ export function registerHandlers(app: BoltApp) {
     await safely("mark_done", async () => {
       const { permalink, userId } = actionTarget(body);
       if (permalink) {
-        markItemDone(userId, permalink);
-        recordMetrics(userId, { itemsRecovered: 1 });
+        await getStore().snoozes.markDone(userId, permalink);
+        await getStore().metrics.record(userId, { itemsRecovered: 1 });
       }
       await ephemeral(client, body, confirmation("mark_done"));
     }, () => replyError(client, body));
@@ -257,12 +254,12 @@ export function registerHandlers(app: BoltApp) {
     await ack();
     await safely("nudge", async () => {
       const { permalink, userId } = actionTarget(body);
-      const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+      const c = permalink ? await getStore().commitments.getByPermalink(userId, permalink) : undefined;
       if (!c) {
         await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
         return;
       }
-      markNudged(userId, permalink);
+      await getStore().commitments.markNudged(userId, permalink);
       const draft = await draftNudge(c, container.llm());
       await postComposedDraft(client, body, draft);
     }, () => replyError(client, body));
@@ -272,12 +269,12 @@ export function registerHandlers(app: BoltApp) {
     await ack();
     await safely("renegotiate", async () => {
       const { permalink, userId } = actionTarget(body);
-      const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+      const c = permalink ? await getStore().commitments.getByPermalink(userId, permalink) : undefined;
       if (!c) {
         await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
         return;
       }
-      markRenegotiating(userId, permalink);
+      await getStore().commitments.markRenegotiating(userId, permalink);
       const draft = await draftRenegotiation(c, container.llm());
       await postComposedDraft(client, body, draft);
     }, () => replyError(client, body));
@@ -300,7 +297,7 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "refresh_canvas",
       async () => {
-        const res = await updateCanvas(contextFor(userId));
+        const res = await updateCanvas(await contextFor(userId));
         await ephemeral(
           client,
           body,
@@ -319,7 +316,7 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "sync_ledger_list",
       async () => {
-        const res = await syncCommitmentsToList(contextFor(userId));
+        const res = await syncCommitmentsToList(await contextFor(userId));
         await ephemeral(
           client,
           body,
@@ -342,7 +339,7 @@ export function registerHandlers(app: BoltApp) {
       "remind_commitment",
       async () => {
         const { permalink, userId } = actionTarget(body);
-        const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+        const c = permalink ? await getStore().commitments.getByPermalink(userId, permalink) : undefined;
         if (!c) {
           await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
           return;
@@ -351,7 +348,7 @@ export function registerHandlers(app: BoltApp) {
         // ahead; otherwise a gentle default of 3 hours from now.
         const now = Math.floor(Date.now() / 1000);
         const time = c.dueTs && c.dueTs - 3600 > now ? c.dueTs - 3600 : now + 3 * 3600;
-        const res = await remindAboutCommitment(contextFor(userId), {
+        const res = await remindAboutCommitment(await contextFor(userId), {
           what: c.what,
           counterparty: c.counterparty,
           direction: c.direction,
@@ -418,7 +415,7 @@ function actionTarget(body: any): { permalink: string; userId: string } {
 
 async function postDraft(client: any, body: any) {
   const { permalink, userId } = actionTarget(body);
-  const ctx = contextFor(userId);
+  const ctx = await contextFor(userId);
   const source = await sourceTextFor(ctx, permalink);
   const draft = await draftReply(source ?? "", ctx.llm);
   await postComposedDraft(client, body, draft);
@@ -472,7 +469,7 @@ async function dm(client: any, userId: string, text: string, blocks?: any[]) {
  * Best-effort: a synthesis/upload failure must never break message delivery. */
 async function maybeSendReadAloud(client: any, userId: string, speech: string) {
   try {
-    if (!resolveA11yPrefs(getPrefs(userId)).readAloud) return;
+    if (!resolveA11yPrefs(await getStore().prefs.get(userId)).readAloud) return;
     const tts = await getTtsClient().synthesize({ text: speech });
     if (!tts.ok || !tts.audioBase64) return;
     const im = await client.conversations.open({ users: userId });

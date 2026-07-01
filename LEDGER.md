@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v2.2.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock
+**Current version:** v2.4.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -16,6 +16,7 @@
 - **Phase 3 / v1.8.0 — Monolith refactor:** DONE (layered Part-IV tree · ports/adapters · dependency rule).
 - **Phase 4 / v2.0.0 — Native Surfaces:** DONE (Tempo Canvas · Workflow Builder custom steps · Slack Lists sync · reminders/bookmarks · finished the hexagonal inversion).
 - **Phase 5 / v2.2.0 — Real MCP outbound:** DONE (Calendar/Notion/Linear/GitHub via `@modelcontextprotocol/sdk`, Streamable HTTP, mock default, per-client double-gate).
+- **Phase 6 / v2.4.0 — Persistence & scale:** DONE (Neon Postgres adapter behind one `Store` port · async repos threaded via the DI container · file default · schema-level + guard proof no RTS content is persisted).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -26,16 +27,27 @@ These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack 
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
-## Next up → Phase 6 / v2.4.0 "Persistence & scale"
-See `MASTER_PLAN.md` → Part V, Year 2, Phase 6 for full detail. Every store today is a file-backed JSON in `TEMPO_STORE_DIR` — fine for local Socket-Mode dev, but Vercel's deployment filesystem is read-only, so persistence doesn't survive in prod. Swap to a real DB behind the same repository interfaces:
-- [ ] **Neon Postgres** adapter — a `db/client.ts` + migrations; move `tokens`/`prefs`/`commitments`/`snoozes`/`metrics`/`surfaces` from file `load`/`save` to SQL, keeping each repo's exported function signatures identical (so app/orchestrator/tests are untouched). Gate on a `DATABASE_URL` / `TEMPO_STORE=file|postgres` seam; **file remains the default** so the zero-credential demo/tests stay green.
-- [ ] A repository port layer so the file and Postgres stores are two adapters of one interface (mirrors the RTS/MCP mock-live pattern).
-- [ ] **Assert in test that no RTS content is ever persisted** (schema-level + a guard test scanning what each repo writes) — the Invariant-1 proof, now that storage is real.
-- [ ] Carry-over (still unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/`slackLists.*`/`reminders.add`/`bookmarks.add` `apiCall`s, and the v2.2 live MCP `callTool`/transport — all against real servers.
+## Next up → Phase 7 / v2.6.0 "Web companion"
+See `MASTER_PLAN.md` → Part V, Year 2, Phase 7 for full detail. Persistence is now real (v2.4), so a companion web app can manage what's stored and honor the trust promises visibly. Build a Next.js app on Vercel (App Router, Fluid Compute) alongside the Bolt app:
+- [ ] **Settings** page — the same prefs the App Home modal writes (verbosity / reading level / max items / read-aloud / focus + DND defaults), backed by the same `PrefsRepo`, over OAuth-authenticated sessions.
+- [ ] **Privacy dashboard** — surface exactly what Tempo stores per user (tokens metadata, prefs, pinned commitments, snoozes, counts-only metrics, surface ids) and reaffirm "never any RTS content," reading straight from the `Store` ports.
+- [ ] **Data export / delete** endpoints (`api/data/{export,delete}`) — GDPR-style: dump a user's stored rows as JSON and hard-delete them; add a `deleteAllForUser`/`exportAllForUser` seam to each repo (both file + pg adapters).
+- [ ] **OAuth onboarding** flow on the web (install → connect user token → land in Slack), reusing `api/oauth/*`.
+- [ ] Carry-over (still unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/`slackLists.*`/`reminders.add`/`bookmarks.add` `apiCall`s, the v2.2 live MCP `callTool`/transport, and now the **v2.4 live Postgres `query`/transport** (`pg/connect.ts`) — `verify:postgres` exists but hasn't been run against a real Neon database.
 
 ---
 
 ## History
+
+### v2.4.0 — 2026-07-01 — Persistence & scale (Neon Postgres behind one repository port)
+**Built:** the durable-storage swap Phase 6 called for — every store now sits behind a single async `Store` port with **two adapters** (file + Postgres), selected by config, so persistence survives Vercel's read-only FS *without* changing a line of domain logic. File stays the default, so the zero-credential demo/tests are untouched.
+- **One repository port, two adapters:** new `src/ports/store.ts` defines the six async repos (`tokens`/`prefs`/`commitments`/`snoozes`/`metrics`/`surfaces`) + the `Store` bundle, and owns the data types (`UserPrefs`/`PinnedCommitment`/`Suppression`/`UserMetrics`/`SurfaceHandles`) so both adapters share one definition. The **file adapter** (`platform/persistence/file/*`, `buildFileStore()`) is the old JSON-file logic moved verbatim behind the port (one shared `jsonFile` load/save helper; `tokens` keeps AES-256-GCM + its historical hardcoded path). The **Postgres adapter** (`platform/persistence/pg/*`, `buildPgStore(db)`) implements the same port in SQL (`INSERT … ON CONFLICT` upserts, snake_case↔camelCase mapping). Shared decision rules (metrics weekly roll, commitment override-merge, suppression activeness) live once in `persistence/logic.ts` so the two adapters can't drift.
+- **SDK-isolated live driver (mirrors the v2.2 MCP discipline):** the only file touching `@neondatabase/serverless` is `pg/connect.ts` — it `await import`s the driver **lazily on the first query**, runs the idempotent migrations once, and caches the connection. Every pg repo depends only on a tiny local `Db` seam (`pg/session.ts`), so the driver is **never loaded on the file/demo/test path** and the SQL is unit-testable against a fake in-memory `Db`.
+- **Double-gated factory + DI thread:** `getStore()` (`persistence/index.ts`) returns the pg store only when `TEMPO_STORE=postgres` (auto-detected from `DATABASE_URL`) **AND** a `DATABASE_URL` is configured — else the file store (same double-gate as `getRtsClient`/`getMcpClients`). Wired through the container: `createContainer().store()` + a new `ctx.store` on `TempoContext`; the orchestrator, surfaces use-cases, App Home/actions, cron, and OAuth all read/write through `ctx.store` / `getStore()` (repos are async now, so call sites gained `await` — `contextFor` became async for the token read).
+- **Config seam:** new `config.store` (`TEMPO_STORE` + `DATABASE_URL`) in `config/env.ts` + `isPostgresStore()` in `config/modes.ts` (standalone — storage isn't a "live Slack" posture, so it doesn't feed `isLivePosture()`). `.env.example` gets a Persistence block.
+**Quality:** **169 tests** passing (up from 155) across 29 files — the file-store suites rewritten against `buildFileStore()` (the "file default stays green" proof), a new `pg/pg.test.ts` driving every pg repo against a fake `Db` (SQL + params + mapping, mirroring `mcp.test.ts`), the **Invariant-1 proof** (schema-level: the commitments DDL has no `source_text`/content column; guard: a full `sync()` of a `sourceText`-bearing commitment writes it into no column), and a factory test (default = file, cached singleton). Typecheck clean · build clean · `npm run demo` extended to **16 scenes** (a real pg round-trip via an in-memory fake `Db` — prefs + commitments — proving no content column, then proving the default resolves to file). New `scripts/verify-live-postgres.ts` (`npm run verify:postgres`) mirrors `verify:mcp`: prints "skipped" + exits 0 with no `DATABASE_URL`; with one, applies the schema and does a non-destructive write→read→delete round-trip.
+**Open seams:** the live pg `query`/transport (`pg/connect.ts`) is **contract-tested only** (fake `Db`) and **unverified against a real Neon database** — same posture as live RTS/MCP; `verify:postgres` exists to check it but hasn't been run. The pg SQL is a best-effort mapping (bigint→Number coercion, ISO nothing — all Unix-seconds); a real driver quirk would surface only on the live path. `data export/delete` seams aren't added yet (they belong to the v2.6 web companion). All prior unverified live seams (RTS/Claude field mapping, v2.0 canvases/lists/reminders/bookmarks, v2.2 MCP callTool) unchanged.
+**Next:** Phase 7 / v2.6 — Web companion (Next.js settings · privacy dashboard · data export/delete · OAuth onboarding).
 
 ### v2.2.0 — 2026-07-01 — Real MCP outbound (Calendar/Notion/Linear/GitHub via `@modelcontextprotocol/sdk`)
 **Built:** the real outbound-MCP path so the Focus Guardian *acts in the world* through a live MCP server — with **zero change to the domain**, since `focus` already depended only on the `CalendarClient`/`TaskClient` ports (`src/ports/mcp.ts`, unchanged). This was purely a new adapter + its config gate + tests.

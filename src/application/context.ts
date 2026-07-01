@@ -11,6 +11,7 @@ import { config } from "../config.js";
 import type { RtsClient } from "../platform/slack/rts/index.js";
 import { CachingRtsClient } from "../platform/slack/rts/caching.js";
 import type { LlmPort } from "../ports/ai.js";
+import type { Store } from "../ports/store.js";
 import { createContainer, type Container } from "./container.js";
 import { DEMO_NOW, SAM_LAST_ACTIVE, SUBJECT_USER_ID } from "../platform/slack/rts/fixtures.js";
 
@@ -21,6 +22,9 @@ export interface TempoContext {
   /** The composition container — how the application layer resolves the rest of
    * its outbound adapters (MCP, Slack write-actions) for this turn. */
   container: Container;
+  /** The persistence adapter (file or Postgres) for this turn — resolved once
+   * from the container so every module reads/writes through the same store. */
+  store: Store;
   nowTs: number;
   lastActiveTs: number;
   awayDays: number;
@@ -56,6 +60,7 @@ export function buildContext(opts: BuildContextOpts = {}): TempoContext {
     ),
     llm: opts.llm ?? container.llm(),
     container,
+    store: container.store(),
     nowTs,
     lastActiveTs,
     awayDays: Math.max(1, Math.round((nowTs - lastActiveTs) / (24 * 3600))),

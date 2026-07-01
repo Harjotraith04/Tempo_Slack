@@ -15,7 +15,7 @@ import type { Commitment } from "../../../modules/ledger.js";
 import type { ToneDecode, DraftCheck } from "../../../modules/decoder.js";
 import type { FocusPlan } from "../../../modules/focus.js";
 import type { ReentryBrief } from "../../../modules/reentry.js";
-import type { UserMetrics } from "../../../platform/persistence/metrics.js";
+import type { UserMetrics } from "../../../ports/store.js";
 
 const CAT_LABEL: Record<TriageItem["category"], string> = {
   ACT: "Needs a reply",

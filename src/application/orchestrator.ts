@@ -15,11 +15,8 @@ import { decodeMessage } from "../modules/decoder.js";
 import { runReentry } from "../modules/reentry.js";
 import { planFocusBlock } from "../modules/focus.js";
 // The application layer wires outbound adapters to the ports the domain modules
-// declare; the per-turn container (on ctx) resolves mock/live by config.
-import { isSuppressed } from "../platform/persistence/snoozes.js";
-import { syncCommitments } from "../platform/persistence/commitments.js";
-import { getPrefs } from "../platform/persistence/prefs.js";
-import { recordMetrics } from "../platform/persistence/metrics.js";
+// declare; the per-turn container (on ctx) resolves mock/live by config, and
+// ctx.store is the resolved persistence adapter (file or Postgres).
 import {
   triageBlocks,
   ledgerBlocks,
@@ -64,7 +61,7 @@ export async function respond(
   input: string,
   opts: RespondOpts = {},
 ): Promise<TempoResponse> {
-  const a11y = resolveA11yPrefs(getPrefs(ctx.subjectUserId));
+  const a11y = resolveA11yPrefs(await ctx.store.prefs.get(ctx.subjectUserId));
   const r = await respondCore(ctx, input, opts.record ?? true);
   const text = applyReadingLevel(condense(r.text, a11y.verbosity), a11y.readingLevel);
   return { ...r, text, speech: toSpeech({ intent: r.intent, text }) };
@@ -73,9 +70,12 @@ export async function respond(
 /** Filters out anything the user snoozed/marked done, the way every triage render must. */
 async function liveTriage(ctx: TempoContext) {
   const raw = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
+  const suppressed = new Set(
+    (await ctx.store.snoozes.active(ctx.subjectUserId, ctx.nowTs)).map((s) => s.permalink),
+  );
   return {
     ...raw,
-    needsYou: raw.needsYou.filter((i) => !isSuppressed(ctx.subjectUserId, i.permalink, ctx.nowTs)),
+    needsYou: raw.needsYou.filter((i) => !suppressed.has(i.permalink)),
   };
 }
 
@@ -101,14 +101,14 @@ async function respondCore(
 ): Promise<Omit<TempoResponse, "speech">> {
   const intent = routeIntent(input);
   const after = afterTsOf(ctx);
-  const prefs = getPrefs(ctx.subjectUserId);
+  const prefs = await ctx.store.prefs.get(ctx.subjectUserId);
   const a11y = resolveA11yPrefs(prefs);
 
   switch (intent) {
     case "triage": {
       const r = await liveTriage(ctx);
       const top = r.needsYou.slice(0, a11y.maxItems);
-      if (record) recordMetrics(ctx.subjectUserId, { messagesTriaged: r.scanned });
+      if (record) await ctx.store.metrics.record(ctx.subjectUserId, { messagesTriaged: r.scanned });
       return {
         intent,
         text: top.length
@@ -120,8 +120,8 @@ async function respondCore(
     }
     case "commitments": {
       const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
-      const c = syncCommitments(ctx.subjectUserId, fresh);
-      if (record) recordMetrics(ctx.subjectUserId, { obligationsSurfaced: c.length });
+      const c = await ctx.store.commitments.sync(ctx.subjectUserId, fresh);
+      if (record) await ctx.store.metrics.record(ctx.subjectUserId, { obligationsSurfaced: c.length });
       return {
         intent,
         text:
@@ -147,7 +147,7 @@ async function respondCore(
         mcp: ctx.container.mcp(),
         slack: ctx.container.slackActions({ userToken: ctx.userToken }),
       });
-      if (record) recordMetrics(ctx.subjectUserId, { focusMinutesProtected: mins });
+      if (record) await ctx.store.metrics.record(ctx.subjectUserId, { focusMinutesProtected: mins });
       return { intent, text: p.summary, blocks: focusBlocks(p) };
     }
     case "decode": {

@@ -12,13 +12,6 @@
 import { afterTsOf, type TempoContext } from "../context.js";
 import { runTriage, type TriageResult } from "../../modules/triage.js";
 import { runLedger, type Commitment } from "../../modules/ledger.js";
-import { syncCommitments } from "../../platform/persistence/commitments.js";
-import { isSuppressed } from "../../platform/persistence/snoozes.js";
-import {
-  getCanvasId,
-  getListId,
-  saveSurfaceHandles,
-} from "../../platform/persistence/surfaces.js";
 import { buildCanvasMarkdown } from "../../platform/slack/blockkit/canvas.js";
 import type { ListItem } from "../../ports/slack.js";
 
@@ -26,16 +19,19 @@ import type { ListItem } from "../../ports/slack.js";
  * the canvas never shows something the user already snoozed/marked done. */
 async function liveTriage(ctx: TempoContext): Promise<TriageResult> {
   const raw = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
+  const suppressed = new Set(
+    (await ctx.store.snoozes.active(ctx.subjectUserId, ctx.nowTs)).map((s) => s.permalink),
+  );
   return {
     ...raw,
-    needsYou: raw.needsYou.filter((i) => !isSuppressed(ctx.subjectUserId, i.permalink, ctx.nowTs)),
+    needsYou: raw.needsYou.filter((i) => !suppressed.has(i.permalink)),
   };
 }
 
 /** Live commitments with the user's local overrides (renegotiating/done) layered on. */
 async function liveCommitments(ctx: TempoContext): Promise<Commitment[]> {
   const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
-  return syncCommitments(ctx.subjectUserId, fresh);
+  return ctx.store.commitments.sync(ctx.subjectUserId, fresh);
 }
 
 export interface UpdateCanvasResult {
@@ -60,14 +56,14 @@ export async function updateCanvas(
     commitments,
     maxItems: opts.maxItems,
   });
-  const existing = getCanvasId(ctx.subjectUserId);
+  const existing = await ctx.store.surfaces.getCanvasId(ctx.subjectUserId);
   const slack = ctx.container.slackActions({ userToken: ctx.userToken });
   const res = await slack.upsertCanvas({
     canvasId: existing,
     title: `Tempo — ${ctx.subjectName}`,
     markdown,
   });
-  if (res.ok && res.canvasId) saveSurfaceHandles(ctx.subjectUserId, { canvasId: res.canvasId });
+  if (res.ok && res.canvasId) await ctx.store.surfaces.save(ctx.subjectUserId, { canvasId: res.canvasId });
   return { ok: res.ok, canvasId: res.canvasId, markdown, created: !existing };
 }
 
@@ -97,14 +93,14 @@ export interface SyncListUseCaseResult {
 export async function syncCommitmentsToList(ctx: TempoContext): Promise<SyncListUseCaseResult> {
   const commitments = await liveCommitments(ctx);
   const items = commitmentsToListItems(commitments);
-  const existing = getListId(ctx.subjectUserId);
+  const existing = await ctx.store.surfaces.getListId(ctx.subjectUserId);
   const slack = ctx.container.slackActions({ userToken: ctx.userToken });
   const res = await slack.syncListItems({
     listId: existing,
     title: `${ctx.subjectName}'s commitments (Tempo)`,
     items,
   });
-  if (res.ok && res.listId) saveSurfaceHandles(ctx.subjectUserId, { listId: res.listId });
+  if (res.ok && res.listId) await ctx.store.surfaces.save(ctx.subjectUserId, { listId: res.listId });
   return { ok: res.ok, listId: res.listId, itemsWritten: res.itemsWritten, count: items.length };
 }
 
@@ -124,7 +120,7 @@ export async function bookmarkCanvas(
   ctx: TempoContext,
   opts: { channelId: string },
 ): Promise<{ ok: boolean; bookmarkId?: string }> {
-  const canvasId = getCanvasId(ctx.subjectUserId);
+  const canvasId = await ctx.store.surfaces.getCanvasId(ctx.subjectUserId);
   // Best-effort deep link to the canvas (opaque in mock; the real URL format is
   // resolved by Slack when the canvas is created live).
   const link = canvasId ? `https://slack.com/canvas/${canvasId}` : "https://slack.com/app_redirect?app=tempo";

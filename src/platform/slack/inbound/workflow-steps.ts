@@ -22,7 +22,7 @@ type BoltApp = InstanceType<typeof App>;
 
 export interface WorkflowStepDeps {
   /** Build a per-user context (shares the inbound layer's container + token store). */
-  contextFor: (userId: string) => TempoContext;
+  contextFor: (userId: string) => Promise<TempoContext>;
   /** The same calm error-guard the rest of the handlers use. */
   safely: (label: string, work: () => Promise<unknown>, recover?: () => Promise<unknown>) => Promise<void>;
   /** Calm failure copy. */
@@ -37,7 +37,7 @@ export function registerWorkflowSteps(app: BoltApp, deps: WorkflowStepDeps): voi
     await safely(
       "fn:summarize_missed",
       async () => {
-        const res = await respond(contextFor(userOf(inputs)), "catch me up on what I missed");
+        const res = await respond(await contextFor(userOf(inputs)), "catch me up on what I missed");
         await complete({ outputs: { summary: res.text } });
       },
       () => fail({ error: snag }),
@@ -48,7 +48,7 @@ export function registerWorkflowSteps(app: BoltApp, deps: WorkflowStepDeps): voi
     await safely(
       "fn:draft_reply",
       async () => {
-        const ctx = contextFor(userOf(inputs));
+        const ctx = await contextFor(userOf(inputs));
         const message = String((inputs as any)?.message ?? "");
         const draft = await draftReply(message, ctx.llm);
         await complete({ outputs: { draft } });
@@ -62,7 +62,7 @@ export function registerWorkflowSteps(app: BoltApp, deps: WorkflowStepDeps): voi
       "fn:block_focus",
       async () => {
         const minutes = Number((inputs as any)?.minutes) || 90;
-        const res = await respond(contextFor(userOf(inputs)), `block ${minutes} min of focus time`);
+        const res = await respond(await contextFor(userOf(inputs)), `block ${minutes} min of focus time`);
         await complete({ outputs: { summary: res.text } });
       },
       () => fail({ error: snag }),
@@ -78,7 +78,7 @@ export function registerWorkflowSteps(app: BoltApp, deps: WorkflowStepDeps): voi
         // Track it with a native reminder a day out (the closest real effect to
         // "adding" a commitment, since the Ledger itself is rebuilt live from RTS).
         const time = Math.floor(Date.now() / 1000) + 24 * 3600;
-        const r = await remindAboutCommitment(contextFor(userOf(inputs)), {
+        const r = await remindAboutCommitment(await contextFor(userOf(inputs)), {
           what,
           counterparty,
           direction: "i_owe",

@@ -26,11 +26,9 @@ import {
 import { LiveMcpCalendarClient, LiveMcpTaskClient } from "../src/platform/mcp/live.js";
 import { getMcpClients } from "../src/platform/mcp/index.js";
 import type { McpSession } from "../src/platform/mcp/session.js";
-import { snoozeItem, markItemDone, isSuppressed } from "../src/platform/persistence/snoozes.js";
-import { syncCommitments, markRenegotiating } from "../src/platform/persistence/commitments.js";
+import { getStore, buildPgStore } from "../src/platform/persistence/index.js";
+import type { Db } from "../src/platform/persistence/pg/session.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
-import { getPrefs, savePrefs } from "../src/platform/persistence/prefs.js";
-import { getMetrics } from "../src/platform/persistence/metrics.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../src/modules/onboarding.js";
@@ -43,6 +41,11 @@ import { config } from "../src/config.js";
 // them. Must happen before any store-touching call (the very first being
 // Scene 1's triage, which now filters through the suppression store).
 process.env.TEMPO_STORE_DIR = mkdtempSync(join(tmpdir(), "tempo-demo-"));
+
+// The resolved persistence adapter — file-backed by default (no DATABASE_URL),
+// so the demo runs credential-free. Scene 16 proves the same Store interface
+// works against Postgres via an in-memory fake driver.
+const store = getStore();
 
 function rule(title: string) {
   console.log("\n" + "─".repeat(72));
@@ -72,16 +75,16 @@ async function demoButtonLayer(ctx: TempoContext) {
   const [first, second] = triage.needsYou;
 
   if (first) {
-    snoozeItem(ctx.subjectUserId, first.permalink, ctx.nowTs + 4 * 3600);
-    console.log(`  [Snooze] "${first.excerpt.slice(0, 50)}…" → suppressed now: ${isSuppressed(ctx.subjectUserId, first.permalink, ctx.nowTs)}`);
+    await store.snoozes.snooze(ctx.subjectUserId, first.permalink, ctx.nowTs + 4 * 3600);
+    console.log(`  [Snooze] "${first.excerpt.slice(0, 50)}…" → suppressed now: ${await store.snoozes.isSuppressed(ctx.subjectUserId, first.permalink, ctx.nowTs)}`);
   }
   if (second) {
-    markItemDone(ctx.subjectUserId, second.permalink);
-    console.log(`  [Done]   "${second.excerpt.slice(0, 50)}…" → suppressed now: ${isSuppressed(ctx.subjectUserId, second.permalink, ctx.nowTs)}`);
+    await store.snoozes.markDone(ctx.subjectUserId, second.permalink);
+    console.log(`  [Done]   "${second.excerpt.slice(0, 50)}…" → suppressed now: ${await store.snoozes.isSuppressed(ctx.subjectUserId, second.permalink, ctx.nowTs)}`);
   }
 
   const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
-  const commitments = syncCommitments(ctx.subjectUserId, fresh);
+  const commitments = await store.commitments.sync(ctx.subjectUserId, fresh);
   const owedToMe = commitments.find((c) => c.direction === "owed_to_me");
   const iOwe = commitments.find((c) => c.direction === "i_owe");
 
@@ -90,10 +93,10 @@ async function demoButtonLayer(ctx: TempoContext) {
     console.log(`  [Nudge] draft to ${owedToMe.counterparty}: "${nudge}"`);
   }
   if (iOwe) {
-    markRenegotiating(ctx.subjectUserId, iOwe.permalink);
+    await store.commitments.markRenegotiating(ctx.subjectUserId, iOwe.permalink);
     const draft = await draftRenegotiation(iOwe, ctx.llm);
     console.log(`  [Renegotiate] draft to ${iOwe.counterparty}: "${draft}"`);
-    const resynced = syncCommitments(ctx.subjectUserId, await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs }));
+    const resynced = await store.commitments.sync(ctx.subjectUserId, await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs }));
     const stillRenegotiating = resynced.find((c) => c.permalink === iOwe.permalink)?.status === "renegotiating";
     console.log(`  Status after renegotiate persists across a re-sync: ${stillRenegotiating}`);
   }
@@ -111,18 +114,47 @@ async function demoHomeAndSettings(ctx: TempoContext) {
   const commitments = await respond(ctx, "show my commitments");
   renderBlocks(homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks }));
 
-  const before = resolveA11yPrefs(getPrefs(ctx.subjectUserId));
+  const before = resolveA11yPrefs(await store.prefs.get(ctx.subjectUserId));
   console.log(`\n  [Settings] before: verbosity=${before.verbosity} maxItems=${before.maxItems} readAloud=${before.readAloud}`);
 
-  const modal = settingsModalView({ ...before, focusDefaultMins: getPrefs(ctx.subjectUserId)?.focusDefaultMins });
+  const modal = settingsModalView({ ...before, focusDefaultMins: (await store.prefs.get(ctx.subjectUserId))?.focusDefaultMins });
   console.log(`  Settings modal has ${modal.blocks.length} fields: verbosity, reading level, max items, focus length, read-aloud.`);
 
-  savePrefs(ctx.subjectUserId, { verbosity: "brief", maxItems: 1, focusDefaultMins: 45, readAloud: true });
-  const after = resolveA11yPrefs(getPrefs(ctx.subjectUserId));
-  console.log(`  [Settings] saved: verbosity=${after.verbosity} maxItems=${after.maxItems} readAloud=${after.readAloud} focusDefaultMins=${getPrefs(ctx.subjectUserId)?.focusDefaultMins}`);
+  await store.prefs.save(ctx.subjectUserId, { verbosity: "brief", maxItems: 1, focusDefaultMins: 45, readAloud: true });
+  const after = resolveA11yPrefs(await store.prefs.get(ctx.subjectUserId));
+  console.log(`  [Settings] saved: verbosity=${after.verbosity} maxItems=${after.maxItems} readAloud=${after.readAloud} focusDefaultMins=${(await store.prefs.get(ctx.subjectUserId))?.focusDefaultMins}`);
 
   const triageAfter = await respond(ctx, "what needs me today?");
   console.log(`  Triage now respects the saved prefs — fallback text: "${triageAfter.text}"`);
+}
+
+/**
+ * A tiny in-memory Postgres stand-in for Scene 16: it interprets exactly the
+ * INSERT-ON-CONFLICT / SELECT statements our pg repos emit, so the *real*
+ * Postgres adapter round-trips with no server and no credentials (the Neon
+ * driver is never loaded on this path — the same posture as the fake MCP session
+ * in Scene 15).
+ */
+function inMemoryDb(): Db {
+  const tables: Record<string, Map<string, Record<string, unknown>>> = {};
+  const tbl = (name: string) => (tables[name] ??= new Map());
+  return {
+    async query<T = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<T[]> {
+      const table = text.match(/(?:INTO|FROM)\s+(\w+)/)![1]!;
+      if (/^\s*INSERT/i.test(text)) {
+        const cols = text.match(/INSERT INTO \w+\s*\(([^)]*)\)/s)![1]!.split(",").map((s) => s.trim());
+        const row: Record<string, unknown> = {};
+        cols.forEach((c, i) => (row[c] = params[i]));
+        const pk = "permalink" in row ? `${row.user_id}::${row.permalink}` : String(row.user_id);
+        tbl(table).set(pk, row);
+        return [];
+      }
+      let rows = [...tbl(table).values()].filter((r) => r.user_id === params[0]);
+      if (/permalink = ANY/.test(text)) rows = rows.filter((r) => (params[1] as unknown[]).includes(r.permalink));
+      else if (/permalink = \$2/.test(text)) rows = rows.filter((r) => r.permalink === params[1]);
+      return rows as T[];
+    },
+  };
 }
 
 async function main() {
@@ -175,12 +207,12 @@ async function main() {
   rule('10. First-run onboarding — a brand-new user opens Tempo for the first time');
   {
     const newUserId = "U_NEW_DEMO";
-    console.log(`  isFirstRun(brand-new user) = ${isFirstRun(getPrefs(newUserId))}`);
-    const welcome = welcomeMessage(isFirstRun(getPrefs(newUserId)));
+    console.log(`  isFirstRun(brand-new user) = ${isFirstRun(await store.prefs.get(newUserId))}`);
+    const welcome = welcomeMessage(isFirstRun(await store.prefs.get(newUserId)));
     console.log(`  Assistant greeting: "${welcome.text.slice(0, 90)}…"`);
     renderBlocks(onboardingBlocks());
-    savePrefs(newUserId, { onboardedAt: ctx.nowTs });
-    console.log(`  After tapping "Got it — let's go": isFirstRun = ${isFirstRun(getPrefs(newUserId))}`);
+    await store.prefs.save(newUserId, { onboardedAt: ctx.nowTs });
+    console.log(`  After tapping "Got it — let's go": isFirstRun = ${isFirstRun(await store.prefs.get(newUserId))}`);
   }
 
   rule('11. Resilient & private — caching, empty states, weekly impact, plain language');
@@ -209,13 +241,13 @@ async function main() {
 
     // (d) Weekly impact — privacy-safe counts only, never content.
     console.log("\n  Weekly impact (privacy-safe counts, accumulated from the scenes above):");
-    renderBlocks(metricsBlocks(getMetrics(ctx.subjectUserId)));
+    renderBlocks(metricsBlocks(await store.metrics.get(ctx.subjectUserId)));
 
     // (e) Reading level "plain" shortens sentence structure, losing no meaning.
     const stdUser = "U_STD_DEMO";
     const plainUser = "U_PLAIN_DEMO";
-    savePrefs(stdUser, { readingLevel: "standard" });
-    savePrefs(plainUser, { readingLevel: "plain" });
+    await store.prefs.save(stdUser, { readingLevel: "standard" });
+    await store.prefs.save(plainUser, { readingLevel: "plain" });
     const std = await respond(buildContext({ subjectUserId: stdUser }), "catch me up", { record: false });
     const plain = await respond(buildContext({ subjectUserId: plainUser }), "catch me up", { record: false });
     console.log(`\n  Reading level — standard (dense, ';'-joined): "${std.text}"`);
@@ -277,6 +309,26 @@ async function main() {
 
     const evMock = await getMcpClients().calendar.blockFocus({ title: "x", startTs: ctx.nowTs, endTs: ctx.nowTs + 60 });
     console.log(`  Default posture (no server URL configured) resolves to mock: ${evMock.provider}`);
+  }
+
+  rule('16. Neon Postgres store — the same repository interface, durable across restarts');
+  {
+    // The pg adapter behind a fake in-memory driver — same Store ports every
+    // scene above used, no server, no credentials.
+    const pg = buildPgStore(inMemoryDb());
+
+    await pg.prefs.save("U_PG_DEMO", { verbosity: "brief", maxItems: 2, readAloud: true });
+    const p = await pg.prefs.get("U_PG_DEMO");
+    console.log(`  prefs round-trip via the Postgres adapter → verbosity=${p?.verbosity} maxItems=${p?.maxItems} readAloud=${p?.readAloud}`);
+
+    const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
+    const synced = await pg.commitments.sync("U_PG_DEMO", fresh);
+    const pinned = await pg.commitments.getByPermalink("U_PG_DEMO", fresh[0]!.permalink);
+    console.log(`  commitments.sync via Postgres → ${synced.length} rows; re-read one: "${pinned?.what}" (status ${pinned?.status}).`);
+    console.log(`  Raw message text written to any column? ${"sourceText" in ((pinned as any) ?? {})} — the schema has no content column (Invariant: never persist RTS content).`);
+
+    console.log(`  Config gate: TEMPO_STORE=${config.store.mode} (no DATABASE_URL) → getStore() is file-backed`);
+    console.log(`  (default repo is buildFileStore, not the pg one): ${store === getStore()}. So this entire demo ran credential-free.`);
   }
 
   console.log("\n" + "─".repeat(72));

@@ -23,17 +23,20 @@ import { buildContext } from "../../src/application/context.js";
 import { respond } from "../../src/application/orchestrator.js";
 import { updateCanvas } from "../../src/application/use-cases/surfaces.js";
 import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
-import { listInstalledUsers, getUserToken } from "../../src/platform/persistence/tokens.js";
+import { getStore } from "../../src/platform/persistence/index.js";
 
 interface DigestTarget {
   userId: string;
   token: string | undefined;
 }
 
-function targets(): DigestTarget[] {
-  const installed = listInstalledUsers();
+async function targets(): Promise<DigestTarget[]> {
+  const store = getStore();
+  const installed = await store.tokens.list();
   if (installed.length) {
-    return installed.map((u) => ({ userId: u.userId, token: getUserToken(u.userId) }));
+    return Promise.all(
+      installed.map(async (u) => ({ userId: u.userId, token: await store.tokens.get(u.userId) })),
+    );
   }
   return config.slack.userToken ? [{ userId: SUBJECT_USER_ID, token: config.slack.userToken }] : [];
 }
@@ -76,7 +79,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
 
-  const list = targets();
+  const list = await targets();
   let succeeded = 0;
   let failed = 0;
 

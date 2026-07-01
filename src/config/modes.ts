@@ -25,6 +25,11 @@ export const isLiveSlackActions = () => config.runtime.slackActions === "live";
 export const isLiveTts = () => config.tts.mode === "live";
 export const isLiveMcp = () => config.mcp.mode === "live";
 
+/** Persistence posture. Storage isn't a "live Slack" posture, so it stays a
+ * standalone predicate and does NOT feed isLivePosture(). The factory still
+ * double-gates on a configured DATABASE_URL (see platform/persistence). */
+export const isPostgresStore = () => config.store.mode === "postgres";
+
 /** The dev fallback in `req("TEMPO_ENCRYPTION_KEY", ...)` — safe for local mock
  * work and tests, never for anything touching a real workspace. */
 export const INSECURE_DEFAULT_KEY = "dev-insecure-key-change-me-please";

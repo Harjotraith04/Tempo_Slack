@@ -5,7 +5,7 @@
  * `onboardingBlocks()` into the App Home banner.
  */
 
-import type { UserPrefs } from "../../platform/persistence/prefs.js";
+import type { UserPrefs } from "../../ports/store.js";
 
 /** True until the user has tapped through (or otherwise completed) onboarding. */
 export function isFirstRun(prefs: UserPrefs | undefined): boolean {

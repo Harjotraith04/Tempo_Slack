@@ -17,7 +17,6 @@ afterAll(() => {
 
 const { buildContext } = await import("./context.js");
 const { respond, triageAll } = await import("./orchestrator.js");
-const { savePrefs } = await import("../platform/persistence/prefs.js");
 
 function actionsBlocks(blocks: any[]): any[] {
   return blocks.filter((b) => b.type === "actions");
@@ -26,7 +25,7 @@ function actionsBlocks(blocks: any[]): any[] {
 describe("orchestrator + per-user prefs", () => {
   it("triage respects a saved maxItems instead of the hardcoded default of 3", async () => {
     const ctx = buildContext({ subjectUserId: "U_MAXITEMS", subjectName: "Sam" });
-    savePrefs(ctx.subjectUserId, { maxItems: 1 });
+    await ctx.store.prefs.save(ctx.subjectUserId, { maxItems: 1 });
 
     const res = await respond(ctx, "what needs me today?");
     // One item row + (since there's more than 1 candidate in the fixtures) a "show the rest" row.
@@ -35,7 +34,7 @@ describe("orchestrator + per-user prefs", () => {
 
   it("focus uses the saved focusDefaultMins when the input doesn't specify a duration", async () => {
     const ctx = buildContext({ subjectUserId: "U_FOCUSMINS", subjectName: "Sam" });
-    savePrefs(ctx.subjectUserId, { focusDefaultMins: 45 });
+    await ctx.store.prefs.save(ctx.subjectUserId, { focusDefaultMins: 45 });
 
     const res = await respond(ctx, "block my focus time");
     expect(res.text).toContain("45 min");
@@ -43,7 +42,7 @@ describe("orchestrator + per-user prefs", () => {
 
   it("an explicit duration in the input still wins over the saved default", async () => {
     const ctx = buildContext({ subjectUserId: "U_FOCUSMINS2", subjectName: "Sam" });
-    savePrefs(ctx.subjectUserId, { focusDefaultMins: 45 });
+    await ctx.store.prefs.save(ctx.subjectUserId, { focusDefaultMins: 45 });
 
     const res = await respond(ctx, "block 20 min of focus time");
     expect(res.text).toContain("20 min");
@@ -51,7 +50,7 @@ describe("orchestrator + per-user prefs", () => {
 
   it("triageAll ignores maxItems and returns the full live list", async () => {
     const ctx = buildContext({ subjectUserId: "U_SHOWALL", subjectName: "Sam" });
-    savePrefs(ctx.subjectUserId, { maxItems: 1 });
+    await ctx.store.prefs.save(ctx.subjectUserId, { maxItems: 1 });
 
     const capped = await respond(ctx, "what needs me today?");
     const all = await triageAll(ctx);
@@ -65,7 +64,7 @@ describe("orchestrator + per-user prefs", () => {
   it("brief verbosity condenses the fallback text", async () => {
     const ctxStandard = buildContext({ subjectUserId: "U_VERBOSE_STD", subjectName: "Sam" });
     const ctxBrief = buildContext({ subjectUserId: "U_VERBOSE_BRIEF", subjectName: "Sam" });
-    savePrefs(ctxBrief.subjectUserId, { verbosity: "brief" });
+    await ctxBrief.store.prefs.save(ctxBrief.subjectUserId, { verbosity: "brief" });
 
     const standard = await respond(ctxStandard, "catch me up on what I missed");
     const brief = await respond(ctxBrief, "catch me up on what I missed");

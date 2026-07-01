@@ -13,10 +13,12 @@ import { getRtsClient, type GetRtsOpts } from "../platform/slack/rts/index.js";
 import { getLlm } from "../platform/ai/index.js";
 import { getSlackActions, type GetSlackActionsOpts } from "../platform/slack/webapi/index.js";
 import { getMcpClients } from "../platform/mcp/index.js";
+import { getStore } from "../platform/persistence/index.js";
 import type { RtsClient } from "../ports/rts.js";
 import type { LlmPort } from "../ports/ai.js";
 import type { SlackActionsClient } from "../ports/slack.js";
 import type { McpClients } from "../ports/mcp.js";
+import type { Store } from "../ports/store.js";
 
 export interface Container {
   /** Raw RTS client for a subject/token (buildContext wraps it in the cache). */
@@ -24,6 +26,8 @@ export interface Container {
   llm(): LlmPort;
   slackActions(opts?: GetSlackActionsOpts): SlackActionsClient;
   mcp(): McpClients;
+  /** The persistence adapter (file or Postgres), resolved by config. */
+  store(): Store;
 }
 
 /** Wire the concrete adapters. Each factory already resolves mock vs live by
@@ -34,5 +38,6 @@ export function createContainer(): Container {
     llm: () => getLlm(),
     slackActions: (opts = {}) => getSlackActions(opts),
     mcp: () => getMcpClients(),
+    store: () => getStore(),
   };
 }

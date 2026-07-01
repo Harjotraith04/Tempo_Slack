@@ -21,6 +21,7 @@ const { MockRtsClient } = await import("../../platform/slack/rts/mock.js");
 const { MockLlm } = await import("../../platform/ai/mock.js");
 const { getMcpClients } = await import("../../platform/mcp/index.js");
 const { getSlackActions } = await import("../../platform/slack/webapi/index.js");
+const { buildFileStore } = await import("../../platform/persistence/index.js");
 
 /** A container whose Slack write-actions is a spy wrapping the real mock, so we
  * can assert exactly what the use-case sends to the port. */
@@ -33,6 +34,7 @@ function spyContainer() {
     llm: () => new MockLlm(),
     slackActions: () => slack,
     mcp: () => getMcpClients(),
+    store: () => buildFileStore(),
   };
   return { container, upsertCanvas, syncListItems };
 }

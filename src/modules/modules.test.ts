@@ -10,7 +10,7 @@ import { runReentry } from "./reentry.js";
 import { planFocusBlock, whatBreaksThrough } from "./focus.js";
 import { runTriage } from "./triage.js";
 import { isFirstRun, welcomeMessage } from "./onboarding.js";
-import type { UserPrefs } from "../platform/persistence/prefs.js";
+import type { UserPrefs } from "../ports/store.js";
 
 const rts = new MockRtsClient();
 const llm = new MockLlm();

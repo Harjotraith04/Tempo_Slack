@@ -6,7 +6,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { WebClient } from "@slack/web-api";
 import { config } from "../../src/config.js";
-import { saveUserToken } from "../../src/platform/persistence/tokens.js";
+import { getStore } from "../../src/platform/persistence/index.js";
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const code = new URL(req.url ?? "", "http://localhost").searchParams.get("code");
@@ -29,7 +29,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const teamId: string = result.team?.id;
     const userToken: string | undefined = result.authed_user?.access_token;
 
-    if (userId && userToken) saveUserToken(userId, teamId ?? "", userToken);
+    if (userId && userToken) await getStore().tokens.save(userId, teamId ?? "", userToken);
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/html");

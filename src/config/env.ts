@@ -27,6 +27,7 @@ export type ReceiverMode = "socket" | "http";
 export type RtsMode = "mock" | "live";
 export type SlackActionsMode = "mock" | "live";
 export type McpMode = "mock" | "live";
+export type StoreMode = "file" | "postgres";
 
 export const config = {
   slack: {
@@ -80,5 +81,15 @@ export const config = {
     tasksToken: opt("TEMPO_MCP_TASKS_TOKEN"),
     tasksTool: opt("TEMPO_MCP_TASKS_TOOL") ?? "create_task",
     tasksProvider: opt("TEMPO_MCP_TASKS_PROVIDER") ?? "notion",
+  },
+  // Persistence — where tokens/prefs/commitments/snoozes/metrics/surfaces live.
+  // file = JSON files under TEMPO_STORE_DIR (default; the zero-credential
+  // demo/tests). postgres = Neon behind the same repository interfaces. File
+  // stays the default; postgres also requires DATABASE_URL to actually engage
+  // (auto-detected to postgres when DATABASE_URL is set — same convention as AI).
+  store: {
+    mode: (opt("TEMPO_STORE") ??
+      (opt("DATABASE_URL") ? "postgres" : "file")) as StoreMode,
+    databaseUrl: opt("DATABASE_URL"),
   },
 } as const;
