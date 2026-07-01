@@ -3,32 +3,23 @@
  * and the code→token exchange, reused by both the Slack-install flow
  * (`api/oauth/*`) and the web companion's "Sign in with Slack" flow (`web/`).
  *
- * Tempo runs RTS with each user's own USER token (no action_token), so the
- * authorize request asks for the six `search:read.*` user scopes plus the bot
- * scopes the assistant surfaces need.
+ * The exact scopes requested are the least-privilege, audited set declared in
+ * `scopes.ts` (the single source of truth `manifest.json` is checked against).
  */
 
 import { WebClient } from "@slack/web-api";
 import { config } from "../../../config.js";
+import { USER_SCOPES, BOT_SCOPES } from "./scopes.js";
 
-export const USER_SCOPES = [
-  "search:read.public",
-  "search:read.private",
-  "search:read.im",
-  "search:read.mpim",
-  "search:read.files",
-  "search:read.users",
-].join(",");
-
-export const BOT_SCOPES = ["assistant:write", "chat:write", "im:write", "commands", "users:read"].join(",");
+export { USER_SCOPES, BOT_SCOPES } from "./scopes.js";
 
 /** The Slack authorize URL to redirect the browser to. Pass a `state` (from
  * `newOAuthState()`) to enable CSRF protection on the callback. */
 export function buildAuthorizeUrl(redirectUri: string, state?: string): string {
   return (
     `https://slack.com/oauth/v2/authorize?client_id=${config.slack.clientId ?? ""}` +
-    `&scope=${encodeURIComponent(BOT_SCOPES)}` +
-    `&user_scope=${encodeURIComponent(USER_SCOPES)}` +
+    `&scope=${encodeURIComponent(BOT_SCOPES.join(","))}` +
+    `&user_scope=${encodeURIComponent(USER_SCOPES.join(","))}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     (state ? `&state=${encodeURIComponent(state)}` : "")
   );

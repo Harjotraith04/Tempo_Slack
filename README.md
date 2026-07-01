@@ -93,6 +93,8 @@ This is also why the **for-Good / accessibility** framing is clean: it's a *pers
 
 **Learns from you (privately).** Tempo tunes triage ranking and tone-read confidence to *you* — but it learns **only from your own taps** (snooze / mark-done / draft), stored as **counts per sender id**, never from message content. The learned weight is bounded, so it reorders near-ties without ever overriding a genuine urgent ask. Those per-sender signals appear in your data export and are erased by "Delete everything," like everything else.
 
+**Least-privilege scopes.** Every OAuth scope Tempo requests is declared and justified in one place (`src/platform/slack/oauth/scopes.ts`), and a test asserts `manifest.json` requests **exactly** that set — no more, no less. RTS runs on your own user token, scoped to what you can already see. See [`PRIVACY.md`](PRIVACY.md) and [`SECURITY.md`](SECURITY.md); the full listing package is in [`docs/marketplace-listing.md`](docs/marketplace-listing.md).
+
 ### Your data (the web companion, v2.6)
 
 A small **Next.js app under [`web/`](web/)** gives every user direct control over what Tempo has stored:

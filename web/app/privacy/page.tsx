@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUserId } from "@/lib/auth";
 import { exportUserData, getStore } from "@/lib/domain";
@@ -91,6 +92,10 @@ export default async function PrivacyPage() {
           Delete all my data
         </button>
       </form>
+
+      <p className="muted" style={{ marginTop: 24 }}>
+        <Link href="/privacy-policy">Read the full privacy policy</Link>
+      </p>
     </section>
   );
 }

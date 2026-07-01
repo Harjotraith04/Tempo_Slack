@@ -37,6 +37,8 @@ import { matchFulfillments, type Commitment } from "../src/modules/ledger.js";
 import { atRiskCommitments } from "../src/application/use-cases/surfaces.js";
 import { droppedBallBlocks } from "../src/platform/slack/blockkit/index.js";
 import type { RtsMessage } from "../src/ports/rts.js";
+import { SCOPES, USER_SCOPES, BOT_SCOPES } from "../src/platform/slack/oauth/scopes.js";
+import manifest from "../manifest.json" with { type: "json" };
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
@@ -429,6 +431,21 @@ async function main() {
 
     console.log("\n  Dropped-ball heads-up appended to the morning digest (Sam's live at-risk commitments):");
     renderBlocks(droppedBallBlocks(await atRiskCommitments(ctx)));
+  }
+
+  rule('20. Least-privilege scopes — every scope Tempo requests, why, and proof the manifest matches');
+  {
+    for (const token of ["user", "bot"] as const) {
+      const rows = SCOPES.filter((s) => s.token === token);
+      console.log(`  ${token.toUpperCase()} token — ${rows.length} scopes:`);
+      for (const s of rows) console.log(`    • ${s.scope.padEnd(22)} ${s.usedBy}`);
+    }
+    const eq = (a: string[], b: string[]) =>
+      JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+    const matches =
+      eq(manifest.oauth_config.scopes.user, USER_SCOPES) &&
+      eq(manifest.oauth_config.scopes.bot, BOT_SCOPES);
+    console.log(`  Manifest requests exactly this set — no over- or under-request: ${matches}. Marketplace-ready.`);
   }
 
   console.log("\n" + "─".repeat(72));

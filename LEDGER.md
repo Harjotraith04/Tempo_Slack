@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v2.8.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
+**Current version:** v2.9.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -19,6 +19,7 @@
 - **Phase 6 / v2.4.0 — Persistence & scale:** DONE (Neon Postgres adapter behind one `Store` port · async repos threaded via the DI container · file default · schema-level + guard proof no RTS content is persisted).
 - **Phase 7 / v2.6.0 — Web companion:** DONE (Next.js app under `web/` · privacy dashboard · data export/delete · web settings editor · signed-cookie session · all logic shared from `src/` so the root zero-cred gates stay green).
 - **Phase 8 / v2.8.0 — Intelligence:** DONE (learned per-sender urgency store keyed by authorId, blended into triage ranking + tone-decoder confidence · fed by snooze/done/draft taps · dropped-ball digest nudges · keyword commitment-fulfillment auto-close · counts-only, in the export + erasable).
+- **Phase 9 / v2.9.0 — Marketplace-readiness:** DONE *code/docs* (least-privilege scopes as a single source of truth + drift test · data-governance completeness guard · `PRIVACY.md`/`SECURITY.md` · web `/privacy-policy` page · listing package); submission logistics deferred to the owner (below).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -29,26 +30,65 @@ These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack 
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
-## Next up → Phase 9 / v2.9.0 "Marketplace"
-See `MASTER_PLAN.md` → Part V, Year 2, Phase 9. Everything is real, private, controllable, and self-tuning
-(v2.4 + v2.6 + v2.8). Now get listing-ready:
-- [ ] **Granular-scopes audit** — trim `manifest.json` + `oauth/start` to the minimum scopes actually used
-  (the manifest currently lists more user/bot scopes than the OAuth request asks for); document each.
-- [ ] **Data deletion / access / export polish** — the web companion already has export + right-to-erasure;
-  add a machine endpoint contract + a short retention/DSR note; confirm every repo's `deleteForUser` is
-  covered (tokens/prefs/commitments/snoozes/metrics/surfaces/**signals**).
-- [ ] **Privacy policy + security review** — a written policy page (reuse the privacy-dashboard copy) and a
-  pass over `security-review` findings; the encryption-key + OAuth-`state` hardening already landed.
-- [ ] **Listing assets** — description, screenshots (the 19-scene demo + the web dashboard), the impact
-  statement, and the "uses all three required techs (RTS + MCP + Slack AI)" callout.
-- [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/
-  `slackLists.*`/`reminders.add`/`bookmarks.add` `apiCall`s, the v2.2 live MCP `callTool`/transport, the
-  v2.4 live Postgres `query`/transport (`verify:postgres`), and the v2.6 web app's SSR/route-handler +
-  cookie/redirect behavior — all built/typed but unverified against a real workspace/browser.
+**Owner-only Marketplace logistics (v2.9, can't be built):** deploy the web companion + set its real OAuth
+redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active workspaces** (Slack
+Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
+`privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
+
+## Next up → Phase 10 / v3.0.0 "Tempo as an MCP server"
+See `MASTER_PLAN.md` → Part V, Year 3, Phase 10. Tempo has been an MCP *client* since v2.2; now expose it as
+an MCP *server* so Agentforce / Claude / Cursor / ChatGPT can call Tempo — turning it from an app into
+infrastructure, honoring the same trust model (acts as the initiating user; stores nothing from RTS):
+- [ ] **Inbound MCP server** — expose `tempo.triage` · `tempo.commitments` · `tempo.decode` · `tempo.focus`
+  as MCP tools over Streamable HTTP (`@modelcontextprotocol/sdk` `Server`), in a new `platform/mcp/server/`
+  (mirror the client's SDK-isolation: one file imports the SDK, lazily). Each tool composes the existing
+  domain use-case behind the orchestrator — no new reasoning.
+- [ ] **Per-tool auth** — the caller supplies (or is mapped to) a user identity + token so RTS runs as the
+  initiating user; reuse the token store. Mock server for the zero-cred demo/tests; live gated by config.
+- [ ] **`api/mcp/server.ts`** Vercel entry + a `verify:mcp-server` script (mirror `verify:mcp`).
+- [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 native-surface
+  `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, and the v2.6 web app's
+  SSR/cookie behavior — all built/typed, unverified against a real workspace/browser.
 
 ---
 
 ## History
+
+### v2.9.0 — 2026-07-02 — Marketplace-readiness: least-privilege scopes · data-governance guard · privacy/security
+**Built:** the buildable half of Marketplace prep — the engineering, tests, and docs — with the real-workspace
+logistics left to the owner (above). The flagship was a genuine bug-fix: **three scope declarations disagreed**.
+- **Scopes as one audited source of truth** (`src/platform/slack/oauth/scopes.ts`) — a declarative table (each
+  scope + its token + a plain justification + the exact method/event that needs it). `oauth/index.ts` now
+  derives `USER_SCOPES`/`BOT_SCOPES` from it, so `buildAuthorizeUrl` requests the **full correct set** —
+  fixing an **under-request bug** (the authorize URL had been omitting `dnd/profile/canvases/lists/reminders`
+  user scopes + `files:write`/`bookmarks:write`/`app_mentions:read`/`im:history` bot scopes, so every live
+  focus/canvas/list/reminder/bookmark/read-aloud call would have `missing_scope`-failed). `manifest.json` was
+  pruned of **5 over-requested** bot scopes (`users:read`, `channels:history`, `groups:history`,
+  `mpim:history`, `reactions:write`) that no call or event uses. A drift test (`scopes.test.ts`) now asserts
+  manifest === `scopes.ts` (sorted) + every scope is documented — CI catches any future divergence.
+- **Data-governance completeness guard** (`user-data.governance.test.ts`) — spies every repo of a real
+  `Store`, runs `exportUserData` + `deleteUserData`, and asserts the export **reads every** repo (and never
+  decrypts the token) while erasure **deletes every** repo. Adding a future repo without wiring it into
+  export/erasure now fails the build — the DSR guarantee enforced by a test.
+- **Privacy & security docs** — `PRIVACY.md` (a truthful, code-accurate policy: what's stored vs the hard
+  never-store-RTS rule, and access/export/delete rights) and `SECURITY.md` (AES-256-GCM tokens + the hardening
+  gate, least-privilege scopes, OAuth `state` CSRF, HttpOnly session cookie, responsible-disclosure stub).
+- **Web `/privacy-policy` page** — a public, no-auth, accessible policy page in the Next.js companion (Slack
+  Marketplace requires a reachable policy URL), linked from the landing page + the privacy dashboard.
+- **Listing package** — `docs/marketplace-listing.md` (short/long description, explicit impact statement,
+  feature list, the "uses all three required techs" callout mapped to files, screenshot beats, and the
+  submission checklist with owner-only items marked).
+**Quality:** **214 tests** passing (up from 209) across 35 files — `scopes.test.ts` (manifest↔code equality +
+doc-completeness + no duplicates) and the governance guard · typecheck clean (JSON manifest imported with a
+`with { type: "json" }` attribute for NodeNext) · root build clean · `npm run demo` extended to **20 scenes**
+(a least-privilege scopes table + a live manifest-match assertion) · the web app still builds, now with a
+statically-prerendered `/privacy-policy` route. No runtime behavior on the mock path changed — scopes matter
+only to a real authorize URL.
+**Open seams:** the corrected scopes are validated against the **code's calls**, not a real Slack install
+(same "unverified live" posture as the other live seams) — but they're now correct-by-construction and
+drift-tested. `PRIVACY.md`/listing copy is descriptive, not legal review. Owner-only logistics (10+
+workspaces, screenshots, submission, Slack's own security review, real contact addresses) remain outside code.
+**Next:** Phase 10 / v3.0 — Tempo as an MCP *server* (expose triage/commitments/decode/focus as MCP tools).
 
 ### v2.8.0 — 2026-07-02 — Intelligence: learned per-sender urgency · relationship confidence · dropped-ball · fulfillment
 **Built:** all four Phase 8 bullets — Tempo now tunes itself to *you*, learning **only from your own taps**

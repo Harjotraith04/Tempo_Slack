@@ -36,6 +36,9 @@ export default function Home() {
           </p>
         </>
       )}
+      <p className="muted" style={{ marginTop: 32 }}>
+        <Link href="/privacy-policy">Privacy policy</Link> · Tempo never stores what it reads.
+      </p>
     </section>
   );
 }

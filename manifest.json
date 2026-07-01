@@ -104,11 +104,6 @@
         "im:history",
         "commands",
         "app_mentions:read",
-        "users:read",
-        "channels:history",
-        "groups:history",
-        "mpim:history",
-        "reactions:write",
         "files:write",
         "bookmarks:write"
       ]
