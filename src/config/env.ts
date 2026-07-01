@@ -26,6 +26,7 @@ export function req(name: string, fallback?: string): string {
 export type ReceiverMode = "socket" | "http";
 export type RtsMode = "mock" | "live";
 export type SlackActionsMode = "mock" | "live";
+export type McpMode = "mock" | "live";
 
 export const config = {
   slack: {
@@ -63,5 +64,21 @@ export const config = {
     // (runs with no key). Auto-detects to "live" when OPENAI_API_KEY is set.
     mode: (opt("TEMPO_TTS") ??
       (opt("OPENAI_API_KEY") ? "live" : "mock")) as "live" | "mock",
+  },
+  // Outbound MCP — how Tempo *acts* in the world (Focus Guardian's calendar
+  // block + task). mock = deterministic, zero I/O (default). live = connect to a
+  // real MCP server over Streamable HTTP per client (Google Calendar / Notion /
+  // Linear / GitHub, whichever server URL is configured). Each client also
+  // requires its own URL to go live — a partial config leaves the other on mock.
+  mcp: {
+    mode: (opt("TEMPO_MCP") ?? "mock") as McpMode,
+    calendarUrl: opt("TEMPO_MCP_CALENDAR_URL"),
+    calendarToken: opt("TEMPO_MCP_CALENDAR_TOKEN"),
+    calendarTool: opt("TEMPO_MCP_CALENDAR_TOOL") ?? "create_event",
+    calendarProvider: opt("TEMPO_MCP_CALENDAR_PROVIDER") ?? "google-calendar",
+    tasksUrl: opt("TEMPO_MCP_TASKS_URL"),
+    tasksToken: opt("TEMPO_MCP_TASKS_TOKEN"),
+    tasksTool: opt("TEMPO_MCP_TASKS_TOOL") ?? "create_task",
+    tasksProvider: opt("TEMPO_MCP_TASKS_PROVIDER") ?? "notion",
   },
 } as const;

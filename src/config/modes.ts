@@ -23,6 +23,7 @@ export function assertSlackRuntime(): void {
 export const isLiveRts = () => config.runtime.rts === "live";
 export const isLiveSlackActions = () => config.runtime.slackActions === "live";
 export const isLiveTts = () => config.tts.mode === "live";
+export const isLiveMcp = () => config.mcp.mode === "live";
 
 /** The dev fallback in `req("TEMPO_ENCRYPTION_KEY", ...)` — safe for local mock
  * work and tests, never for anything touching a real workspace. */

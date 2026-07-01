@@ -23,6 +23,9 @@ import {
   remindAboutCommitment,
   bookmarkCanvas,
 } from "../src/application/use-cases/surfaces.js";
+import { LiveMcpCalendarClient, LiveMcpTaskClient } from "../src/platform/mcp/live.js";
+import { getMcpClients } from "../src/platform/mcp/index.js";
+import type { McpSession } from "../src/platform/mcp/session.js";
 import { snoozeItem, markItemDone, isSuppressed } from "../src/platform/persistence/snoozes.js";
 import { syncCommitments, markRenegotiating } from "../src/platform/persistence/commitments.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
@@ -251,6 +254,29 @@ async function main() {
     console.log(`  the source message text is structurally never written (Invariant: never persist RTS content).`);
     const bm = await bookmarkCanvas(ctx, { channelId: "C_TEAM" });
     console.log(`  Bookmarked the Tempo Canvas into a channel: ${bm.ok} (${bm.bookmarkId}).`);
+  }
+
+  rule('15. Real MCP outbound — Tempo acts in the world (@modelcontextprotocol/sdk)');
+  {
+    // A fake in-memory MCP session exercises the *real* live mapping path with
+    // no server and no credentials (the SDK is never loaded on this path).
+    const fakeSession = (kind: "calendar" | "tasks"): McpSession => ({
+      async callTool(name, args) {
+        console.log(`    → called MCP tool "${name}" (start/due=${args.start ?? args.due ?? "-"})`);
+        return kind === "calendar"
+          ? { structuredContent: { eventId: "evt_from_mcp_9001", htmlLink: "https://calendar.google.com/event/9001" } }
+          : { structuredContent: { taskId: "task_from_mcp_42", url: "https://notion.so/task-42" } };
+      },
+    });
+    const cal = new LiveMcpCalendarClient({ session: fakeSession("calendar"), tool: "create_event", provider: "google-calendar" });
+    const tasks = new LiveMcpTaskClient({ session: fakeSession("tasks"), tool: "create_task", provider: "notion" });
+    const event = await cal.blockFocus({ title: "Deep work", startTs: ctx.nowTs, endTs: ctx.nowTs + 3600 });
+    console.log(`  Calendar event via MCP → ${event.provider}: ${event.eventId} (${event.htmlLink})`);
+    const task = await tasks.create({ title: "Write the Atlas spec", due: ctx.nowTs + 86400 });
+    console.log(`  Task via MCP          → ${task.provider}: ${task.taskId} (${task.url})`);
+
+    const evMock = await getMcpClients().calendar.blockFocus({ title: "x", startTs: ctx.nowTs, endTs: ctx.nowTs + 60 });
+    console.log(`  Default posture (no server URL configured) resolves to mock: ${evMock.provider}`);
   }
 
   console.log("\n" + "─".repeat(72));

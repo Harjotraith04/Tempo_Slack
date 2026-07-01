@@ -11,6 +11,9 @@
  * and forward the same calls. Everything upstream is unchanged.
  */
 
+import { config, isLiveMcp } from "../../config.js";
+import { connectMcpSession } from "./connect.js";
+import { LiveMcpCalendarClient, LiveMcpTaskClient } from "./live.js";
 import type {
   CalendarBlock,
   CalendarClient,
@@ -48,17 +51,33 @@ export class MockTaskClient implements TaskClient {
   }
 }
 
-// ── REAL-MCP SEAM ────────────────────────────────────────────────────────────
-// export class McpCalendarClient implements CalendarClient {
-//   constructor(private client: import("@modelcontextprotocol/sdk/client").Client) {}
-//   async blockFocus(b: CalendarBlock): Promise<CalendarResult> {
-//     const res = await this.client.callTool({ name: "create_event", arguments: {...} });
-//     return mapToCalendarResult(res);
-//   }
-// }
+// ── Factory (double-gated per client) ────────────────────────────────────────
+// Each client goes live only when TEMPO_MCP=live AND its own server URL is
+// configured — a partial config leaves the other on mock (same double-gate as
+// getRtsClient / getSlackActions). The live session connects lazily on first
+// use, so building it here never touches the network or the SDK.
 
 export function getMcpClients(): McpClients {
-  // When real MCP servers are configured, branch here on env and return the
-  // McpCalendarClient / McpTaskClient instead.
-  return { calendar: new MockCalendarClient(), tasks: new MockTaskClient() };
+  const live = isLiveMcp();
+  const m = config.mcp;
+
+  const calendar: CalendarClient =
+    live && m.calendarUrl
+      ? new LiveMcpCalendarClient({
+          session: connectMcpSession({ url: m.calendarUrl, token: m.calendarToken, name: "tempo-calendar" }),
+          tool: m.calendarTool,
+          provider: m.calendarProvider,
+        })
+      : new MockCalendarClient();
+
+  const tasks: TaskClient =
+    live && m.tasksUrl
+      ? new LiveMcpTaskClient({
+          session: connectMcpSession({ url: m.tasksUrl, token: m.tasksToken, name: "tempo-tasks" }),
+          tool: m.tasksTool,
+          provider: m.tasksProvider,
+        })
+      : new MockTaskClient();
+
+  return { calendar, tasks };
 }

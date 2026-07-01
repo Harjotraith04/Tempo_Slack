@@ -50,7 +50,7 @@ The full pipeline ships with a seeded world ("Sam returns from a week off") and 
 ```bash
 npm install
 npm run demo      # runs the whole narrative through the real modules
-npm test          # 142 tests: RTS, the five modules, native surfaces, persistence, a11y, hardening
+npm test          # 155 tests: RTS, MCP, the five modules, native surfaces, persistence, a11y, hardening
 ```
 
 `npm run demo` prints triage, tone decode, draft check, the commitment ledger (computing "overdue" from "by Friday"), the focus block + MCP task, and the re-entry brief — exactly what renders in Slack.
@@ -77,7 +77,7 @@ npm test          # 142 tests: RTS, the five modules, native surfaces, persisten
 
 ### How each required technology is used
 - **RTS API** — `src/rts/` calls `assistant.search.context` for every read (triage candidates, commitment language, relationship history, re-entry). Live results are grounded into the model **in-memory and discarded**.
-- **MCP** — `src/mcp/` makes Tempo an MCP *client* for outward actions (calendar block, task creation). Mock by default; the real-MCP seam is marked for dropping in `@modelcontextprotocol/sdk`.
+- **MCP** — `src/platform/mcp/` makes Tempo an MCP *client* for outward actions (calendar block, task creation). **Mock by default; real via `@modelcontextprotocol/sdk`** — set `TEMPO_MCP=live` + a Streamable-HTTP server URL per client (`TEMPO_MCP_CALENDAR_URL` / `TEMPO_MCP_TASKS_URL`) to act through a real Google Calendar / Notion / Linear / GitHub MCP server. The SDK is dynamically imported, so the zero-credential path never loads it; verify a live wiring with `npm run verify:mcp`.
 - **Slack AI / Assistant** — `src/app.ts` wires the Assistant pane (suggested prompts, status), `/tempo`, App Home, and Block Kit.
 
 ---

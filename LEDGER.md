@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v2.0.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
+**Current version:** v2.2.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -15,6 +15,7 @@
 - **Phase 2 / v1.5.0 — Hardening:** DONE.
 - **Phase 3 / v1.8.0 — Monolith refactor:** DONE (layered Part-IV tree · ports/adapters · dependency rule).
 - **Phase 4 / v2.0.0 — Native Surfaces:** DONE (Tempo Canvas · Workflow Builder custom steps · Slack Lists sync · reminders/bookmarks · finished the hexagonal inversion).
+- **Phase 5 / v2.2.0 — Real MCP outbound:** DONE (Calendar/Notion/Linear/GitHub via `@modelcontextprotocol/sdk`, Streamable HTTP, mock default, per-client double-gate).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -25,16 +26,26 @@ These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack 
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
-## Next up → Phase 5 / v2.2.0 "Real MCP outbound"
-See `MASTER_PLAN.md` → Part V, Year 2, Phase 5 for full detail. The native surfaces are in; now make Tempo *act* in the world for real:
-- [ ] **Real MCP clients** — Calendar / Notion / Linear / GitHub via `@modelcontextprotocol/sdk`, behind the existing `CalendarClient`/`TaskClient` ports (`src/ports/mcp.ts`). Branch `getMcpClients()` (the "REAL-MCP SEAM" in `platform/mcp/index.ts`) on env; **mock remains the default** so the zero-credential demo/tests stay green.
-- [ ] Contract-test each real client against a mocked MCP transport (mirror `webapi/actions.test.ts`), and add a `verify-live-mcp` script (zero-cred-safe skip, like `verify-live-rts.ts`).
-- [ ] Wire real calendar/task results through the Focus Guardian's existing `FocusPlan` render; add a demo scene showing a real MCP round-trip (mocked transport).
-- [ ] Carry-over verification (still unverified live seams): live RTS/Claude field mapping and the new v2.0 `canvases.*` / `slackLists.*` / `reminders.add` / `bookmarks.add` `apiCall`s against a real workspace.
+## Next up → Phase 6 / v2.4.0 "Persistence & scale"
+See `MASTER_PLAN.md` → Part V, Year 2, Phase 6 for full detail. Every store today is a file-backed JSON in `TEMPO_STORE_DIR` — fine for local Socket-Mode dev, but Vercel's deployment filesystem is read-only, so persistence doesn't survive in prod. Swap to a real DB behind the same repository interfaces:
+- [ ] **Neon Postgres** adapter — a `db/client.ts` + migrations; move `tokens`/`prefs`/`commitments`/`snoozes`/`metrics`/`surfaces` from file `load`/`save` to SQL, keeping each repo's exported function signatures identical (so app/orchestrator/tests are untouched). Gate on a `DATABASE_URL` / `TEMPO_STORE=file|postgres` seam; **file remains the default** so the zero-credential demo/tests stay green.
+- [ ] A repository port layer so the file and Postgres stores are two adapters of one interface (mirrors the RTS/MCP mock-live pattern).
+- [ ] **Assert in test that no RTS content is ever persisted** (schema-level + a guard test scanning what each repo writes) — the Invariant-1 proof, now that storage is real.
+- [ ] Carry-over (still unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/`slackLists.*`/`reminders.add`/`bookmarks.add` `apiCall`s, and the v2.2 live MCP `callTool`/transport — all against real servers.
 
 ---
 
 ## History
+
+### v2.2.0 — 2026-07-01 — Real MCP outbound (Calendar/Notion/Linear/GitHub via `@modelcontextprotocol/sdk`)
+**Built:** the real outbound-MCP path so the Focus Guardian *acts in the world* through a live MCP server — with **zero change to the domain**, since `focus` already depended only on the `CalendarClient`/`TaskClient` ports (`src/ports/mcp.ts`, unchanged). This was purely a new adapter + its config gate + tests.
+- **SDK-isolated live adapter:** `@modelcontextprotocol/sdk@1.29` added as a dependency, but **only one file touches it** — `platform/mcp/connect.ts` `await import`s the SDK **lazily on the first tool call** and builds a `Client` + `StreamableHTTPClientTransport` (URL + optional bearer token), cached per session. The mock / demo / test paths never construct a live session, so the SDK is never loaded there — the zero-credential path can't be broken even by an SDK ESM quirk. The adapters (`platform/mcp/live.ts`: `LiveMcpCalendarClient`/`LiveMcpTaskClient`) depend only on a tiny local `McpSession` seam (`session.ts`: `callTool(name, args) → McpToolResult`), not the SDK types.
+- **Best-effort result mapping:** pure exported `mapCalendarResult`/`mapTaskResult` normalise a tool result to `CalendarResult`/`TaskResult` — prefer `structuredContent.{eventId|id|…}`/`{htmlLink|url|…}`, fall back to JSON-parsing the first text content, then to a synthesized id; an `isError` (or thrown SDK error) propagates (the focus response is wrapped by `safely()` upstream). ISO-8601 start/end/due are sent as the calendar/task lingua franca.
+- **Double-gated factory:** `getMcpClients()` (`platform/mcp/index.ts`) now returns a `LiveMcp*Client` only when `TEMPO_MCP=live` **AND** that client's own server URL is configured — a partial config leaves the other on mock (same double-gate as `getRtsClient`/`getSlackActions`). Signature unchanged, so `container.mcp()` and `focus` are untouched. New `config.mcp` block (`TEMPO_MCP` + per-client `_URL`/`_TOKEN`/`_TOOL`/`_PROVIDER`, defaulting `create_event`/`google-calendar` and `create_task`/`notion`) + `isLiveMcp()`.
+- **Verify script:** `scripts/verify-live-mcp.ts` (`npm run verify:mcp`) mirrors `verify:rts` — with no live config it prints "skipped" and exits 0; with one it connects to each configured server and **lists tools** (non-destructive — never creates a real event/task), reporting whether the configured tool name is exposed.
+**Quality:** **155 tests** passing (up from 142) across 27 files — a new `platform/mcp/mcp.test.ts` covers the mapping (structuredContent · text-JSON fallback · synthesized-id fallback · `isError` throws), both live adapters against a fake `McpSession` (asserting the `callTool` name + ISO argument mapping + result), and the env-gated factory (mock by default · live only with flag **and** URL · independent per-client gate · never connects) · typecheck clean · build clean · `npm run demo` extended to **15 scenes** (a real live-mapping round-trip via a fake in-memory session, then proving the default resolves to mock).
+**Open seams:** the live MCP `callTool`/transport (`connect.ts`) is **unverified against a real server** — contract-shaped and covered only via the `McpSession` fake, same posture as live RTS; `verify:mcp` exists to check it against a real workspace but hasn't been run. The argument/result field names are a best-effort superset (real servers vary — adjust `live.ts` + `TEMPO_MCP_*_TOOL` per server). Only Streamable HTTP transport is implemented (stdio is a documented future, confined to `connect.ts`). A calendar/task tool failure currently fails the whole focus response (guarded by `safely()`); a future hardening could still set DND. File-backed stores unchanged (Neon swap is v2.4).
+**Next:** Phase 6 / v2.4 — Persistence & scale (Neon Postgres behind the repository interfaces).
 
 ### v2.0.0 — 2026-07-01 — Native Surfaces (Tempo Canvas · Workflow steps · Slack Lists · reminders/bookmarks) + finished hexagonal inversion
 **Built:** Phase 4 in full — Tempo now lives across Slack's native surfaces, on top of the v1.8 layered architecture, whose remaining hexagonal seams this closes.
