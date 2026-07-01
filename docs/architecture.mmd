@@ -1,0 +1,67 @@
+%% Tempo — architecture diagram (Devpost submission asset)
+%% Render: npx -y @mermaid-js/mermaid-cli -i docs/architecture.mmd -o docs/architecture.svg -b transparent
+%% The three required technologies are the highlighted nodes: RTS API, MCP (both directions), Slack AI surfaces.
+flowchart TB
+    subgraph SLACK["Slack (the user's workspace)"]
+        AGENT["Agent pane · agent_view<br/>suggested prompts + DMs"]
+        HOME["App Home dashboard<br/>+ a11y settings modal"]
+        CMD["/tempo · @mention<br/>Block Kit actions"]
+        WF["Workflow Builder<br/>4 custom steps"]
+        CANVAS["Tempo Canvas ·<br/>Slack Lists · reminders"]
+    end
+
+    subgraph VERCEL["Vercel (Fluid Compute)"]
+        EVENTS["api/slack/events<br/>@vercel/slack-bolt<br/>ack &lt; 3 s · waitUntil"]
+        CRON["api/cron/morning-digest<br/>proactive daily triage"]
+        OAUTH["api/oauth/*<br/>per-user install, CSRF state"]
+        MCPIN["api/mcp/server<br/>Tempo AS an MCP server<br/>tempo_triage · commitments · decode · focus"]
+
+        subgraph APP["Application layer (hexagonal core)"]
+            ORCH["Orchestrator<br/>intent → use-case → response<br/>(+ a11y: verbosity · plain language ·<br/>read-aloud · i18n en/es)"]
+            subgraph MODULES["Domain modules (ports only, no SDKs)"]
+                TRIAGE["Triage<br/>ACT/BLOCKER/FYI/NOISE"]
+                LEDGER["Commitment Ledger<br/>promises + due dates"]
+                TONE["Tone Decoder<br/>subtext + draft check"]
+                FOCUS["Focus Guardian<br/>interrupt budget"]
+                REENTRY["Re-entry<br/>time-away brief"]
+            end
+        end
+    end
+
+    subgraph GROUND["Grounding — read, never stored"]
+        RTS["Slack Real-Time Search API<br/>assistant.search.context<br/>USER token → no action_token<br/>permission-aware, semantic"]
+        MULTI["Attention OS: email + calendar<br/>sources behind the same port"]
+    end
+
+    subgraph ACT["Action — only after a human tap"]
+        WEBAPI["Slack Web API<br/>DND · status · schedule ·<br/>canvas · lists · reminders"]
+        MCPOUT["MCP outbound clients<br/>Google Calendar · Notion ·<br/>Linear · GitHub"]
+        CLAUDE["Claude (AI SDK)<br/>classification · extraction ·<br/>tone · drafting"]
+        TTS["OpenAI TTS<br/>read-aloud audio"]
+    end
+
+    subgraph STORE["Postgres (Neon) — encrypted, minimal"]
+        DB["AES-256-GCM user tokens · prefs ·<br/>pinned commitments (facts only) ·<br/>counts-only metrics · learned urgency<br/>⛔ RTS content is NEVER persisted<br/>(schema-level + guard-tested)"]
+    end
+
+    EXT["External agents<br/>Agentforce · Claude · Cursor"] -->|"signed per-user tokens,<br/>default-deny"| MCPIN
+
+    AGENT & HOME & CMD & WF --> EVENTS
+    EVENTS --> ORCH
+    CRON --> ORCH
+    MCPIN --> ORCH
+    OAUTH --> DB
+    ORCH --> MODULES
+    MODULES -->|RtsClient port| RTS
+    MODULES -->|RtsClient port| MULTI
+    MODULES -->|LlmPort| CLAUDE
+    FOCUS -->|Calendar/Task ports| MCPOUT
+    ORCH -->|SlackActions port| WEBAPI
+    ORCH --> TTS
+    ORCH --> DB
+    WEBAPI --> CANVAS
+
+    classDef tech fill:#4A154B,stroke:#4A154B,color:#fff,stroke-width:2px
+    classDef privacy fill:#1a7f37,stroke:#1a7f37,color:#fff
+    class RTS,MCPIN,MCPOUT,AGENT tech
+    class DB privacy

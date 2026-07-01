@@ -397,10 +397,10 @@ Order matters; each step de-risks the next:
 8. **End-to-end dress rehearsal:** the §1.6 storyline, live in the sandbox, all five modules + cron digest.
 
 ### W3 · Submission assets (days 6–10, can start once W2 step 6 is stable)
-- [ ] **Architecture diagram:** draw Part III §3.2 + §3.4 as one clean diagram (Mermaid → SVG/PNG, committed to `docs/`); show RTS + MCP(in/out) + Slack AI surfaces explicitly — judges score "uses all three."
+- [x] **Architecture diagram** — DONE: `docs/architecture.mmd` → rendered `docs/architecture.svg` + `docs/architecture.png` (RTS + MCP-in/out + Agent surfaces highlighted; never-persist store called out).
 - [ ] **~3-min video** on the §1.6 beats, recorded against the **live sandbox** (the 26-scene `npm run demo` is the storyboard, not the footage). Public YouTube link, no copyrighted audio.
-- [ ] **Devpost draft:** description (from Part I + README) · **explicit impact statement** (the "for Good" scoring lever: neurodivergent users, non-native speakers, burnout; cite the accessibility spine §2.3) · call out all three technologies prominently · honest framing for mock-only pieces (Attention-OS sources = "architecture demonstrated over deterministic fixtures").
-- [ ] **Invite `slackhack@salesforce.com` + `testing@devpost.com`** to the sandbox; verify the invites landed; leave a pinned `#start-here` channel with a 5-line "how to try Tempo in 2 minutes" note + suggested prompts (judges spend ~5–7 min).
+- [x] **Devpost draft** — DONE: `docs/devpost-submission.md` (description · impact statement · three-tech callout · form fields · the `#start-here` judge note). ⟨…⟩ placeholders fill during W2 (video URL, sandbox URL, challenges).
+- [ ] **Invite `slackhack@salesforce.com` + `testing@devpost.com`** to the sandbox; verify the invites landed; pin the `#start-here` note from `docs/devpost-submission.md` (judges spend ~5–7 min).
 - [ ] Screenshots for the gallery; submit by **July 12**, keep July 13 as pure buffer.
 
 ## 7.3 Calendar (deadline Mon Jul 13, 5 PM PDT — submit Sun Jul 12)
