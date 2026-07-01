@@ -25,6 +25,7 @@ export function parseSettingsForm(form: SettingsForm): PrefsPatch {
 
   if (form.verbosity === "brief" || form.verbosity === "standard") patch.verbosity = form.verbosity;
   if (form.readingLevel === "plain" || form.readingLevel === "standard") patch.readingLevel = form.readingLevel;
+  if (form.locale === "en" || form.locale === "es") patch.locale = form.locale;
 
   const maxItems = optNum(form.maxItems);
   if (maxItems !== undefined) patch.maxItems = maxItems;

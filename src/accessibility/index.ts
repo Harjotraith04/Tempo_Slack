@@ -11,8 +11,14 @@
  * below are deliberately gentle.
  */
 
+import { t, resolveLocale, type Locale } from "./i18n/index.js";
+export { t, resolveLocale, SUPPORTED_LOCALES, DEFAULT_LOCALE, type Locale } from "./i18n/index.js";
+export { auditResponse, isAccessible, type AuditIssue } from "./audit.js";
+
 export type Verbosity = "brief" | "standard";
 export type ReadingLevel = "plain" | "standard";
+
+const KNOWN_INTENTS = new Set(["triage", "commitments", "catchup", "focus", "decode", "team", "help"]);
 
 export interface A11yPrefs {
   verbosity: Verbosity;
@@ -76,18 +82,12 @@ export interface SpeechInput {
   text: string;
 }
 
-/** A calm, linear spoken script — no markdown, no list noise. */
-export function toSpeech(input: SpeechInput): string {
-  const lead: Record<string, string> = {
-    triage: "Here's what needs you.",
-    commitments: "Here are your commitments.",
-    catchup: "Here's what you missed, calmly.",
-    focus: "Your focus time is protected.",
-    decode: "Here's what that message really means.",
-    team: "Here's the team, anonymized.",
-    help: "Here's how I can help.",
-  };
-  const opener = lead[input.intent] ?? "Here's what I found.";
-  const body = input.text.replace(/\s*;\s*/g, ". ").replace(/\*/g, "");
-  return `${opener} ${body} Take it one step at a time. I won't do anything without your okay.`;
+/** A calm, linear spoken script — localized, no markdown, no list noise. */
+export function toSpeech(input: SpeechInput, locale: Locale = "en"): string {
+  const leadKey = KNOWN_INTENTS.has(input.intent) ? `speech.lead.${input.intent}` : "speech.lead.fallback";
+  const opener = t(leadKey, locale);
+  // Read-aloud must be plain: turn list joins into sentences and strip ALL
+  // markdown so a screen reader / TTS never speaks "asterisk" or "greater-than".
+  const body = input.text.replace(/\s*;\s*/g, ". ").replace(/[*_>#`~]/g, "");
+  return `${opener} ${body} ${t("speech.outro", locale)}`;
 }

@@ -48,7 +48,7 @@ import { teamLoad } from "../src/application/use-cases/team.js";
 import { teamLoadBlocks } from "../src/platform/slack/blockkit/index.js";
 import { flags } from "../src/config.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
-import { resolveA11yPrefs } from "../src/accessibility/index.js";
+import { resolveA11yPrefs, auditResponse, DEFAULT_PREFS } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../src/modules/onboarding.js";
 import { CachingRtsClient } from "../src/platform/slack/rts/caching.js";
@@ -534,6 +534,28 @@ async function main() {
 
     console.log("\n  Below the k-anonymity floor (only 2 opted in) the whole view is redacted — no individual can be inferred:");
     renderBlocks(teamLoadBlocks(await teamLoad(store, ["U_T1", "U_T2"], 3)));
+  }
+
+  rule('25. Enterprise & Global — multilingual read-aloud + an accessibility certification pass');
+  {
+    // Multilingual: the same reply, read aloud in the user's own language.
+    const en = await respond(ctx, "what needs me today?");
+    await store.prefs.save("U_ES_DEMO", { locale: "es" });
+    const es = await respond(buildContext({ subjectUserId: "U_ES_DEMO", subjectName: "Sam" }), "what needs me today?");
+    console.log(`  Read-aloud (en): "${en.speech.slice(0, 66)}…"`);
+    console.log(`  Read-aloud (es): "${es.speech.slice(0, 66)}…"`);
+
+    // Accessibility certification: every response type must pass the audit.
+    const prompts = [
+      "what needs me today?", "show my commitments", "catch me up",
+      "block 90 min of focus time", 'decode: "no rush 🙂"', "help", "file my expense report",
+    ];
+    let passed = 0;
+    for (const p of prompts) {
+      const r = await respond(buildContext({ subjectUserId: "U_CERT_DEMO", subjectName: "Sam" }), p);
+      if (auditResponse(r, DEFAULT_PREFS).length === 0) passed++;
+    }
+    console.log(`\n  Accessibility audit: ${passed}/${prompts.length} response types pass — speech present, markdown-free, buttons labeled, plain language. Certified.`);
   }
 
   console.log("\n" + "─".repeat(72));

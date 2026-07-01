@@ -1,6 +1,6 @@
 {
   "name": "tempo",
-  "version": "3.6.0",
+  "version": "3.8.0",
   "private": true,
   "type": "module",
   "description": "Tempo — an executive-function co-pilot for Slack. Assistive tech that triages the firehose, remembers your commitments, decodes tone, and protects your attention. Built on the Slack RTS API + MCP + Slack AI.",

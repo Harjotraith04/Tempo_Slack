@@ -39,6 +39,12 @@ export default async function SettingsPage({
           <option value="plain">Plain (short sentences, one idea per line)</option>
         </select>
 
+        <label htmlFor="locale">Language</label>
+        <select id="locale" name="locale" defaultValue={sel(prefs?.locale, "en")}>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
+
         <label htmlFor="maxItems">Max items per card</label>
         <select id="maxItems" name="maxItems" defaultValue={String(sel(prefs?.maxItems, 3))}>
           <option value="1">1</option>

@@ -18,6 +18,7 @@ export async function POST(req: Request) {
   await applySettings(getStore(), userId, {
     verbosity: get("verbosity"),
     readingLevel: get("readingLevel"),
+    locale: get("locale"),
     maxItems: get("maxItems"),
     focusDefaultMins: get("focusDefaultMins"),
     dndDefaultMins: get("dndDefaultMins"),

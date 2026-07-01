@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v3.6.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off
+**Current version:** v3.8.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -24,6 +24,7 @@
 - **Phase 11 / v3.2.0 — Agentforce integration:** DONE (default-deny per-caller identity via signed per-user agent tokens · Agentforce Employee Agent descriptor packaging the tools+persona+trust · graceful @mention handoff routing; also fixed the v3.0 MCP-server fail-open/ambient-authority security findings).
 - **Phase 12 / v3.4.0 — Proactive intelligence:** DONE (opt-in overload/burnout early-warning `analyzeLoad` from counts only · smart batching of non-urgent FYIs · folded into the one calm morning-digest touchpoint behind `TEMPO_PROACTIVE` · notifies only, never acts, never stores content).
 - **Phase 13 / v3.6.0 — Team & manager mode:** DONE (opt-in, aggregated + anonymized `aggregateTeamLoad` over the counts-only stores · k-anonymity redaction below 3 members · `/tempo team` surface gated by `TEMPO_TEAM` · never any individual content or per-person number; personal-agent posture stays the default).
+- **Phase 14 / v3.8.0 — Enterprise & Global:** DONE (true multilingual `i18n` catalog + `t()` + `locale` pref, localized read-aloud in en/es · automated accessibility certification `auditResponse` over every response type · `ENTERPRISE.md` for Grid/residency/audit; SCIM/DLP left as owner-only integrations).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -39,17 +40,18 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → Phase 14 / v3.8.0 "Enterprise & Global"
-See `MASTER_PLAN.md` → Part V, Year 3, Phase 14. Tempo is feature-complete for individuals + teams; next,
-make it enterprise- and globally-ready:
-- [ ] **True multilingual** across all surfaces — the accessibility spine already has an `i18n` seam; wire a
-  message catalog so triage/ledger/decode/re-entry render in the user's locale (a `locale` pref → a `t()`
-  lookup over the response assembly), plus cross-language tone decode. Default English; mock catalog for the
-  zero-cred demo/tests.
-- [ ] **Enterprise Grid posture** — org-wide install notes, admin/audit-log hooks (counts-only), and a data-
-  residency seam (the `TEMPO_STORE` seam already abstracts persistence; document the residency story).
-- [ ] **Accessibility certification pass** — extend the a11y audit (screen-reader semantics, contrast, plain-
-  language coverage) with an automated check over every response's speech script + reading level.
+## Next up → Phase 15 / v4.0.0 "Attention OS + ecosystem" (the finale)
+See `MASTER_PLAN.md` → Part V, Year 3, Phase 15. The last phase: Tempo becomes the permission-aware
+working-memory layer across work tools, plus an open accessibility SDK others build on:
+- [ ] **Attention OS — unify sources beyond Slack** — generalize the `RtsClient` port into a `SourceClient`
+  seam so triage/commitments/re-entry can ground across Slack + (mock) email/calendar/docs/tickets via MCP,
+  merged into one calm working-memory. Slack stays the default source; a mock second source for the zero-cred
+  demo/tests, proving the abstraction.
+- [ ] **Open accessibility SDK** — extract the calm-UX primitives (verbosity/reading-level/plainify/speech/
+  i18n/`auditResponse`) into a documented, reusable `@tempo/accessibility` surface others can build calm,
+  neurodivergent-friendly agent UIs on; a README + a tiny example.
+- [ ] **The 4.0 story** — a capstone demo scene tying the whole arc together (Slack + a second source → one
+  triage), and an impact/roadmap note.
 - [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 native-surface
   `apiCall`s, the v2.2 live MCP client `callTool`, the v2.4 live Postgres transport, the v2.6 web app's
   SSR/cookie behavior, and the v3.0 inbound MCP `Server`/transport — all built/typed, unverified against a
@@ -58,6 +60,37 @@ make it enterprise- and globally-ready:
 ---
 
 ## History
+
+### v3.8.0 — 2026-07-02 — Enterprise & Global: true multilingual + automated accessibility certification
+**Built:** the global + enterprise-readiness layer — the two pillars that make the "for-Good / assistive tech"
+promise scale, plus the enterprise posture as docs.
+- **True multilingual (i18n)** (`src/accessibility/i18n/`) — a dependency-free message catalog + `t(key,
+  locale, params?)` with English fallback + `{param}` interpolation, and `resolveLocale` (normalizes
+  `es-MX`→`es`). The **read-aloud speech script** — the accessibility core — now ships in **English + Spanish**:
+  `toSpeech(input, locale)` localizes the opener + outro (and strips ALL markdown so a TTS never voices
+  "asterisk"). A new `UserPrefs.locale` drives it, settable from the web companion's Settings (**Language**);
+  the orchestrator threads the resolved locale into every response's speech. Dynamic AI content localizes on
+  the live path (Claude prompted in-locale); this catalog is the seam the other surfaces extend into.
+- **Accessibility certification** (`src/accessibility/audit.ts`) — `auditResponse(response, a11y)` makes
+  accessibility a machine-checked gate: it flags an empty/`markdown`-bearing read-aloud script, an unlabeled
+  button, or plain-level text that still has semicolon runs. `audit.test.ts` runs it across **every** response
+  type (triage / commitments / catch-up / focus / decode / help / team / handoff) + a Spanish-locale response
+  + a deliberate false-green guard — so a regression that makes any surface inaccessible fails the build.
+- **Enterprise posture** (`ENTERPRISE.md`) — Grid org-wide install, the data-**residency** seam (the existing
+  `TEMPO_STORE`/`DATABASE_URL` abstraction → a regional Postgres, no code change; RTS content never stored),
+  least-privilege scopes + secrets hardening, and a counts-only audit posture. SCIM / DLP / SIEM export /
+  VPAT sign-off are marked owner-only enterprise integrations.
+**Quality:** **268 tests** passing (up from 254) across 45 files — `i18n.test.ts` (locale lookup + English
+fallback + normalization + no-gaps-per-locale), and the **certification** `audit.test.ts` (10 tests: every
+response type accessible · Spanish read-aloud still markdown-free · catches an inaccessible response) ·
+typecheck clean · root build clean · `npm run demo` extended to **25 scenes** (an en-vs-es read-aloud + a live
+7/7 accessibility audit) · web app still builds, now with a Language selector in Settings.
+**Open seams:** the localized surface is the speech script + the catalog seam; visible card text + dynamic AI
+content localize on the live Claude path (English on the mock path) — extending the catalog to every label is
+incremental. Only en/es ship (adding a locale is one catalog object). SCIM/DLP/data-residency contracts +
+cross-language RTS at scale remain owner-only enterprise integrations.
+**Next:** Phase 15 / v4.0 — Attention OS + ecosystem (unify sources beyond Slack · open accessibility SDK) —
+the finale.
 
 ### v3.6.0 — 2026-07-02 — Team & manager mode: opt-in, aggregated, anonymized (k-anonymity guardrail)
 **Built:** the first *team* view — and it holds the line on privacy hard. The default posture stays a personal

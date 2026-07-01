@@ -26,6 +26,8 @@ export interface UserPrefs {
   maxItems?: number;
   focusDefaultMins?: number;
   dndDefaultMins?: number;
+  /** BCP-47-ish locale ("en", "es", "es-MX") — drives multilingual surfaces. */
+  locale?: string;
   lastActiveTs?: number;
   /** Set once the user has completed (or dismissed) first-run onboarding. */
   onboardedAt?: number;

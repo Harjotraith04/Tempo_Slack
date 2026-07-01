@@ -32,7 +32,7 @@ import { teamLoad } from "./use-cases/team.js";
 import { teamLoadBlocks } from "../platform/slack/blockkit/index.js";
 import { config, flags } from "../config.js";
 
-import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs } from "../accessibility/index.js";
+import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs, resolveLocale } from "../accessibility/index.js";
 
 export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "team" | "help";
 
@@ -67,10 +67,12 @@ export async function respond(
   input: string,
   opts: RespondOpts = {},
 ): Promise<TempoResponse> {
-  const a11y = resolveA11yPrefs(await ctx.store.prefs.get(ctx.subjectUserId));
+  const prefs = await ctx.store.prefs.get(ctx.subjectUserId);
+  const a11y = resolveA11yPrefs(prefs);
+  const locale = resolveLocale(prefs);
   const r = await respondCore(ctx, input, opts.record ?? true);
   const text = applyReadingLevel(condense(r.text, a11y.verbosity), a11y.readingLevel);
-  return { ...r, text, speech: toSpeech({ intent: r.intent, text }) };
+  return { ...r, text, speech: toSpeech({ intent: r.intent, text }, locale) };
 }
 
 /** The "show the rest" path — same live triage, no maxItems cap. Not reachable
