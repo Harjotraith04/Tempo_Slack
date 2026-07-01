@@ -14,10 +14,8 @@ import { runLedger } from "../modules/ledger.js";
 import { decodeMessage } from "../modules/decoder.js";
 import { runReentry } from "../modules/reentry.js";
 import { planFocusBlock } from "../modules/focus.js";
-// The application layer is where outbound adapters are wired to the ports the
-// domain modules declare — these platform factories resolve mock/live by config.
-import { getMcpClients } from "../platform/mcp/index.js";
-import { getSlackActions } from "../platform/slack/webapi/index.js";
+// The application layer wires outbound adapters to the ports the domain modules
+// declare; the per-turn container (on ctx) resolves mock/live by config.
 import { isSuppressed } from "../platform/persistence/snoozes.js";
 import { syncCommitments } from "../platform/persistence/commitments.js";
 import { getPrefs } from "../platform/persistence/prefs.js";
@@ -74,7 +72,7 @@ export async function respond(
 
 /** Filters out anything the user snoozed/marked done, the way every triage render must. */
 async function liveTriage(ctx: TempoContext) {
-  const raw = await runTriage(ctx.rts, { afterTs: afterTsOf(ctx) });
+  const raw = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
   return {
     ...raw,
     needsYou: raw.needsYou.filter((i) => !isSuppressed(ctx.subjectUserId, i.permalink, ctx.nowTs)),
@@ -121,7 +119,7 @@ async function respondCore(
       };
     }
     case "commitments": {
-      const fresh = await runLedger(ctx.rts, { nowTs: ctx.nowTs });
+      const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
       const c = syncCommitments(ctx.subjectUserId, fresh);
       if (record) recordMetrics(ctx.subjectUserId, { obligationsSurfaced: c.length });
       return {
@@ -133,7 +131,7 @@ async function respondCore(
       };
     }
     case "catchup": {
-      const b = await runReentry(ctx.rts, { afterTs: after, awayDays: ctx.awayDays });
+      const b = await runReentry(ctx.rts, ctx.llm, { afterTs: after, awayDays: ctx.awayDays });
       return b.topThree.length
         ? { intent, text: "The 3 that matter most: " + b.topThree.join("; "), blocks: reentryBlocks(b) }
         : { intent, text: "Nothing major to catch up on.", blocks: emptyStateBlocks("catchup") };
@@ -146,8 +144,8 @@ async function respondCore(
         title: "Deep work (protected by Tempo)",
         subjectUserId: ctx.subjectUserId,
         userToken: ctx.userToken,
-        mcp: getMcpClients(),
-        slack: getSlackActions({ userToken: ctx.userToken }),
+        mcp: ctx.container.mcp(),
+        slack: ctx.container.slackActions({ userToken: ctx.userToken }),
       });
       if (record) recordMetrics(ctx.subjectUserId, { focusMinutesProtected: mins });
       return { intent, text: p.summary, blocks: focusBlocks(p) };
@@ -157,7 +155,7 @@ async function respondCore(
       if (!text) {
         return { intent: "help", text: "Paste a message and I'll decode it.", blocks: helpBlocks() };
       }
-      const d = await decodeMessage(text, { rts: ctx.rts });
+      const d = await decodeMessage(text, ctx.llm, { rts: ctx.rts });
       return { intent, text: `Probably means: ${d.impliedMeaning}`, blocks: decodeBlocks(d, text) };
     }
     default:

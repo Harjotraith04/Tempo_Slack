@@ -26,6 +26,7 @@ function fakeApp() {
   const actions: Record<string, (args: any) => Promise<void>> = {};
   const views: Record<string, (args: any) => Promise<void>> = {};
   const events: Record<string, (args: any) => Promise<void>> = {};
+  const functions: Record<string, (args: any) => Promise<void>> = {};
   return {
     assistant: () => {},
     command: () => {},
@@ -38,9 +39,13 @@ function fakeApp() {
     view: (id: string, fn: (args: any) => Promise<void>) => {
       views[id] = fn;
     },
+    function: (id: string, fn: (args: any) => Promise<void>) => {
+      functions[id] = fn;
+    },
     actions,
     views,
     events,
+    functions,
   };
 }
 
@@ -341,5 +346,88 @@ describe("complete_onboarding", () => {
     expect(call.user_id).toBe("U_NEW2");
     const buttons = call.view.blocks.filter((b: any) => b.type === "actions").flatMap((b: any) => b.elements);
     expect(buttons.some((b: any) => b.action_id === "complete_onboarding")).toBe(false);
+  });
+});
+
+describe("v2.0 native surfaces — App Home actions", () => {
+  it("app_home_opened offers the Canvas + List surface buttons", async () => {
+    const client = fakeClient();
+    await app.events.app_home_opened!({ event: { user: "U_S0" }, client });
+    const call = client.views.publish.mock.calls[0]![0];
+    const buttons = call.view.blocks.filter((b: any) => b.type === "actions").flatMap((b: any) => b.elements);
+    const ids = buttons.map((b: any) => b.action_id);
+    expect(ids).toContain("refresh_canvas");
+    expect(ids).toContain("sync_ledger_list");
+  });
+
+  it("refresh_canvas confirms it created/refreshed the Canvas", async () => {
+    const client = fakeClient();
+    const body = { user: { id: "U_S1" }, channel: { id: "C1" }, actions: [{ value: "refresh_canvas" }] };
+    await app.actions.refresh_canvas!({ ack: vi.fn(), body, client });
+    expect(client.chat.postEphemeral).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("Canvas") }),
+    );
+  });
+
+  it("sync_ledger_list confirms how many commitments it synced", async () => {
+    const client = fakeClient();
+    const body = { user: { id: "U_S2" }, channel: { id: "C1" }, actions: [{ value: "sync_ledger_list" }] };
+    await app.actions.sync_ledger_list!({ ack: vi.fn(), body, client });
+    expect(client.chat.postEphemeral).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("Slack List") }),
+    );
+  });
+
+  it("remind_commitment sets a reminder for a cached commitment", async () => {
+    const c = mkCommitment({ permalink: "https://a/remind1" });
+    syncCommitments("U_S3", [c]);
+    const client = fakeClient();
+    const body = { user: { id: "U_S3" }, channel: { id: "C1" }, actions: [{ value: c.permalink }] };
+    await app.actions.remind_commitment!({ ack: vi.fn(), body, client });
+    expect(client.chat.postEphemeral).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("reminder") }),
+    );
+  });
+
+  it("remind_commitment asks to re-run when nothing is cached", async () => {
+    const client = fakeClient();
+    const body = { user: { id: "U_S4" }, channel: { id: "C1" }, actions: [{ value: "https://unknown-remind" }] };
+    await app.actions.remind_commitment!({ ack: vi.fn(), body, client });
+    expect(client.chat.postEphemeral).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("/tempo commitments") }),
+    );
+  });
+});
+
+describe("v2.0 Workflow Builder custom steps", () => {
+  it("summarize_missed completes with a brief", async () => {
+    const complete = vi.fn().mockResolvedValue(undefined);
+    const fail = vi.fn();
+    await app.functions.summarize_missed!({ inputs: { user: "U_W1" }, complete, fail });
+    expect(fail).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledWith({ outputs: { summary: expect.any(String) } });
+    expect(complete.mock.calls[0]![0].outputs.summary.length).toBeGreaterThan(0);
+  });
+
+  it("draft_reply completes with a non-empty draft and never sends", async () => {
+    const complete = vi.fn().mockResolvedValue(undefined);
+    const fail = vi.fn();
+    await app.functions.draft_reply!({ inputs: { user: "U_W2", message: "No rush 🙂" }, complete, fail });
+    expect(complete).toHaveBeenCalledWith({ outputs: { draft: expect.any(String) } });
+    expect(complete.mock.calls[0]![0].outputs.draft.length).toBeGreaterThan(0);
+  });
+
+  it("block_focus completes with a focus summary", async () => {
+    const complete = vi.fn().mockResolvedValue(undefined);
+    const fail = vi.fn();
+    await app.functions.block_focus!({ inputs: { user: "U_W3", minutes: 45 }, complete, fail });
+    expect(complete).toHaveBeenCalledWith({ outputs: { summary: expect.stringContaining("Blocked") } });
+  });
+
+  it("add_commitment tracks the promise and confirms", async () => {
+    const complete = vi.fn().mockResolvedValue(undefined);
+    const fail = vi.fn();
+    await app.functions.add_commitment!({ inputs: { user: "U_W4", what: "Ship the report", counterparty: "Dana" }, complete, fail });
+    expect(complete).toHaveBeenCalledWith({ outputs: { confirmation: expect.stringContaining("Ship the report") } });
   });
 });

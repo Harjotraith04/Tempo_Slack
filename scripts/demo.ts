@@ -16,7 +16,13 @@ import { respond } from "../src/application/orchestrator.js";
 import { checkDraft } from "../src/modules/decoder.js";
 import { runTriage } from "../src/modules/triage.js";
 import { runLedger } from "../src/modules/ledger.js";
-import { draftNudge, draftRenegotiation } from "../src/modules/draft.js";
+import { draftReply, draftNudge, draftRenegotiation } from "../src/modules/draft.js";
+import {
+  updateCanvas,
+  syncCommitmentsToList,
+  remindAboutCommitment,
+  bookmarkCanvas,
+} from "../src/application/use-cases/surfaces.js";
 import { snoozeItem, markItemDone, isSuppressed } from "../src/platform/persistence/snoozes.js";
 import { syncCommitments, markRenegotiating } from "../src/platform/persistence/commitments.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
@@ -59,7 +65,7 @@ function renderBlocks(blocks: any[]) {
  * bypasses respond() to call checkDraft() directly.
  */
 async function demoButtonLayer(ctx: TempoContext) {
-  const triage = await runTriage(ctx.rts, { afterTs: afterTsOf(ctx) });
+  const triage = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
   const [first, second] = triage.needsYou;
 
   if (first) {
@@ -71,20 +77,20 @@ async function demoButtonLayer(ctx: TempoContext) {
     console.log(`  [Done]   "${second.excerpt.slice(0, 50)}…" → suppressed now: ${isSuppressed(ctx.subjectUserId, second.permalink, ctx.nowTs)}`);
   }
 
-  const fresh = await runLedger(ctx.rts, { nowTs: ctx.nowTs });
+  const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
   const commitments = syncCommitments(ctx.subjectUserId, fresh);
   const owedToMe = commitments.find((c) => c.direction === "owed_to_me");
   const iOwe = commitments.find((c) => c.direction === "i_owe");
 
   if (owedToMe) {
-    const nudge = await draftNudge(owedToMe);
+    const nudge = await draftNudge(owedToMe, ctx.llm);
     console.log(`  [Nudge] draft to ${owedToMe.counterparty}: "${nudge}"`);
   }
   if (iOwe) {
     markRenegotiating(ctx.subjectUserId, iOwe.permalink);
-    const draft = await draftRenegotiation(iOwe);
+    const draft = await draftRenegotiation(iOwe, ctx.llm);
     console.log(`  [Renegotiate] draft to ${iOwe.counterparty}: "${draft}"`);
-    const resynced = syncCommitments(ctx.subjectUserId, await runLedger(ctx.rts, { nowTs: ctx.nowTs }));
+    const resynced = syncCommitments(ctx.subjectUserId, await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs }));
     const stillRenegotiating = resynced.find((c) => c.permalink === iOwe.permalink)?.status === "renegotiating";
     console.log(`  Status after renegotiate persists across a re-sync: ${stillRenegotiating}`);
   }
@@ -133,7 +139,7 @@ async function main() {
 
   rule('3. "How will my reply land?" — Draft check');
   renderBlocks(
-    (await import("../src/platform/slack/blockkit/index.js")).draftCheckBlocks(await checkDraft("No.")),
+    (await import("../src/platform/slack/blockkit/index.js")).draftCheckBlocks(await checkDraft("No.", ctx.llm)),
   );
 
   rule('4. "What did I promise?" — Commitment Ledger');
@@ -212,6 +218,39 @@ async function main() {
     console.log(`\n  Reading level — standard (dense, ';'-joined): "${std.text}"`);
     console.log(`  Reading level — plain (short sentences):      "${plain.text}"`);
     console.log(`  → same information; plain uses no ';' joins: ${!plain.text.includes(";")}, none dropped: ${plain.text.includes("Atlas API spec")}`);
+  }
+
+  rule('12. Tempo Canvas — a living command center (canvases.create/edit)');
+  {
+    const first = await updateCanvas(ctx);
+    console.log(`  ${first.created ? "Created" : "Refreshed"} canvas ${first.canvasId} from today's live triage + commitments:\n`);
+    console.log(first.markdown.split("\n").map((l) => "    " + l).join("\n"));
+    const second = await updateCanvas(ctx);
+    console.log(`\n  Re-running edits the *same* canvas in place (id ${second.canvasId}, created=${second.created}) — no duplicates.`);
+  }
+
+  rule('13. Workflow Builder custom steps — Tempo actions inside no-code workflows');
+  {
+    // Each step composes an existing use-case; the demo exercises those bodies
+    // directly (the function_executed trigger only fires from real Slack).
+    const missed = await respond(ctx, "catch me up on what I missed", { record: false });
+    console.log(`  [Summarize what I missed] → "${missed.text.slice(0, 88)}…"`);
+    const draft = await draftReply("No rush 🙂 whenever you get a chance. Not like the handoff is waiting.", ctx.llm);
+    console.log(`  [Draft a reply]           → "${draft.slice(0, 88)}…"`);
+    const focus = await respond(ctx, "block 60 min of focus time", { record: false });
+    console.log(`  [Block focus time]        → "${focus.text.slice(0, 88)}…"`);
+    const rem = await remindAboutCommitment(ctx, { what: "Send the Atlas spec", counterparty: "Priya", direction: "i_owe", time: ctx.nowTs + 3600 });
+    console.log(`  [Add a commitment]        → native reminder set: ${rem.ok} (${rem.reminderId})`);
+  }
+
+  rule('14. Slack Lists sync + native reminders + a Canvas bookmark');
+  {
+    const sync = await syncCommitmentsToList(ctx);
+    console.log(`  Synced *${sync.itemsWritten}/${sync.count}* commitments to Slack List ${sync.listId}.`);
+    console.log(`  Re-sync reuses the same list (id kept), and every row is derived facts only —`);
+    console.log(`  the source message text is structurally never written (Invariant: never persist RTS content).`);
+    const bm = await bookmarkCanvas(ctx, { channelId: "C_TEAM" });
+    console.log(`  Bookmarked the Tempo Canvas into a channel: ${bm.ok} (${bm.bookmarkId}).`);
   }
 
   console.log("\n" + "─".repeat(72));

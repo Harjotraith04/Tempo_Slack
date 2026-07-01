@@ -18,9 +18,10 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { WebClient } from "@slack/web-api";
-import { config } from "../../src/config.js";
+import { config, flags } from "../../src/config.js";
 import { buildContext } from "../../src/application/context.js";
 import { respond } from "../../src/application/orchestrator.js";
+import { updateCanvas } from "../../src/application/use-cases/surfaces.js";
 import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
 import { listInstalledUsers, getUserToken } from "../../src/platform/persistence/tokens.js";
 
@@ -40,6 +41,17 @@ function targets(): DigestTarget[] {
 async function sendDigest(userId: string, token: string | undefined): Promise<void> {
   const ctx = buildContext({ subjectUserId: userId, userToken: token });
   const digest = await respond(ctx, "what needs me today?");
+
+  // Keep the user's living Tempo Canvas in step with the morning digest —
+  // their own scheduled cron, updating their own private canvas. Best-effort:
+  // a canvas hiccup must never block the digest DM.
+  if (flags.canvas) {
+    try {
+      await updateCanvas(ctx);
+    } catch (err) {
+      console.error(`canvas refresh failed for ${userId}`, err);
+    }
+  }
 
   if (config.slack.botToken && token) {
     const web = new WebClient(config.slack.botToken);

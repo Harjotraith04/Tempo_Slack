@@ -13,10 +13,13 @@
  */
 
 import { App, Assistant, ExpressReceiver, LogLevel } from "@slack/bolt";
-import { config, assertSlackRuntime, assertSecretsHardened } from "../config.js";
+import { config, flags, assertSlackRuntime, assertSecretsHardened } from "../config.js";
 import { webClientOptions } from "../shared/webClientOptions.js";
 import { buildContext } from "../application/context.js";
+import { createContainer } from "../application/container.js";
 import { respond as tempoRespond, routeIntent, triageAll } from "../application/orchestrator.js";
+import { updateCanvas, syncCommitmentsToList, remindAboutCommitment } from "../application/use-cases/surfaces.js";
+import { registerWorkflowSteps } from "../platform/slack/inbound/workflow-steps.js";
 import { draftReply, draftNudge, draftRenegotiation } from "../modules/draft.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, errorBlocks, type SettingsModalPrefs } from "../platform/slack/blockkit/index.js";
 import { getUserToken } from "../platform/persistence/tokens.js";
@@ -66,10 +69,15 @@ function resolveUserToken(slackUserId: string): string | undefined {
   return getUserToken(slackUserId) ?? config.slack.userToken;
 }
 
+/** Composition root for the inbound layer — one container shared by every
+ * handler; each per-user context reuses it (see contextFor). */
+const container = createContainer();
+
 function contextFor(slackUserId: string) {
   return buildContext({
     subjectUserId: slackUserId,
     userToken: resolveUserToken(slackUserId),
+    container,
   });
 }
 
@@ -93,7 +101,12 @@ async function publishHome(client: any, userId: string, opts: { showOnboarding?:
         type: "home",
         blocks: [
           ...(opts.showOnboarding ? onboardingBlocks() : []),
-          ...homeDashboardBlocks({ triage: triage.blocks, commitments: commitments.blocks, metrics: getMetrics(userId) }),
+          ...homeDashboardBlocks({
+            triage: triage.blocks,
+            commitments: commitments.blocks,
+            metrics: getMetrics(userId),
+            surfaces: { canvas: flags.canvas, lists: flags.lists },
+          }),
         ] as any,
       },
     });
@@ -250,7 +263,7 @@ export function registerHandlers(app: BoltApp) {
         return;
       }
       markNudged(userId, permalink);
-      const draft = await draftNudge(c);
+      const draft = await draftNudge(c, container.llm());
       await postComposedDraft(client, body, draft);
     }, () => replyError(client, body));
   });
@@ -265,7 +278,7 @@ export function registerHandlers(app: BoltApp) {
         return;
       }
       markRenegotiating(userId, permalink);
-      const draft = await draftRenegotiation(c);
+      const draft = await draftRenegotiation(c, container.llm());
       await postComposedDraft(client, body, draft);
     }, () => replyError(client, body));
   });
@@ -278,6 +291,80 @@ export function registerHandlers(app: BoltApp) {
   }
   app.action("open_link", async ({ ack }) => {
     await ack();
+  });
+
+  // ── v2.0 native surfaces ─────────────────────────────────────────────────
+  app.action("refresh_canvas", async ({ ack, body, client }) => {
+    await ack();
+    const userId = (body as any)?.user?.id ?? "U_SAM";
+    await safely(
+      "refresh_canvas",
+      async () => {
+        const res = await updateCanvas(contextFor(userId));
+        await ephemeral(
+          client,
+          body,
+          res.ok
+            ? `${res.created ? "Created" : "Refreshed"} your Tempo Canvas with today's plan. Nothing was sent — it's yours to open.`
+            : "Couldn't reach the Canvas just now — *nothing was changed*. Try again in a moment.",
+        );
+      },
+      () => replyError(client, body),
+    );
+  });
+
+  app.action("sync_ledger_list", async ({ ack, body, client }) => {
+    await ack();
+    const userId = (body as any)?.user?.id ?? "U_SAM";
+    await safely(
+      "sync_ledger_list",
+      async () => {
+        const res = await syncCommitmentsToList(contextFor(userId));
+        await ephemeral(
+          client,
+          body,
+          res.ok
+            ? `Synced *${res.itemsWritten ?? res.count}* commitment${(res.itemsWritten ?? res.count) === 1 ? "" : "s"} to your Slack List. It mirrors your Ledger — only the facts, never the messages.`
+            : "Couldn't sync the List just now — *nothing was changed*. Try again in a moment.",
+        );
+      },
+      () => replyError(client, body),
+    );
+  });
+
+  // Workflow Builder custom steps — Summarize what I missed / Draft a reply /
+  // Block focus time / Add a commitment. Same receiver, same container.
+  registerWorkflowSteps(app, { contextFor, safely, snag: SNAG });
+
+  app.action("remind_commitment", async ({ ack, body, client }) => {
+    await ack();
+    await safely(
+      "remind_commitment",
+      async () => {
+        const { permalink, userId } = actionTarget(body);
+        const c = permalink ? getCommitmentByPermalink(userId, permalink) : undefined;
+        if (!c) {
+          await ephemeral(client, body, "I don't have that one cached anymore — run `/tempo commitments` again and try once more.");
+          return;
+        }
+        // Remind an hour before the due date when we know it and it's still
+        // ahead; otherwise a gentle default of 3 hours from now.
+        const now = Math.floor(Date.now() / 1000);
+        const time = c.dueTs && c.dueTs - 3600 > now ? c.dueTs - 3600 : now + 3 * 3600;
+        const res = await remindAboutCommitment(contextFor(userId), {
+          what: c.what,
+          counterparty: c.counterparty,
+          direction: c.direction,
+          time,
+        });
+        await ephemeral(
+          client,
+          body,
+          res.ok ? "Set a Slack reminder so this doesn't slip. 👍" : "Couldn't set the reminder just now — try again in a moment.",
+        );
+      },
+      () => replyError(client, body),
+    );
   });
 
   return app;
@@ -333,7 +420,7 @@ async function postDraft(client: any, body: any) {
   const { permalink, userId } = actionTarget(body);
   const ctx = contextFor(userId);
   const source = await sourceTextFor(ctx, permalink);
-  const draft = await draftReply(source ?? "");
+  const draft = await draftReply(source ?? "", ctx.llm);
   await postComposedDraft(client, body, draft);
 }
 

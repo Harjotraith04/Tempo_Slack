@@ -124,6 +124,7 @@ export function ledgerBlocks(commitments: Commitment[]): KnownBlock[] {
         linkBtn("Open", c.permalink),
         btn("Draft it now", "draft_deliverable", c.permalink, "primary"),
         btn("Renegotiate", "renegotiate", c.permalink),
+        btn("Remind me", "remind_commitment", c.permalink),
       ],
     } as KnownBlock);
   }
@@ -135,7 +136,11 @@ export function ledgerBlocks(commitments: Commitment[]): KnownBlock[] {
     blocks.push(section(`${STATUS_LABEL[c.status]} · *${c.what}* — from ${c.counterparty}${c.dueText ? ` (${c.dueText})` : ""}`));
     blocks.push({
       type: "actions",
-      elements: [linkBtn("Open", c.permalink), btn("Nudge them", "nudge", c.permalink)],
+      elements: [
+        linkBtn("Open", c.permalink),
+        btn("Nudge them", "nudge", c.permalink),
+        btn("Remind me", "remind_commitment", c.permalink),
+      ],
     } as KnownBlock);
   }
   return blocks;
@@ -288,7 +293,13 @@ export function homeDashboardBlocks(opts: {
   triage: KnownBlock[];
   commitments: KnownBlock[];
   metrics?: UserMetrics;
+  /** Which v2.0 native surfaces to offer (feature-flagged). */
+  surfaces?: { canvas?: boolean; lists?: boolean };
 }): KnownBlock[] {
+  const surfaceButtons: any[] = [];
+  if (opts.surfaces?.canvas) surfaceButtons.push(btn("🗒️ Update my Canvas", "refresh_canvas", "refresh_canvas", "primary"));
+  if (opts.surfaces?.lists) surfaceButtons.push(btn("✅ Sync commitments to a List", "sync_ledger_list", "sync_ledger_list"));
+
   return [
     header("Tempo"),
     section("Your working memory for Slack — calm, live, and grounded in what's actually happening. I never act without your tap."),
@@ -302,6 +313,13 @@ export function homeDashboardBlocks(opts: {
     ...opts.triage,
     divider,
     ...opts.commitments,
+    ...(surfaceButtons.length
+      ? [
+          divider as KnownBlock,
+          section("*Native surfaces:*\nKeep a living *Tempo Canvas* of today's plan, or mirror your Commitment Ledger to a *Slack List*. Both update only when you tap."),
+          { type: "actions", elements: surfaceButtons } as KnownBlock,
+        ]
+      : []),
     divider,
     section("*Protect your focus:*\nRun `/tempo focus` (or ask the Assistant) to block real calendar time and turn on Do-Not-Disturb — Tempo never starts a focus block on its own."),
     context("Grounded live in the Slack Real-Time Search API. Nothing it reads is stored."),

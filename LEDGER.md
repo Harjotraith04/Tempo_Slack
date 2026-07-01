@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v1.8.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
+**Current version:** v2.0.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, TTS=mock
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -14,6 +14,7 @@
 - **Phase 1 / v1.0.0 — Hackathon Winner:** *code* DONE (all five modules real inside Slack); submission logistics deferred to the owner (see below).
 - **Phase 2 / v1.5.0 — Hardening:** DONE.
 - **Phase 3 / v1.8.0 — Monolith refactor:** DONE (layered Part-IV tree · ports/adapters · dependency rule).
+- **Phase 4 / v2.0.0 — Native Surfaces:** DONE (Tempo Canvas · Workflow Builder custom steps · Slack Lists sync · reminders/bookmarks · finished the hexagonal inversion).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -24,17 +25,31 @@ These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack 
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
-## Next up → Phase 4 / v2.0.0 "Native Surfaces"
-See `MASTER_PLAN.md` → Part V, Year 2, Phase 4 for full detail. Now that the architecture is layered, build deeper into Slack's native surfaces:
-- [ ] **Tempo Canvas** — a living personal command center auto-updated with today's triage/commitments/focus (`canvases.create`/`edit`)
-- [ ] **Workflow Builder custom steps** — *Summarize what I missed* · *Draft a reply* · *Block focus time* · *Add a commitment* (manifest `functions` + `function_executed` listeners)
-- [ ] **Slack Lists** sync of the Commitment Ledger
-- [ ] Bookmarks / reminders; richer Block Kit
-- [ ] Carry-over from v1.8: finish the hexagonal inversion — a real `LlmPort` injected into modules (today `structured`/`text` are imported from `platform/ai`), a threaded DI container, per-module `domain/service/ports` split, and `config.ts` → `config/`.
+## Next up → Phase 5 / v2.2.0 "Real MCP outbound"
+See `MASTER_PLAN.md` → Part V, Year 2, Phase 5 for full detail. The native surfaces are in; now make Tempo *act* in the world for real:
+- [ ] **Real MCP clients** — Calendar / Notion / Linear / GitHub via `@modelcontextprotocol/sdk`, behind the existing `CalendarClient`/`TaskClient` ports (`src/ports/mcp.ts`). Branch `getMcpClients()` (the "REAL-MCP SEAM" in `platform/mcp/index.ts`) on env; **mock remains the default** so the zero-credential demo/tests stay green.
+- [ ] Contract-test each real client against a mocked MCP transport (mirror `webapi/actions.test.ts`), and add a `verify-live-mcp` script (zero-cred-safe skip, like `verify-live-rts.ts`).
+- [ ] Wire real calendar/task results through the Focus Guardian's existing `FocusPlan` render; add a demo scene showing a real MCP round-trip (mocked transport).
+- [ ] Carry-over verification (still unverified live seams): live RTS/Claude field mapping and the new v2.0 `canvases.*` / `slackLists.*` / `reminders.add` / `bookmarks.add` `apiCall`s against a real workspace.
 
 ---
 
 ## History
+
+### v2.0.0 — 2026-07-01 — Native Surfaces (Tempo Canvas · Workflow steps · Slack Lists · reminders/bookmarks) + finished hexagonal inversion
+**Built:** Phase 4 in full — Tempo now lives across Slack's native surfaces, on top of the v1.8 layered architecture, whose remaining hexagonal seams this closes.
+- **Hexagonal inversion finished (behavior-preserving, tests green throughout):**
+  - `src/config.ts` → **`src/config/`** (`env` · `modes` · `feature-flags` · `index` barrel), with a one-line `config.ts` re-export shim so the ~15 `../config.js` import sites don't churn. New `feature-flags.ts` exposes `flags.canvas`/`flags.lists` (`TEMPO_CANVAS`/`TEMPO_LISTS`, default on).
+  - A real **`LlmPort`** (`src/ports/ai.ts`) with `MockLlm`/`LiveLlm` adapters + `getLlm()` (`platform/ai/{mock,live,index}.ts`, split out of the old `llm.ts`). Every module now **receives** the LLM (`runTriage(rts, llm, …)`, `runLedger(rts, llm, …)`, `decodeMessage(text, llm, …)`, `checkDraft(draft, llm)`, `draft*(c, llm)`, `runReentry(rts, llm, …)`) instead of importing the free `structured`/`text`; the per-call `mock()` oracle (the test oracle) is preserved verbatim. `llm` is threaded onto `TempoContext`.
+  - Every domain module split into the Part-IV **`domain.ts` · `service.ts` · `ports.ts` · `index.ts`** anatomy (`triage`, `ledger`, `decoder`, `reentry`, `focus`, `draft`; `onboarding` is a pure `domain`+`index`), each behind a one-line public-entry shim so importers are unchanged.
+  - A threaded **DI container** (`src/application/container.ts`, `createContainer()`) is the single seam resolving RTS · AI · Slack-actions · MCP from config; `buildContext` threads it onto every context, the orchestrator's focus branch and `app.ts` now pull adapters from `ctx.container` instead of calling platform factories inline. (Placed in the application layer, not `main/`, to keep the dependency rule pointing inward.)
+- **Tempo Canvas** — extended the `SlackActionsClient` port with `upsertCanvas` (+ `syncListItems`/`addReminder`/`addBookmark`), implemented in `MockSlackActions` (deterministic ids) and `LiveSlackActions` (via the `apiCall` escape hatch, `canvases.create`/`edit`). `buildCanvasMarkdown()` renders today's triage + commitments + focus as a calm Markdown command center (derived facts only — no RTS text); the `updateCanvas(ctx)` use-case creates-then-edits-in-place (id persisted in a new `persistence/surfaces.ts`, **id only**), wired to an App Home *Update my Canvas* button and auto-refreshed from the morning-digest cron.
+- **Workflow Builder custom steps** — manifest `functions` block (4 steps) + `function_executed` bot event; `registerWorkflowSteps(app, deps)` (`platform/slack/inbound/workflow-steps.ts`) registers `summarize_missed` · `draft_reply` · `block_focus` · `add_commitment`, each composing an existing use-case behind `safely(...)` → `complete({outputs})`/`fail`.
+- **Slack Lists sync** — `syncCommitmentsToList(ctx)` maps the live Ledger to `ListItem[]` (structurally free of `sourceText`) and upserts a native List (id persisted); App Home *Sync commitments to a List* button + the `add_commitment` step.
+- **Reminders / bookmarks / richer Block Kit** — a *Remind me* button on every ledger row (`addReminder`, an hour before due), a Canvas channel-bookmark use-case, and a native-surfaces section on App Home.
+**Quality:** **142 tests** passing (up from 108) across 26 files — new suites for the extended live/mock Slack adapters (`apiCall` contract), the canvas Markdown builder (incl. an explicit "never leaks RTS text" assertion), the surfaces use-cases (spy-container composition + no-`sourceText` invariant), the id-only surface store, the `LlmPort`/container, and the new App Home + workflow-step handlers · typecheck clean · build clean · `npm run demo` extended to **14 scenes** (Canvas create→edit, the 4 workflow steps, Lists sync + reminder + bookmark). The Stage-A refactor changed only import paths + signatures — no assertion logic — proving it preserved behavior.
+**Open seams:** the v2.0 live `canvases.*` / `slackLists.*` / `reminders.add` / `bookmarks.add` calls are **contract-tested only** (mocked `WebClient`) and unverified against a real workspace — same posture as live RTS; the exact Slack Lists API shape (`slackLists.create`/`items.create`) is a best-effort guess. "Add a commitment" tracks via a native reminder rather than a manual-commitment store (the Ledger is still rebuilt live from RTS). Canvas/list/surface handles are file-backed (Neon swap still deferred to v2.4). Intent routing still keyword-only.
+**Next:** Phase 5 / v2.2 — Real MCP outbound (Calendar/Notion/Linear/GitHub via `@modelcontextprotocol/sdk`).
 
 ### v1.8.0 — 2026-07-01 — Monolith refactor (layered Part-IV tree · ports/adapters · dependency rule)
 **Built:** a behavior-preserving restructure of the flat `src/` tree into the professional Part-IV modular-monolith layout — **no feature change, full test parity** (108 tests stayed green throughout, `npm run demo` unchanged at 11 scenes).

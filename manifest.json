@@ -32,6 +32,52 @@
       }
     ]
   },
+  "functions": {
+    "summarize_missed": {
+      "title": "Summarize what I missed",
+      "description": "Tempo writes a calm, plain-language brief of what changed while you were away.",
+      "input_parameters": {
+        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose Slack to summarize", "is_required": true }
+      },
+      "output_parameters": {
+        "summary": { "type": "string", "title": "Summary", "description": "The re-entry brief", "is_required": true }
+      }
+    },
+    "draft_reply": {
+      "title": "Draft a reply",
+      "description": "Tempo drafts a warm, clear reply to a message. It never sends — you review and send yourself.",
+      "input_parameters": {
+        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose voice to draft in", "is_required": true },
+        "message": { "type": "string", "title": "Message to reply to", "description": "The text you want to respond to", "is_required": true }
+      },
+      "output_parameters": {
+        "draft": { "type": "string", "title": "Draft reply", "description": "The suggested reply text", "is_required": true }
+      }
+    },
+    "block_focus": {
+      "title": "Block focus time",
+      "description": "Tempo protects a deep-work block: real calendar time plus Do-Not-Disturb.",
+      "input_parameters": {
+        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose focus to protect", "is_required": true },
+        "minutes": { "type": "number", "title": "Minutes", "description": "How long to protect (default 90)", "is_required": false }
+      },
+      "output_parameters": {
+        "summary": { "type": "string", "title": "Summary", "description": "What was blocked", "is_required": true }
+      }
+    },
+    "add_commitment": {
+      "title": "Add a commitment",
+      "description": "Tempo tracks a promise and sets a native reminder so it doesn't slip.",
+      "input_parameters": {
+        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose commitment to track", "is_required": true },
+        "what": { "type": "string", "title": "What", "description": "The deliverable (e.g. 'Send the Atlas spec')", "is_required": true },
+        "counterparty": { "type": "string", "title": "To whom", "description": "Who it's for", "is_required": false }
+      },
+      "output_parameters": {
+        "confirmation": { "type": "string", "title": "Confirmation", "description": "What Tempo tracked", "is_required": true }
+      }
+    }
+  },
   "oauth_config": {
     "redirect_urls": ["https://YOUR_DEPLOYMENT/api/oauth/callback"],
     "scopes": {
@@ -43,7 +89,10 @@
         "search:read.files",
         "search:read.users",
         "dnd:write",
-        "users.profile:write"
+        "users.profile:write",
+        "canvases:write",
+        "lists:write",
+        "reminders:write"
       ],
       "bot": [
         "assistant:write",
@@ -57,7 +106,8 @@
         "groups:history",
         "mpim:history",
         "reactions:write",
-        "files:write"
+        "files:write",
+        "bookmarks:write"
       ]
     }
   },
@@ -69,7 +119,8 @@
         "assistant_thread_context_changed",
         "message.im",
         "app_mention",
-        "app_home_opened"
+        "app_home_opened",
+        "function_executed"
       ]
     },
     "interactivity": {

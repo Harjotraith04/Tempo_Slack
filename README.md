@@ -30,6 +30,17 @@ This is not a helpdesk bot wrapped in Slack UI. It's a new category: **Slack as 
 
 Everything is **human-in-the-loop**: Tempo drafts and proposes; you approve. It **never auto-sends**.
 
+### Native surfaces (v2.0)
+
+Tempo lives where you already work in Slack, beyond the Assistant pane and App Home:
+
+- **Tempo Canvas** — a living personal command center (`canvases.create`/`edit`), auto-refreshed with today's triage, commitments, and focus. Tap *Update my Canvas* on App Home, or it refreshes with your morning digest.
+- **Workflow Builder custom steps** — drop Tempo into any no-code workflow: *Summarize what I missed*, *Draft a reply*, *Block focus time*, *Add a commitment* (manifest `functions` + `function_executed` listeners).
+- **Slack Lists sync** — mirror your Commitment Ledger to a native Slack List (*Sync commitments to a List*). Only derived facts are written — never the source message text.
+- **Native reminders & bookmarks** — set a Slack reminder before a commitment slips; bookmark your Canvas into a channel.
+
+All of it is still mock-first (runs credential-free) and human-in-the-loop.
+
 ---
 
 ## Run the demo in 30 seconds (zero credentials)
@@ -39,7 +50,7 @@ The full pipeline ships with a seeded world ("Sam returns from a week off") and 
 ```bash
 npm install
 npm run demo      # runs the whole narrative through the real modules
-npm test          # 108 tests: RTS, the five modules, persistence, a11y, hardening
+npm test          # 142 tests: RTS, the five modules, native surfaces, persistence, a11y, hardening
 ```
 
 `npm run demo` prints triage, tone decode, draft check, the commitment ledger (computing "overdue" from "by Friday"), the focus block + MCP task, and the re-entry brief — exactly what renders in Slack.
