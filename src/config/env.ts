@@ -49,7 +49,12 @@ export const config = {
       (opt("ANTHROPIC_API_KEY") ? "live" : "mock")) as "live" | "mock",
   },
   runtime: {
-    receiver: (opt("TEMPO_RECEIVER") ?? "socket") as ReceiverMode,
+    // Vercel sets VERCEL=1 in every deployment. There is no socket mode on
+    // serverless, so the receiver defaults to http there — which also flips
+    // isLivePosture() on, so the secrets/persistence assertions actually bite
+    // in production instead of silently accepting dev defaults.
+    receiver: (opt("TEMPO_RECEIVER") ?? (opt("VERCEL") ? "http" : "socket")) as ReceiverMode,
+    isVercel: Boolean(opt("VERCEL")),
     port: Number(opt("PORT") ?? 3000),
     rts: (opt("TEMPO_RTS") ?? "mock") as RtsMode,
     // Independent from TEMPO_RTS: a dev connected to a real sandbox for RTS

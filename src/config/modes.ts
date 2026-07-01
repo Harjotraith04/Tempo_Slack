@@ -63,3 +63,26 @@ export function assertSecretsHardened(): void {
     );
   }
 }
+
+/**
+ * Called by every Vercel `api/` entrypoint. No-ops outside Vercel (local dev
+ * uses Socket Mode via createApp; tests/demo run fully mocked). On Vercel it
+ * fails fast — a clear startup crash in the function logs beats a fail-open:
+ *  - the receiver defaults to http there (see env.ts), so isLivePosture() is
+ *    true and the encryption-key check in assertSecretsHardened() actually
+ *    bites instead of silently accepting the dev default key;
+ *  - the file store writes JSON next to the process and Vercel's deployment
+ *    filesystem is read-only — OAuth token saves and the cron would EROFS at
+ *    runtime, so the misconfiguration is rejected up front.
+ */
+export function assertVercelRuntime(): void {
+  if (!config.runtime.isVercel) return;
+  assertSecretsHardened();
+  if (config.store.mode === "file") {
+    throw new Error(
+      "TEMPO_STORE=file cannot run on Vercel — the deployment filesystem is read-only, so token/pref " +
+        "writes would fail at runtime. Provision Postgres (e.g. Neon) and set DATABASE_URL " +
+        "(TEMPO_STORE auto-detects to postgres). See .env.example.",
+    );
+  }
+}

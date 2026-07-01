@@ -10,7 +10,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { config, isMcpServerEnabled } from "../../src/config.js";
+import { config, isMcpServerEnabled, assertVercelRuntime } from "../../src/config.js";
 import { buildContext } from "../../src/application/context.js";
 import { getStore } from "../../src/platform/persistence/index.js";
 import { handleMcpHttp } from "../../src/platform/mcp/server/index.js";
@@ -26,6 +26,7 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  assertVercelRuntime();
   if (!isMcpServerEnabled()) {
     res.statusCode = 404;
     res.end("Not found");
@@ -49,7 +50,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const body = await readJson(req);
     await handleMcpHttp(req, res, body, {
       buildContext: () => buildContext({ subjectUserId: caller.userId, userToken }),
-      version: "3.2.0",
+      version: "4.1.0",
     });
   } catch (err) {
     console.error("mcp server error", err);

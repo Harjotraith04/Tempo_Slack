@@ -18,7 +18,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { WebClient } from "@slack/web-api";
-import { config, flags } from "../../src/config.js";
+import { config, flags, assertVercelRuntime } from "../../src/config.js";
 import { buildContext } from "../../src/application/context.js";
 import { respond } from "../../src/application/orchestrator.js";
 import { updateCanvas, atRiskCommitments } from "../../src/application/use-cases/surfaces.js";
@@ -93,6 +93,7 @@ async function sendDigest(userId: string, token: string | undefined): Promise<vo
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  assertVercelRuntime();
   // Optional shared-secret check for the cron.
   const secret = process.env.CRON_SECRET;
   if (secret && req.headers["authorization"] !== `Bearer ${secret}`) {

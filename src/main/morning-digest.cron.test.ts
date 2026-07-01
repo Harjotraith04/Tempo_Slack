@@ -6,15 +6,15 @@ const { listInstalledUsersMock, getUserTokenMock, respondMock } = vi.hoisted(() 
   respondMock: vi.fn(),
 }));
 
-vi.mock("../../src/platform/persistence/index.js", () => ({
+vi.mock("../platform/persistence/index.js", () => ({
   getStore: () => ({ tokens: { list: listInstalledUsersMock, get: getUserTokenMock } }),
 }));
 
-vi.mock("../../src/application/orchestrator.js", () => ({
+vi.mock("../application/orchestrator.js", () => ({
   respond: respondMock,
 }));
 
-const { default: handler } = await import("./morning-digest.js");
+const { default: handler } = await import("../../api/cron/morning-digest.js");
 
 function fakeReqRes() {
   const req: any = { headers: {} };

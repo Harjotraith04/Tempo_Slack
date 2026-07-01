@@ -50,7 +50,7 @@ The full pipeline ships with a seeded world ("Sam returns from a week off") and 
 ```bash
 npm install
 npm run demo      # runs the whole narrative through the real modules
-npm test          # 155 tests: RTS, MCP, the five modules, native surfaces, persistence, a11y, hardening
+npm test          # 282 tests: RTS, MCP, the five modules, native surfaces, persistence, a11y, hardening
 ```
 
 `npm run demo` prints triage, tone decode, draft check, the commitment ledger (computing "overdue" from "by Friday"), the focus block + MCP task, and the re-entry brief — exactly what renders in Slack.
@@ -163,11 +163,13 @@ manifest.json      Slack app manifest (scopes, assistant, /tempo, events)
 
 ## Running against a real Slack workspace
 
-1. Create a Slack app from `manifest.json` (set the Request URLs / redirect to your deployment).
+1. Create a Slack app from `manifest.json` (set the Request URLs / redirect to your deployment). The manifest uses the 2026 **Agent experience** (`agent_view` + `message.im`); `socket_mode_enabled` is `false` for prod — toggle Socket Mode on in the app settings for local dev.
 2. Fill `.env` from `.env.example` (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` for socket mode, `SLACK_USER_TOKEN` for the demo user, optional `ANTHROPIC_API_KEY`).
 3. Seed the sandbox so live RTS has data: `npm run seed -- --execute`.
 4. Flip to live: set `TEMPO_RTS=live` (and `TEMPO_AI=live` if you have a key).
-5. `npm run dev` (Socket Mode) and open the Tempo assistant, or `/tempo triage`.
+5. `npm run dev` (Socket Mode) and open the Tempo agent, or `/tempo triage`.
+
+On Vercel, `/api/slack/events` is served by **`@vercel/slack-bolt`** (acks Slack inside the 3-second deadline, finishes RTS/LLM work via `waitUntil`), and startup asserts a real `TEMPO_ENCRYPTION_KEY` + a Postgres store (`DATABASE_URL`) — the file store can't run on the read-only serverless filesystem.
 
 > **Enabling live RTS:** `assistant.search.context` is available to directory-published or internal apps. Confirm access for your app first; until then `TEMPO_RTS=mock` runs the identical experience. The live response field mapping in `src/platform/slack/rts/live.ts` is defensive (and now follows `next_cursor` pagination) — verify field names against your first live call.
 
@@ -176,7 +178,7 @@ manifest.json      Slack app manifest (scopes, assistant, /tempo, events)
 ## Submission checklist (Agent for Good)
 
 - [x] Uses ≥1 required tech — **all three** (RTS + MCP + Slack AI).
-- [x] Working product (`npm run demo`, 108 tests) + Slack surfaces.
+- [x] Working product (`npm run demo`, 282 tests) + Slack surfaces.
 - [ ] ~3-min demo video (storyboard below) with working footage.
 - [ ] Architecture diagram (above).
 - [ ] Sandbox URL with access to `slackhack@salesforce.com` + `testing@devpost.com`.

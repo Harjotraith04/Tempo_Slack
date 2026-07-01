@@ -378,12 +378,12 @@ Scopes ↔ manifest drift-tested and consistent · repo hygiene clean (`dist/`, 
 
 ## 7.2 The plan — three workstreams
 
-### W1 · Code fixes (P0, ~1 day, Claude-buildable, no credentials needed)
-- [ ] **Agent-experience migration:** manifest `agent_view`/`agent_description`; `app.ts` handlers moved off `assistant_thread_*` onto `app_home_opened` + `message.im` (keep the Assistant-class code path where Bolt maps it); `socket_mode_enabled: false` in the prod manifest.
-- [ ] **Serverless receiver:** migrate `api/slack/events.ts` to `@vercel/slack-bolt` (ack-fast + `waitUntil`); keep `createExpressApp` for non-Vercel use.
-- [ ] **Close the fail-open gates:** `createExpressApp`/the Vercel entry treats itself as live posture (e.g. `process.env.VERCEL` or `TEMPO_RECEIVER=http` forced) → `assertSlackRuntime()` + `assertSecretsHardened()` actually fire; throw on empty signing secret; throw if live posture + file store.
-- [ ] **Housekeeping:** move `api/cron/morning-digest.test.ts` out of `api/`; fix TTS extension/mime; align versions; document seed-only scopes in the manifest comment or a sandbox-app note.
-- [ ] Keep all 273 tests + demo green; add tests for the new gates.
+### W1 · Code fixes (P0, ~1 day, Claude-buildable, no credentials needed) — ✅ DONE (v4.1.0, 2026-07-02)
+- [x] **Agent-experience migration:** manifest `agent_view`/`agent_description`; a top-level `app.message` DM handler serves the new experience (the Assistant middleware keeps handling threaded legacy messages — no double-reply); `socket_mode_enabled: false` in the prod manifest.
+- [x] **Serverless receiver:** `api/slack/events.ts` → `@vercel/slack-bolt` via `src/main/vercel.ts` (ack-fast + `waitUntil`); `createExpressApp` kept for non-Vercel self-hosting.
+- [x] **Close the fail-open gates:** receiver defaults to http on `VERCEL=1` (arms `assertSecretsHardened`); new `assertVercelRuntime()` in all five api/ entrypoints (hardened key + no file store on the read-only FS); `createExpressApp` throws on a missing signing secret.
+- [x] **Housekeeping:** cron test moved out of `api/`; TTS filename derives from mime; versions aligned (4.1.0); seed-only scopes documented in the seed header.
+- [x] 282 tests + demo + build + web build green (9 new tests for the gates + the agent-DM handler).
 
 ### W2 · Live bring-up (owner accounts + Claude, days 2–6 — **start the two slow externals on day 1**)
 Order matters; each step de-risks the next:

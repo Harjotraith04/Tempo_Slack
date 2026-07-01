@@ -27,9 +27,13 @@ function fakeApp() {
   const views: Record<string, (args: any) => Promise<void>> = {};
   const events: Record<string, (args: any) => Promise<void>> = {};
   const functions: Record<string, (args: any) => Promise<void>> = {};
+  const messages: Array<(args: any) => Promise<void>> = [];
   return {
     assistant: () => {},
     command: () => {},
+    message: (fn: (args: any) => Promise<void>) => {
+      messages.push(fn);
+    },
     event: (name: string, fn: (args: any) => Promise<void>) => {
       events[name] = fn;
     },
@@ -46,6 +50,7 @@ function fakeApp() {
     views,
     events,
     functions,
+    messages,
   };
 }
 
@@ -454,5 +459,47 @@ describe("v2.0 Workflow Builder custom steps", () => {
     const fail = vi.fn();
     await app.functions.add_commitment!({ inputs: { user: "U_W4", what: "Ship the report", counterparty: "Dana" }, complete, fail });
     expect(complete).toHaveBeenCalledWith({ outputs: { confirmation: expect.stringContaining("Ship the report") } });
+  });
+});
+
+describe("agent-experience DM handler (top-level message.im)", () => {
+  it("routes a plain human DM through the orchestrator and replies with blocks", async () => {
+    const client = fakeClient();
+    const say = vi.fn().mockResolvedValue(undefined);
+    expect(app.messages.length).toBe(1);
+    await app.messages[0]!({
+      message: { channel_type: "im", text: "what needs me today?", user: "U_DM1" },
+      say,
+      client,
+    });
+    expect(say).toHaveBeenCalledTimes(1);
+    const arg = say.mock.calls[0]![0];
+    expect(arg.text.length).toBeGreaterThan(0);
+    expect(Array.isArray(arg.blocks)).toBe(true);
+  });
+
+  it("ignores threaded messages — those belong to the Assistant middleware", async () => {
+    const say = vi.fn();
+    await app.messages[0]!({
+      message: { channel_type: "im", text: "hi", user: "U_DM2", thread_ts: "123.45" },
+      say,
+      client: fakeClient(),
+    });
+    expect(say).not.toHaveBeenCalled();
+  });
+
+  it("ignores bot messages, subtypes, non-IM channels, and empty text", async () => {
+    const say = vi.fn();
+    const client = fakeClient();
+    const cases = [
+      { channel_type: "im", text: "hi", bot_id: "B1" },
+      { channel_type: "im", text: "hi", subtype: "message_changed" },
+      { channel_type: "channel", text: "hi", user: "U_DM3" },
+      { channel_type: "im", user: "U_DM3" },
+    ];
+    for (const message of cases) {
+      await app.messages[0]!({ message, say, client });
+    }
+    expect(say).not.toHaveBeenCalled();
   });
 });

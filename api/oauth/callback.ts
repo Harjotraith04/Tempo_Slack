@@ -4,6 +4,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { assertVercelRuntime } from "../../src/config.js";
 import { getStore } from "../../src/platform/persistence/index.js";
 import { exchangeCode } from "../../src/platform/slack/oauth/index.js";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../../src/shared/session.js";
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  assertVercelRuntime();
   const url = new URL(req.url ?? "", "http://localhost");
   const code = url.searchParams.get("code");
   if (!code) {

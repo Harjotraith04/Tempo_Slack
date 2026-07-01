@@ -142,6 +142,27 @@ export function registerHandlers(app: BoltApp) {
   });
   app.assistant(assistant);
 
+  // The 2026 Agent experience (manifest `agent_view`) delivers a user's agent
+  // DMs as plain `message.im` events. The Assistant middleware above only
+  // intercepts *threaded* IM messages (the legacy assistant container) and
+  // stops their propagation, so this listener sees exactly the messages it
+  // doesn't: top-level human DMs. Between the two, both experiences are served
+  // without ever double-replying.
+  app.message(async ({ message, say, client }) => {
+    const m = message as any;
+    if (m.channel_type !== "im" || m.thread_ts || m.subtype || m.bot_id || !m.text) return;
+    const userId = m.user ?? "U_SAM";
+    await safely(
+      "agent_dm",
+      async () => {
+        const res = await tempoRespond(await contextFor(userId), m.text);
+        await say({ text: res.text, blocks: res.blocks as any });
+        await maybeSendReadAloud(client, userId, res.speech);
+      },
+      () => say(SNAG),
+    );
+  });
+
   app.command("/tempo", async ({ command, ack, respond, client }) => {
     await ack();
     await safely(
@@ -385,13 +406,22 @@ export function createApp(): BoltApp {
   return registerHandlers(app);
 }
 
-/** HTTP receiver for Vercel/prod. Returns the Express app to export as handler. */
+/**
+ * HTTP receiver for a long-lived self-hosted server (non-Vercel prod). The
+ * Vercel path is src/main/vercel.ts. Fails fast on a missing signing secret —
+ * an ExpressReceiver verifying signatures against "" would accept forged
+ * requests. Default (immediate) ack behavior: on a persistent server the
+ * process outlives the response, so work continues after Slack is acked.
+ */
 export function createExpressApp() {
+  if (!config.slack.signingSecret) {
+    throw new Error("SLACK_SIGNING_SECRET is required for the HTTP receiver. See .env.example.");
+  }
+  if (!config.slack.botToken) {
+    throw new Error("SLACK_BOT_TOKEN is required for the HTTP receiver. See .env.example.");
+  }
   assertSecretsHardened();
-  const receiver = new ExpressReceiver({
-    signingSecret: config.slack.signingSecret ?? "",
-    processBeforeResponse: true,
-  });
+  const receiver = new ExpressReceiver({ signingSecret: config.slack.signingSecret });
   const app = new App({ token: config.slack.botToken, receiver, clientOptions: webClientOptions });
   registerHandlers(app);
   return receiver.app;
@@ -493,7 +523,7 @@ async function maybeSendReadAloud(client: any, userId: string, speech: string) {
     await client.files.uploadV2({
       channel_id: channel,
       file: Buffer.from(tts.audioBase64, "base64"),
-      filename: tts.filename ?? "tempo-read-aloud.wav",
+      filename: tts.filename ?? (tts.mimeType === "audio/wav" ? "tempo-read-aloud.wav" : "tempo-read-aloud.mp3"),
       title: "Tempo — read aloud",
       initial_comment: "🔊 Read-aloud version of my last reply.",
     });

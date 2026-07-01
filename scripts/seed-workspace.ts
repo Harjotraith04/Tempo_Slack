@@ -10,6 +10,14 @@
  * the `chat:write.customize` bot scope. DM-only fixtures are posted into a
  * #tempo-inbox channel (the bot can't post as other users in true DMs); the
  * content is identical, so RTS finds it either way.
+ *
+ * SEED-ONLY SCOPES — deliberately NOT in manifest.json / oauth/scopes.ts (the
+ * app itself never needs them, and adding them would break the least-privilege
+ * story the scopes drift-test enforces). To run --execute, temporarily add to
+ * the sandbox app and remove after seeding:
+ *   channels:manage        (conversations.create — the demo channels)
+ *   channels:read          (conversations.list — find existing channels)
+ *   chat:write.customize   (persona username/icon_emoji overrides)
  */
 
 import { WebClient } from "@slack/web-api";

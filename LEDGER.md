@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v4.0.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en, ATTENTION_OS=off
+**Current version:** v4.1.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en, ATTENTION_OS=off
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -46,11 +46,8 @@ The 3-year feature roadmap (v0.1 → v4.0) is complete and green, but a 2026-07-
 live**: no deployment, placeholder manifest URLs, every seam mocked, no video/diagram/sandbox/judge access —
 and the real Devpost deadline is **Mon Jul 13, 5 PM PDT** (submit Jul 12). Part VII is the single execution
 plan; work it top-to-bottom:
-- [ ] **W1 · P0 code fixes (Claude-buildable now):** migrate `assistant_view`/`assistant_thread_*` → the new
-  **Agent experience** (`agent_view`, `app_home_opened`+`message.im`); move `api/slack/events.ts` to
-  `@vercel/slack-bolt` (3-s ack via `waitUntil`); close the fail-open gates (`assertSecretsHardened` no-ops on
-  the Vercel path, `signingSecret ?? ""`, live-posture-with-file-store); `socket_mode_enabled: false`; move
-  `api/cron/morning-digest.test.ts` out of `api/`; TTS mp3/wav mismatch; seed-scope note.
+- [x] **W1 · P0 code fixes** — DONE in v4.1.0 (see History): Agent-experience migration, `@vercel/slack-bolt`
+  receiver, all fail-open gates closed, manifest fixed, cron test moved, TTS/versions/seed-scopes cleaned.
 - [ ] **W2 · Live bring-up (owner + Claude):** Developer Program + sandbox + **day-1 partnerships request for
   the semantic-RTS sandbox** → Vercel deploy (+ Neon, real key, `TEMPO_STORE=postgres`) → app from fixed
   manifest → OAuth → seed → **`verify:rts` and fix the guessed field mapping** → live Slack actions →
@@ -63,6 +60,52 @@ Cut lines + risk register + day-by-day calendar: `MASTER_PLAN.md` §7.3–7.5.
 ---
 
 ## History
+
+### v4.1.0 — 2026-07-02 — Submission W1: Agent-experience migration + serverless receiver + every fail-open gate closed
+**Built:** the P0 pre-deploy fixes from `MASTER_PLAN.md` Part VII §7.2 W1 — the code work that had to land before
+the first real Vercel deploy, all verified against the 2026 platform facts (Devpost deadline Jul 13 5 PM PDT;
+new-app Agent experience; `@vercel/slack-bolt`).
+- **Agent-experience migration** — `manifest.json` moves `assistant_view`/`assistant_description` →
+  **`agent_view`/`agent_description`** (new apps can only use the Agent messaging experience), drops the
+  deprecated `assistant_thread_started`/`assistant_thread_context_changed` event subscriptions, and sets
+  `socket_mode_enabled: false` (prod is HTTP; toggle Socket Mode in app settings for local dev). In code, a new
+  top-level **`app.message` DM handler** serves the Agent experience: Bolt's `Assistant` middleware provably
+  intercepts only *threaded* IM messages (and stops their propagation), so the new handler sees exactly the
+  top-level human DMs — both experiences served, double-reply impossible. Guards: skips threads, subtypes,
+  bots, empty text, non-IM.
+- **Serverless receiver** (`src/main/vercel.ts`, the only file touching `@vercel/slack-bolt@1.6`) —
+  `api/slack/events.ts` now exports `createVercelHandler()`: a web-standard handler that **acks Slack inside
+  the 3-second deadline and finishes the RTS/LLM work in the background via `waitUntil`** (the old
+  `ExpressReceiver` + `processBeforeResponse: true` did full model calls before responding — guaranteed retry
+  storms live). Signature verification is owned by the receiver; missing `SLACK_SIGNING_SECRET`/`SLACK_BOT_TOKEN`
+  throw at startup.
+- **Every fail-open gate closed:**
+  - `config.runtime.receiver` now defaults to **http when `VERCEL=1`** (new `config.runtime.isVercel`), so
+    `isLivePosture()` is true on every Vercel deploy and `assertSecretsHardened()` actually bites there —
+    previously a default-env deploy served real traffic with the dev encryption key.
+  - New **`assertVercelRuntime()`** (config/modes.ts), called by **all five** `api/` entrypoints (events, both
+    OAuth routes, cron, MCP server): no-op off Vercel; on Vercel enforces a hardened key **and rejects
+    `TEMPO_STORE=file`** (read-only FS ⇒ OAuth/cron would EROFS at runtime — now a clear startup crash).
+  - `createExpressApp` (kept for self-hosting) **throws on a missing signing secret** instead of verifying
+    signatures against `""`, requires the bot token, and drops `processBeforeResponse` (persistent servers ack
+    immediately).
+- **Housekeeping** — `api/cron/morning-digest.test.ts` → `src/main/morning-digest.cron.test.ts` (it deployed as
+  a live route); read-aloud fallback filename now derives from the actual mime (mp3 vs wav); versions aligned
+  at 4.1.0 (root/web/MCP-server advertised); seed-only scopes (`channels:manage`, `channels:read`,
+  `chat:write.customize`) documented in the seed header as deliberately-not-in-manifest; `.env.example` +
+  README updated (Agent experience, Vercel receiver, Postgres-on-Vercel, real test counts).
+**Quality:** **282 tests** passing (up from 273) across 46 files — new Vercel-posture suite (http default on
+`VERCEL=1` · hardened-key rejection · file-store rejection · postgres+strong-key pass · off-Vercel no-op ·
+receiver override) and the agent-DM handler suite (routes a plain IM through the orchestrator · ignores
+threaded/bot/subtype/non-IM/empty) · typecheck clean · build clean · `npm run demo` green (26 scenes) · web
+build green.
+**Open seams:** `agent_view` manifest keys + the VercelReceiver behavior are **unverified against real Slack**
+(same posture as every live seam — first sandbox app-creation in W2 confirms them; if Slack's validator wants
+different agent keys, the fix is manifest-only). Local Socket Mode now requires toggling Socket Mode on in app
+settings (manifest ships prod-false).
+**Next:** Part VII **W2 — live bring-up** (owner: Developer Program + sandbox + semantic-RTS partnerships
+request + Vercel/Neon/Anthropic accounts; then deploy → OAuth → seed → `verify:rts` and fix the live field
+mapping) and **W3 — submission assets**.
 
 ### v4.0.0 — 2026-07-02 — Attention OS + ecosystem (the finale): one working memory across work tools
 **Built:** the capstone. Tempo generalizes beyond Slack into the permission-aware **working-memory layer across

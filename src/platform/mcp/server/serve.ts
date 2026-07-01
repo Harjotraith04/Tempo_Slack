@@ -35,7 +35,7 @@ export async function handleMcpHttp(
     "@modelcontextprotocol/sdk/server/streamableHttp.js"
   );
 
-  const server = new McpServer({ name: opts.serverName ?? "tempo", version: opts.version ?? "3.0.0" });
+  const server = new McpServer({ name: opts.serverName ?? "tempo", version: opts.version ?? "4.1.0" });
   for (const tool of opts.tools ?? TEMPO_TOOLS) {
     server.registerTool(
       tool.name,
