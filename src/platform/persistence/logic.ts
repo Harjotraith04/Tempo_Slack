@@ -8,6 +8,8 @@ import type { Commitment, CommitmentStatus } from "../../modules/ledger.js";
 import type {
   MetricCounts,
   PinnedCommitment,
+  SenderSignal,
+  SignalKind,
   Suppression,
   UserMetrics,
 } from "../../ports/store.js";
@@ -86,4 +88,21 @@ export function mergePinned(
 export function isActiveSuppression(rec: Suppression, nowTs: number): boolean {
   if (rec.kind === "done") return true;
   return rec.until !== undefined && rec.until > nowTs;
+}
+
+// ── Sender signals (learned urgency) ─────────────────────────────────────────────
+// Plain accumulating counts (no weekly roll) — a bounded weight (see the
+// intelligence module) saturates, so long-lived learning can't run away.
+
+export function blankSignal(userId: string, authorId: string, nowTs: number): SenderSignal {
+  return { userId, authorId, engaged: 0, deprioritized: 0, updatedAt: nowTs };
+}
+
+export function addSignal(cur: SenderSignal, kind: SignalKind, nowTs: number): SenderSignal {
+  return {
+    ...cur,
+    engaged: cur.engaged + (kind === "engaged" ? 1 : 0),
+    deprioritized: cur.deprioritized + (kind === "deprioritized" ? 1 : 0),
+    updatedAt: nowTs,
+  };
 }

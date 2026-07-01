@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   triageBlocks,
   ledgerBlocks,
+  droppedBallBlocks,
   decodeBlocks,
   draftCheckBlocks,
   focusBlocks,
@@ -30,6 +31,7 @@ function mkItem(overrides: Partial<TriageItem> = {}): TriageItem {
     channelName: "atlas-launch",
     channelType: "public_channel",
     authorName: "Priya",
+    authorId: "U_PRIYA",
     excerpt: "Need the spec",
     category: "BLOCKER",
     urgency: 90,
@@ -55,7 +57,7 @@ function mkCommitment(overrides: Partial<Commitment> = {}): Commitment {
 }
 
 describe("triageBlocks", () => {
-  it("renders one actions row per item with permalink-valued buttons", () => {
+  it("renders one actions row per item; action buttons carry the permalink + sender id", () => {
     const r: TriageResult = { needsYou: [mkItem()], scanned: 10, handledQuietly: 5 };
     const blocks = triageBlocks(r);
     const rows = actionsBlocks(blocks);
@@ -64,9 +66,16 @@ describe("triageBlocks", () => {
     const ids = rows[0]!.elements.map((e: any) => e.action_id);
     expect(ids).toEqual(["open_link", "draft_reply", "snooze", "mark_done"]);
 
+    // The "Open in Slack" link button keeps the raw permalink URL.
+    const open = rows[0]!.elements.find((e: any) => e.action_id === "open_link");
+    expect(open.url).toBe(mkItem().permalink);
+
+    // Action buttons encode {p: permalink, s: authorId} so the handler can learn.
     for (const id of ["draft_reply", "snooze", "mark_done"]) {
       const btn = rows[0]!.elements.find((e: any) => e.action_id === id);
-      expect(btn.value).toBe(mkItem().permalink);
+      const parsed = JSON.parse(btn.value);
+      expect(parsed.p).toBe(mkItem().permalink);
+      expect(parsed.s).toBe(mkItem().authorId);
     }
   });
 
@@ -131,6 +140,25 @@ describe("ledgerBlocks", () => {
 
     const open = row.elements.find((e: any) => e.action_id === "open_link");
     expect(open.url).toBe(theirs.permalink);
+  });
+});
+
+describe("droppedBallBlocks", () => {
+  it("is empty when nothing is at risk", () => {
+    expect(droppedBallBlocks([])).toEqual([]);
+  });
+
+  it("renders a calm heads-up listing each slipping commitment (derived facts only)", () => {
+    const blocks = droppedBallBlocks([
+      mkCommitment({ status: "overdue", what: "Send the Atlas API spec", counterparty: "Priya" }),
+      mkCommitment({ status: "at_risk", what: "Pricing review", counterparty: "Jordan", permalink: "p2" }),
+    ]);
+    const text = blocks.map((b: any) => (b.type === "section" ? b.text.text : "")).join("\n");
+    expect(text).toContain("2 commitments are slipping");
+    expect(text).toContain("Send the Atlas API spec");
+    expect(text).toContain("Pricing review");
+    // Never the raw message text.
+    expect(text).not.toContain("I'll send the spec by Friday");
   });
 });
 

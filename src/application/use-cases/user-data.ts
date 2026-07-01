@@ -19,13 +19,14 @@ export async function exportUserData(
   userId: string,
   nowTs: number = nowSec(),
 ): Promise<UserDataExport> {
-  const [installed, prefs, metrics, surfaces, commitments, snoozes] = await Promise.all([
+  const [installed, prefs, metrics, surfaces, commitments, snoozes, senderSignals] = await Promise.all([
     store.tokens.list(),
     store.prefs.get(userId),
     store.metrics.get(userId, nowTs),
     store.surfaces.getHandles(userId),
     store.commitments.listForUser(userId),
     store.snoozes.listForUser(userId),
+    store.signals.forUser(userId),
   ]);
   const meta = installed.find((u) => u.userId === userId);
   return {
@@ -36,6 +37,7 @@ export async function exportUserData(
     surfaces,
     commitments,
     snoozes,
+    senderSignals,
     exportedAt: nowTs,
   };
 }
@@ -51,5 +53,6 @@ export async function deleteUserData(store: Store, userId: string): Promise<void
   await store.snoozes.deleteForUser(userId);
   await store.metrics.deleteForUser(userId);
   await store.surfaces.deleteForUser(userId);
+  await store.signals.deleteForUser(userId);
   await store.tokens.deleteForUser(userId);
 }

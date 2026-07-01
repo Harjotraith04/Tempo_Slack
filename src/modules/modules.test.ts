@@ -4,7 +4,9 @@ import { MockLlm } from "../platform/ai/mock.js";
 import { DEMO_NOW, SAM_LAST_ACTIVE } from "../platform/slack/rts/fixtures.js";
 import { getMcpClients } from "../platform/mcp/index.js";
 import { getSlackActions } from "../platform/slack/webapi/index.js";
-import { runLedger } from "./ledger.js";
+import { runLedger, matchFulfillments } from "./ledger.js";
+import type { Commitment } from "./ledger.js";
+import type { RtsMessage } from "../ports/rts.js";
 import { decodeMessage, checkDraft } from "./decoder.js";
 import { runReentry } from "./reentry.js";
 import { planFocusBlock, whatBreaksThrough } from "./focus.js";
@@ -25,6 +27,26 @@ describe("ledger", () => {
     expect(mine?.status).toBe("overdue"); // "by Friday" of last week
     expect(theirs).toBeTruthy();
   });
+
+  it("matchFulfillments closes an open i-owe promise once it's delivered", async () => {
+    const c: Commitment = {
+      id: "c1", direction: "i_owe", counterparty: "Priya", what: "Send the finalized Atlas API spec",
+      dueText: "Friday", status: "overdue", permalink: "https://x/p1", sourceText: "I'll send the spec by Friday",
+    };
+    const mkMsg = (text: string): RtsMessage => ({
+      permalink: "https://x/m", channelId: "C1", channelType: "im", authorId: "U_SAM", text, ts: "1.0",
+    });
+
+    // A past-tense delivery message that overlaps the deliverable → fulfilled.
+    expect(matchFulfillments([c], [mkMsg("Just sent Priya the finalized Atlas API spec 🎉")])).toEqual([c.permalink]);
+    // The original future-tense promise must NOT self-match ("send" ≠ "sent").
+    expect(matchFulfillments([c], [mkMsg("I'll send the Atlas spec by Friday")])).toEqual([]);
+    // Delivery language about something unrelated → no match.
+    expect(matchFulfillments([c], [mkMsg("Shipped the billing dashboard")])).toEqual([]);
+    // owed_to_me / already-done commitments are never auto-closed.
+    expect(matchFulfillments([{ ...c, direction: "owed_to_me" }], [mkMsg("sent the spec")])).toEqual([]);
+    expect(matchFulfillments([{ ...c, status: "done" }], [mkMsg("sent the spec")])).toEqual([]);
+  });
 });
 
 describe("decoder", () => {
@@ -39,6 +61,15 @@ describe("decoder", () => {
     const r = await checkDraft("No.", llm);
     expect(r.risks.length).toBeGreaterThan(0);
     expect(r.rewrite.length).toBeGreaterThan("No.".length);
+  });
+
+  it("learned familiarity raises confidence (capped at 1); zero familiarity adds a caveat", async () => {
+    const msg = "No rush 🙂 whenever you get a chance I guess.";
+    const cold = await decodeMessage(msg, llm, { authorName: "Marco", familiarity: 0 });
+    const warm = await decodeMessage(msg, llm, { authorName: "Marco", familiarity: 5 });
+    expect(warm.confidence).toBeGreaterThan(cold.confidence);
+    expect(warm.confidence).toBeLessThanOrEqual(1);
+    expect(cold.caveat.toLowerCase()).toContain("history");
   });
 });
 

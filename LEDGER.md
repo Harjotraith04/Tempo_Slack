@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v2.6.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
+**Current version:** v2.8.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -18,6 +18,7 @@
 - **Phase 5 / v2.2.0 — Real MCP outbound:** DONE (Calendar/Notion/Linear/GitHub via `@modelcontextprotocol/sdk`, Streamable HTTP, mock default, per-client double-gate).
 - **Phase 6 / v2.4.0 — Persistence & scale:** DONE (Neon Postgres adapter behind one `Store` port · async repos threaded via the DI container · file default · schema-level + guard proof no RTS content is persisted).
 - **Phase 7 / v2.6.0 — Web companion:** DONE (Next.js app under `web/` · privacy dashboard · data export/delete · web settings editor · signed-cookie session · all logic shared from `src/` so the root zero-cred gates stay green).
+- **Phase 8 / v2.8.0 — Intelligence:** DONE (learned per-sender urgency store keyed by authorId, blended into triage ranking + tone-decoder confidence · fed by snooze/done/draft taps · dropped-ball digest nudges · keyword commitment-fulfillment auto-close · counts-only, in the export + erasable).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -28,27 +29,66 @@ These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack 
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
-## Next up → Phase 8 / v2.8.0 "Intelligence"
-See `MASTER_PLAN.md` → Part V, Year 2, Phase 8 for full detail. Everything is stored, controllable, and
-private (v2.4 + v2.6). Now make the triage/ledger *smarter per person*, learning only from the user's own
-action signals (snooze/done/draft) — **never** from stored RTS content:
-- [ ] **Learned urgency model** — a per-user / per-sender weight the triage classifier blends with its base
-  score, learned from which items the user acts on vs snoozes. New `intelligence` module + an `urgency`
-  repository on the `Store` port (counts/weights only, like `metrics`).
-- [ ] **Relationship graph** — lightweight per-counterparty signals (how often you reply, typical latency)
-  to ground the Tone Decoder's confidence — derived aggregates only, no message text.
-- [ ] **Commitment-fulfillment detection** — auto-close a pinned commitment when the live Ledger shows it
-  delivered, so the ledger self-cleans; **dropped-ball prevention** nudges before at-risk items slip.
-- [ ] Learn from snooze/done/draft events already captured — wire the existing action handlers to record
-  the learning signal (counts only) alongside today's metrics.
-- [ ] Carry-over (still unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/
+## Next up → Phase 9 / v2.9.0 "Marketplace"
+See `MASTER_PLAN.md` → Part V, Year 2, Phase 9. Everything is real, private, controllable, and self-tuning
+(v2.4 + v2.6 + v2.8). Now get listing-ready:
+- [ ] **Granular-scopes audit** — trim `manifest.json` + `oauth/start` to the minimum scopes actually used
+  (the manifest currently lists more user/bot scopes than the OAuth request asks for); document each.
+- [ ] **Data deletion / access / export polish** — the web companion already has export + right-to-erasure;
+  add a machine endpoint contract + a short retention/DSR note; confirm every repo's `deleteForUser` is
+  covered (tokens/prefs/commitments/snoozes/metrics/surfaces/**signals**).
+- [ ] **Privacy policy + security review** — a written policy page (reuse the privacy-dashboard copy) and a
+  pass over `security-review` findings; the encryption-key + OAuth-`state` hardening already landed.
+- [ ] **Listing assets** — description, screenshots (the 19-scene demo + the web dashboard), the impact
+  statement, and the "uses all three required techs (RTS + MCP + Slack AI)" callout.
+- [ ] Carry-over (still-unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/
   `slackLists.*`/`reminders.add`/`bookmarks.add` `apiCall`s, the v2.2 live MCP `callTool`/transport, the
-  v2.4 live Postgres `query`/transport (`pg/connect.ts`, `verify:postgres`), and now the **v2.6 web app's
-  SSR/route-handler + signed-cookie/redirect behavior** (built + type-checked, exercised only manually).
+  v2.4 live Postgres `query`/transport (`verify:postgres`), and the v2.6 web app's SSR/route-handler +
+  cookie/redirect behavior — all built/typed but unverified against a real workspace/browser.
 
 ---
 
 ## History
+
+### v2.8.0 — 2026-07-02 — Intelligence: learned per-sender urgency · relationship confidence · dropped-ball · fulfillment
+**Built:** all four Phase 8 bullets — Tempo now tunes itself to *you*, learning **only from your own taps**
+(snooze / mark-done / draft), stored as **counts per sender id**, never from message content (Invariant 1).
+- **Learned-signals store** (`signals` repo on the `Store` port) — a new `SenderSignal {userId, authorId,
+  engaged, deprioritized, updatedAt}`, keyed by the sender's stable Slack id, in **both** adapters
+  (`file/signals.ts`, `pg` `tempo_sender_signals` table, shared `logic.ts` helpers). No weekly roll (a bounded
+  weight saturates instead). Wired into `UserDataExport` (`senderSignals`) + the `deleteForUser` erasure
+  cascade — counts only, in the export, erasable.
+- **Intelligence module** (`src/modules/intelligence`, pure) — `senderWeight = MAX_ADJUST·tanh(net/SCALE)`
+  (bounded ±20 on the 0–130 rank scale, so learning reorders near-ties but never overrides a genuine ACT),
+  `buildWeightMap`, and `familiarity`.
+- **Triage ranking blend** — `TriageItem` now carries `authorId` (was dropped at the enrichment boundary);
+  `rank(i, adjust?)` adds the learned per-sender term; `runTriage` takes a `senderAdjust`, resolved by the
+  orchestrator/surfaces `liveTriage` from the user's signals. **Attribution:** triage action buttons now encode
+  `{p: permalink, s: authorId}`; `actionTarget` parses it (bare-permalink fallback keeps ledger buttons + all
+  existing payloads working), so `snooze`→deprioritized and `mark_done`/`draft_reply`→engaged record a signal.
+- **Decoder relationship-confidence** — `decodeMessage` takes a `familiarity` (from the same signals);
+  more history → a bounded confidence bump (capped at 1), none → an honest low-history caveat. The orchestrator
+  threads the decoded message's `authorId` through.
+- **Dropped-ball prevention** — `atRiskCommitments(ctx)` + `droppedBallBlocks()` append a calm "N commitments
+  are slipping" heads-up to the morning-digest DM (best-effort; derived facts only).
+- **Commitment-fulfillment auto-close** (the accepted-fuzzy heuristic) — pure `matchFulfillments(commitments,
+  messages)` closes a still-open `i_owe` promise when a **past-tense** delivery message (`sent/shipped/…`)
+  overlaps the deliverable ("send" ≠ "sent", so the original promise never self-closes); `detectFulfilled
+  Commitments` searches RTS and the orchestrator marks matches `done` before sync, so the Ledger self-cleans.
+**Quality:** **209 tests** passing (up from 190) across 33 files — new `intelligence` (weight bounds/
+monotonicity/familiarity), file+pg `signals` (accumulate · scoped · erase · `ON CONFLICT` SQL), triage
+(authorId populated · a `senderAdjust` re-ranks without changing membership), decoder (familiarity raises
+confidence, zero-familiarity caveat), ledger `matchFulfillments` (delivery matches, future-tense/unrelated/
+owed-to-me don't), dropped-ball render, and app-action learning (structured value records a signal, bare
+permalink doesn't) · typecheck clean · root build clean · `npm run demo` extended to **19 scenes** (18: taps
+re-rank triage + familiarity tunes a tone read; 19: fulfillment auto-close + a dropped-ball digest). The web
+app still builds (the `Store`/`UserDataExport` widening is source-compatible).
+**Open seams:** fulfillment auto-close is a **keyword heuristic** — it can miss or rarely false-close, but only
+flips a re-derivable display status (never deletes data) and is confined to `matchFulfillments`; the learned
+weight is bounded so a bad signal can't dominate. The new RTS fulfillment search shares the "unverified against
+a real workspace" posture of the other live seams.
+**Next:** Phase 9 / v2.9 — Marketplace (granular-scopes audit · DSR/export polish · privacy policy · security
+review · listing assets).
 
 ### v2.6.0 — 2026-07-01 — Web companion (Next.js): privacy dashboard · data export/delete · settings
 **Built:** the user-facing web companion Phase 7 called for — a real **Next.js App Router app under `web/`**

@@ -15,6 +15,8 @@ import type {
   MetricsRepo,
   PinnedCommitment,
   PrefsRepo,
+  SenderSignal,
+  SignalsRepo,
   SnoozesRepo,
   Suppression,
   SurfaceHandles,
@@ -26,6 +28,8 @@ import type {
 import { encrypt, decrypt } from "../crypto.js";
 import {
   addCounts,
+  addSignal,
+  blankSignal,
   currentWeek,
   isActiveSuppression,
   mergePinned,
@@ -105,6 +109,16 @@ function mapSurface(r: Row): SurfaceHandles {
     userId: String(r.user_id),
     canvasId: optStr(r.canvas_id),
     listId: optStr(r.list_id),
+    updatedAt: num(r.updated_at),
+  };
+}
+
+function mapSignal(r: Row): SenderSignal {
+  return {
+    userId: String(r.user_id),
+    authorId: String(r.author_id),
+    engaged: num(r.engaged),
+    deprioritized: num(r.deprioritized),
     updatedAt: num(r.updated_at),
   };
 }
@@ -379,6 +393,39 @@ export function buildPgSurfacesRepo(db: Db): SurfacesRepo {
     },
     async deleteForUser(userId) {
       await db.query(`DELETE FROM tempo_surfaces WHERE user_id = $1`, [userId]);
+    },
+  };
+}
+
+export function buildPgSignalsRepo(db: Db): SignalsRepo {
+  const read = async (userId: string, authorId: string): Promise<SenderSignal | undefined> => {
+    const row = first(
+      await db.query<Row>(`SELECT * FROM tempo_sender_signals WHERE user_id = $1 AND author_id = $2`, [
+        userId,
+        authorId,
+      ]),
+    );
+    return row ? mapSignal(row) : undefined;
+  };
+  return {
+    async record(userId, authorId, kind, nowTs = nowSec()) {
+      const cur = (await read(userId, authorId)) ?? blankSignal(userId, authorId, nowTs);
+      const next = addSignal(cur, kind, nowTs);
+      await db.query(
+        `INSERT INTO tempo_sender_signals (user_id, author_id, engaged, deprioritized, updated_at)
+         VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (user_id, author_id) DO UPDATE SET
+           engaged = $3, deprioritized = $4, updated_at = $5`,
+        [userId, authorId, next.engaged, next.deprioritized, next.updatedAt],
+      );
+      return next;
+    },
+    async forUser(userId) {
+      const rows = await db.query<Row>(`SELECT * FROM tempo_sender_signals WHERE user_id = $1`, [userId]);
+      return rows.map(mapSignal);
+    },
+    async deleteForUser(userId) {
+      await db.query(`DELETE FROM tempo_sender_signals WHERE user_id = $1`, [userId]);
     },
   };
 }

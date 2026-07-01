@@ -144,6 +144,28 @@ export interface SurfacesRepo {
   deleteForUser(userId: string): Promise<void>;
 }
 
+/** A learned per-sender engagement signal (v2.8 Intelligence). COUNTS ONLY,
+ * keyed by the sender's stable Slack id — never any message content. */
+export type SignalKind = "engaged" | "deprioritized";
+
+export interface SenderSignal {
+  userId: string;
+  /** The sender's stable Slack user id (an identifier, not message content). */
+  authorId: string;
+  /** Times the user acted on this sender's items (drafted a reply, marked done). */
+  engaged: number;
+  /** Times the user pushed this sender's items away (snoozed). */
+  deprioritized: number;
+  updatedAt: number;
+}
+
+export interface SignalsRepo {
+  record(userId: string, authorId: string, kind: SignalKind, nowTs?: number): Promise<SenderSignal>;
+  /** Every sender signal for the user — to build the ranking weight map. */
+  forUser(userId: string): Promise<SenderSignal[]>;
+  deleteForUser(userId: string): Promise<void>;
+}
+
 /** The bundle of repositories the application layer resolves via the container. */
 export interface Store {
   tokens: TokensRepo;
@@ -152,6 +174,7 @@ export interface Store {
   snoozes: SnoozesRepo;
   metrics: MetricsRepo;
   surfaces: SurfacesRepo;
+  signals: SignalsRepo;
 }
 
 /**
@@ -170,5 +193,7 @@ export interface UserDataExport {
   surfaces?: SurfaceHandles;
   commitments: PinnedCommitment[];
   snoozes: Suppression[];
+  /** Learned per-sender engagement signals — counts only, no message content. */
+  senderSignals: SenderSignal[];
   exportedAt: number;
 }

@@ -12,16 +12,23 @@
 import { afterTsOf, type TempoContext } from "../context.js";
 import { runTriage, type TriageResult } from "../../modules/triage.js";
 import { runLedger, type Commitment } from "../../modules/ledger.js";
+import { buildWeightMap } from "../../modules/intelligence/index.js";
 import { buildCanvasMarkdown } from "../../platform/slack/blockkit/canvas.js";
 import type { ListItem } from "../../ports/slack.js";
 
 /** Suppression-aware live triage — mirrors the orchestrator's own render path so
  * the canvas never shows something the user already snoozed/marked done. */
 async function liveTriage(ctx: TempoContext): Promise<TriageResult> {
-  const raw = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
-  const suppressed = new Set(
-    (await ctx.store.snoozes.active(ctx.subjectUserId, ctx.nowTs)).map((s) => s.permalink),
-  );
+  const [sigs, active] = await Promise.all([
+    ctx.store.signals.forUser(ctx.subjectUserId),
+    ctx.store.snoozes.active(ctx.subjectUserId, ctx.nowTs),
+  ]);
+  const weights = buildWeightMap(sigs);
+  const raw = await runTriage(ctx.rts, ctx.llm, {
+    afterTs: afterTsOf(ctx),
+    senderAdjust: (id) => (id ? weights.get(id) ?? 0 : 0),
+  });
+  const suppressed = new Set(active.map((s) => s.permalink));
   return {
     ...raw,
     needsYou: raw.needsYou.filter((i) => !suppressed.has(i.permalink)),
@@ -32,6 +39,13 @@ async function liveTriage(ctx: TempoContext): Promise<TriageResult> {
 async function liveCommitments(ctx: TempoContext): Promise<Commitment[]> {
   const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
   return ctx.store.commitments.sync(ctx.subjectUserId, fresh);
+}
+
+/** Commitments that are slipping (at-risk or overdue) — for proactive dropped-ball
+ * nudges (e.g. appended to the morning digest). Derived facts only. */
+export async function atRiskCommitments(ctx: TempoContext): Promise<Commitment[]> {
+  const all = await liveCommitments(ctx);
+  return all.filter((c) => c.status === "at_risk" || c.status === "overdue");
 }
 
 export interface UpdateCanvasResult {

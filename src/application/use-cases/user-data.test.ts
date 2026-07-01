@@ -43,6 +43,7 @@ async function seed(userId: string) {
   await store.surfaces.save(userId, { canvasId: "F1", listId: "L1" });
   await store.commitments.sync(userId, [mkCommitment()]);
   await store.snoozes.snooze(userId, "https://a/1", 9_999_999_999);
+  await store.signals.record(userId, "U_SENDER", "engaged");
 }
 
 describe("exportUserData", () => {
@@ -56,6 +57,8 @@ describe("exportUserData", () => {
     expect(data.surfaces?.canvasId).toBe("F1");
     expect(data.commitments).toHaveLength(1);
     expect(data.snoozes).toHaveLength(1);
+    expect(data.senderSignals).toHaveLength(1);
+    expect(data.senderSignals[0]).toMatchObject({ authorId: "U_SENDER", engaged: 1 });
     expect(data.exportedAt).toBe(1_000_100);
   });
 
@@ -93,6 +96,7 @@ describe("deleteUserData", () => {
     expect(gone.surfaces).toBeUndefined();
     expect(gone.commitments).toEqual([]);
     expect(gone.snoozes).toEqual([]);
+    expect(gone.senderSignals).toEqual([]);
     expect(await store.tokens.get("U_DEL")).toBeUndefined();
 
     // The other user's data is intact.

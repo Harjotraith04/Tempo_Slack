@@ -30,4 +30,24 @@ describe("runTriage", () => {
     const r = await runTriage(rts, llm, { afterTs });
     expect(r.scanned).toBeGreaterThan(r.needsYou.length);
   });
+
+  it("carries the sender's stable authorId onto every item", async () => {
+    const r = await runTriage(rts, llm, { afterTs });
+    expect(r.needsYou.every((i) => typeof i.authorId === "string" && i.authorId.length > 0)).toBe(true);
+  });
+
+  it("a learned per-sender adjustment re-ranks the list without changing membership", async () => {
+    const base = await runTriage(rts, llm, { afterTs });
+    // Heavily boost whoever is currently last; they should climb the order.
+    const lastSender = base.needsYou[base.needsYou.length - 1]!.authorId;
+    const boosted = await runTriage(rts, llm, {
+      afterTs,
+      senderAdjust: (id) => (id === lastSender ? 1000 : 0),
+    });
+    // Same items, different order: the boosted sender is now at the top.
+    expect(new Set(boosted.needsYou.map((i) => i.permalink))).toEqual(
+      new Set(base.needsYou.map((i) => i.permalink)),
+    );
+    expect(boosted.needsYou[0]!.authorId).toBe(lastSender);
+  });
 });

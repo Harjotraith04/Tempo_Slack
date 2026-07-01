@@ -18,6 +18,7 @@ import {
   SYSTEM,
   buildPrompt,
   hash,
+  matchFulfillments,
   mockExtract,
   parseDue,
   sortByUrgency,
@@ -66,4 +67,26 @@ export async function runLedger(
   }
 
   return sortByUrgency(commitments);
+}
+
+/**
+ * Fulfillment detection (v2.8): searches RTS for delivery-language messages and
+ * returns the permalinks of the user's own still-open commitments those messages
+ * appear to fulfill. The application layer marks those commitments done so the
+ * Ledger self-cleans. Heuristic (see `matchFulfillments`) — never deletes data,
+ * only flips a re-derivable display status.
+ */
+export async function detectFulfilledCommitments(
+  rts: RtsClient,
+  fresh: Commitment[],
+  opts: { afterTs?: string } = {},
+): Promise<string[]> {
+  const eligible = fresh.some((c) => c.direction === "i_owe");
+  if (!eligible) return [];
+  const res = await rts.search({
+    query: "I sent, shipped, delivered, posted, or finished something I owed — the deliverable is done",
+    after: opts.afterTs,
+    limit: 25,
+  });
+  return matchFulfillments(fresh, res.messages);
 }

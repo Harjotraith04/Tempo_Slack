@@ -68,4 +68,14 @@ export const MIGRATIONS: string[] = [
      list_id text,
      updated_at bigint NOT NULL
    )`,
+  // Learned per-sender engagement (v2.8) — counts only, keyed by a sender id.
+  // No message-content column, by design (Invariant 1).
+  `CREATE TABLE IF NOT EXISTS tempo_sender_signals (
+     user_id text NOT NULL,
+     author_id text NOT NULL,
+     engaged integer NOT NULL,
+     deprioritized integer NOT NULL,
+     updated_at bigint NOT NULL,
+     PRIMARY KEY (user_id, author_id)
+   )`,
 ];

@@ -131,3 +131,42 @@ export function mockExtract(m: RtsMessage): z.infer<typeof ExtractSchema>["items
   }
   return { permalink: m.permalink, isCommitment: false, direction: "i_owe", counterparty: "", what: "" };
 }
+
+// ── Fulfillment detection (v2.8) ─────────────────────────────────────────────
+// A deliberately-simple heuristic (accepted as fuzzy): a still-open promise the
+// user made is treated as delivered when a message uses PAST-TENSE delivery
+// language AND shares a salient word with the deliverable. Past-tense verbs
+// avoid matching the original promise ("I'll *send*…" never matches "*sent*").
+
+const FULFILL_RE = /\b(sent|shipped|delivered|posted|wrapped|submitted|finished|done)\b/i;
+const STOP = new Set([
+  "send", "the", "and", "your", "you", "with", "this", "that", "them", "from", "into", "just",
+  "will", "have", "about", "over", "back", "when", "then", "here", "there", "some", "need",
+]);
+
+/** Salient nouns/verbs from a deliverable phrase (≥4 letters, minus stopwords). */
+export function salientWords(s: string): string[] {
+  return (s.toLowerCase().match(/[a-z]{4,}/g) ?? []).filter((w) => !STOP.has(w));
+}
+
+const OPEN_STATUSES = new Set<CommitmentStatus>(["open", "at_risk", "overdue"]);
+
+/**
+ * Permalinks of the user's own still-open commitments that `messages` appear to
+ * have fulfilled. Only `i_owe` commitments in an open state are eligible.
+ */
+export function matchFulfillments(commitments: Commitment[], messages: RtsMessage[]): string[] {
+  const out: string[] = [];
+  for (const c of commitments) {
+    if (c.direction !== "i_owe" || !OPEN_STATUSES.has(c.status)) continue;
+    const words = salientWords(c.what);
+    if (words.length === 0) continue;
+    const fulfilled = messages.some((m) => {
+      if (!FULFILL_RE.test(m.text)) return false;
+      const t = m.text.toLowerCase();
+      return words.some((w) => t.includes(w));
+    });
+    if (fulfilled) out.push(c.permalink);
+  }
+  return out;
+}

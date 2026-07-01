@@ -91,6 +91,8 @@ npm test          # 155 tests: RTS, MCP, the five modules, native surfaces, pers
 
 This is also why the **for-Good / accessibility** framing is clean: it's a *personal* assistant on personal data — not surveillance of others.
 
+**Learns from you (privately).** Tempo tunes triage ranking and tone-read confidence to *you* — but it learns **only from your own taps** (snooze / mark-done / draft), stored as **counts per sender id**, never from message content. The learned weight is bounded, so it reorders near-ties without ever overriding a genuine urgent ask. Those per-sender signals appear in your data export and are erased by "Delete everything," like everything else.
+
 ### Your data (the web companion, v2.6)
 
 A small **Next.js app under [`web/`](web/)** gives every user direct control over what Tempo has stored:

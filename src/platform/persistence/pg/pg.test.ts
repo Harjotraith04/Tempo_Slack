@@ -187,6 +187,37 @@ describe("pg data-governance (v2.6: listForUser / deleteForUser)", () => {
   });
 });
 
+describe("pg sender-signals repo (v2.8)", () => {
+  it("record reads the existing row then upserts the accumulated counts", async () => {
+    const { db, calls } = fakeDb((t) =>
+      isSelect(t)
+        ? [{ user_id: "U1", author_id: "U_A", engaged: 2, deprioritized: 0, updated_at: 1 }]
+        : [],
+    );
+    const next = await buildPgStore(db).signals.record("U1", "U_A", "engaged", 5);
+    expect(next.engaged).toBe(3); // 2 existing + 1
+    const upsert = calls.find((c) => /INSERT INTO tempo_sender_signals/.test(c.text))!;
+    expect(upsert.text).toContain("ON CONFLICT (user_id, author_id)");
+    expect(upsert.params).toEqual(["U1", "U_A", 3, 0, 5]);
+  });
+
+  it("forUser selects the user's rows and maps them", async () => {
+    const { db } = fakeDb((t) =>
+      isSelect(t) ? [{ user_id: "U1", author_id: "U_A", engaged: 4, deprioritized: 1, updated_at: 9 }] : [],
+    );
+    const rows = await buildPgStore(db).signals.forUser("U1");
+    expect(rows[0]).toEqual({ userId: "U1", authorId: "U_A", engaged: 4, deprioritized: 1, updatedAt: 9 });
+  });
+
+  it("deleteForUser issues a scoped DELETE", async () => {
+    const { db, calls } = fakeDb();
+    await buildPgStore(db).signals.deleteForUser("U1");
+    const del = calls.find((c) => /^\s*DELETE FROM/i.test(c.text))!;
+    expect(del.text).toContain("DELETE FROM tempo_sender_signals WHERE user_id = $1");
+    expect(del.params).toEqual(["U1"]);
+  });
+});
+
 describe("schema (Invariant 1: never persist RTS content)", () => {
   it("the commitments table has no message-content column", () => {
     const commitmentsDdl = MIGRATIONS.find((m) => /tempo_commitments/.test(m))!;

@@ -11,6 +11,7 @@ import { buildFileCommitmentsRepo } from "./commitments.js";
 import { buildFileSnoozesRepo } from "./snoozes.js";
 import { buildFileMetricsRepo } from "./metrics.js";
 import { buildFileSurfacesRepo } from "./surfaces.js";
+import { buildFileSignalsRepo } from "./signals.js";
 
 export function buildFileStore(): Store {
   return {
@@ -20,5 +21,6 @@ export function buildFileStore(): Store {
     snoozes: buildFileSnoozesRepo(),
     metrics: buildFileMetricsRepo(),
     surfaces: buildFileSurfacesRepo(),
+    signals: buildFileSignalsRepo(),
   };
 }

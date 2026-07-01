@@ -229,10 +229,12 @@ export function registerHandlers(app: BoltApp) {
   app.action("snooze", async ({ ack, body, client }) => {
     await ack();
     await safely("snooze", async () => {
-      const { permalink, userId } = actionTarget(body);
+      const { permalink, userId, authorId } = actionTarget(body);
       if (permalink) {
         await getStore().snoozes.snooze(userId, permalink, Math.floor(Date.now() / 1000) + DEFAULT_SNOOZE_SECS);
         await getStore().metrics.record(userId, { itemsRecovered: 1 });
+        // Learn: pushing this sender's item away deprioritizes them.
+        if (authorId) await getStore().signals.record(userId, authorId, "deprioritized");
       }
       await ephemeral(client, body, confirmation("snooze"));
     }, () => replyError(client, body));
@@ -241,10 +243,12 @@ export function registerHandlers(app: BoltApp) {
   app.action("mark_done", async ({ ack, body, client }) => {
     await ack();
     await safely("mark_done", async () => {
-      const { permalink, userId } = actionTarget(body);
+      const { permalink, userId, authorId } = actionTarget(body);
       if (permalink) {
         await getStore().snoozes.markDone(userId, permalink);
         await getStore().metrics.record(userId, { itemsRecovered: 1 });
+        // Learn: handling this sender's item is positive engagement.
+        if (authorId) await getStore().signals.record(userId, authorId, "engaged");
       }
       await ephemeral(client, body, confirmation("mark_done"));
     }, () => replyError(client, body));
@@ -403,21 +407,32 @@ function confirmation(actionId: string): string {
   return map[actionId] ?? "Done.";
 }
 
-/** The permalink + acting user for a button click — both snooze/done and the
- * commitment actions key off this, since every actionable card item carries
- * its permalink as the button value. */
-function actionTarget(body: any): { permalink: string; userId: string } {
-  return {
-    permalink: body?.actions?.[0]?.value ?? "",
-    userId: body?.user?.id ?? "U_SAM",
-  };
+/** The permalink + acting user (+ optional sender id) for a button click. Triage
+ * buttons encode a `{"p":permalink,"s":authorId}` JSON value so we can attribute
+ * the learning signal to a sender; ledger/other buttons pass a bare permalink,
+ * which parses back to just `{permalink}` (authorId undefined). */
+function actionTarget(body: any): { permalink: string; userId: string; authorId?: string } {
+  const raw = body?.actions?.[0]?.value ?? "";
+  const userId = body?.user?.id ?? "U_SAM";
+  if (typeof raw === "string" && raw.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(raw);
+      return { permalink: String(parsed.p ?? ""), userId, authorId: parsed.s || undefined };
+    } catch {
+      /* fall through to bare-string handling */
+    }
+  }
+  return { permalink: raw, userId };
 }
 
 async function postDraft(client: any, body: any) {
-  const { permalink, userId } = actionTarget(body);
+  const { permalink, userId, authorId } = actionTarget(body);
   const ctx = await contextFor(userId);
   const source = await sourceTextFor(ctx, permalink);
   const draft = await draftReply(source ?? "", ctx.llm);
+  // Learn: drafting a reply to this sender is positive engagement (triage
+  // buttons carry the sender id; ledger "draft it now" buttons don't).
+  if (authorId) await getStore().signals.record(userId, authorId, "engaged");
   await postComposedDraft(client, body, draft);
 }
 

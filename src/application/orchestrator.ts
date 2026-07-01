@@ -10,10 +10,11 @@
 import type { KnownBlock } from "@slack/types";
 import { afterTsOf, type TempoContext } from "./context.js";
 import { runTriage } from "../modules/triage.js";
-import { runLedger } from "../modules/ledger.js";
+import { runLedger, detectFulfilledCommitments } from "../modules/ledger.js";
 import { decodeMessage } from "../modules/decoder.js";
 import { runReentry } from "../modules/reentry.js";
 import { planFocusBlock } from "../modules/focus.js";
+import { buildWeightMap, familiarity as familiarityOf } from "../modules/intelligence/index.js";
 // The application layer wires outbound adapters to the ports the domain modules
 // declare; the per-turn container (on ctx) resolves mock/live by config, and
 // ctx.store is the resolved persistence adapter (file or Postgres).
@@ -67,12 +68,19 @@ export async function respond(
   return { ...r, text, speech: toSpeech({ intent: r.intent, text }) };
 }
 
-/** Filters out anything the user snoozed/marked done, the way every triage render must. */
+/** Filters out anything the user snoozed/marked done, and blends the learned
+ * per-sender weight into ranking — the way every triage render must. */
 async function liveTriage(ctx: TempoContext) {
-  const raw = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
-  const suppressed = new Set(
-    (await ctx.store.snoozes.active(ctx.subjectUserId, ctx.nowTs)).map((s) => s.permalink),
-  );
+  const [sigs, active] = await Promise.all([
+    ctx.store.signals.forUser(ctx.subjectUserId),
+    ctx.store.snoozes.active(ctx.subjectUserId, ctx.nowTs),
+  ]);
+  const weights = buildWeightMap(sigs);
+  const raw = await runTriage(ctx.rts, ctx.llm, {
+    afterTs: afterTsOf(ctx),
+    senderAdjust: (id) => (id ? weights.get(id) ?? 0 : 0),
+  });
+  const suppressed = new Set(active.map((s) => s.permalink));
   return {
     ...raw,
     needsYou: raw.needsYou.filter((i) => !suppressed.has(i.permalink)),
@@ -120,6 +128,10 @@ async function respondCore(
     }
     case "commitments": {
       const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
+      // Auto-close promises the user has since delivered, so the Ledger self-cleans.
+      for (const pl of await detectFulfilledCommitments(ctx.rts, fresh, { afterTs: after })) {
+        await ctx.store.commitments.markDone(ctx.subjectUserId, pl);
+      }
       const c = await ctx.store.commitments.sync(ctx.subjectUserId, fresh);
       if (record) await ctx.store.metrics.record(ctx.subjectUserId, { obligationsSurfaced: c.length });
       return {
@@ -151,11 +163,24 @@ async function respondCore(
       return { intent, text: p.summary, blocks: focusBlocks(p) };
     }
     case "decode": {
-      const text = extractDecodeTarget(input) ?? (await latestAmbiguousMessage(ctx));
+      const pasted = extractDecodeTarget(input);
+      const candidate = pasted ? undefined : await latestAmbiguousMessage(ctx);
+      const text = pasted ?? candidate?.text;
       if (!text) {
         return { intent: "help", text: "Paste a message and I'll decode it.", blocks: helpBlocks() };
       }
-      const d = await decodeMessage(text, ctx.llm, { rts: ctx.rts });
+      // Learned relationship grounding: how much history the user has with this
+      // sender (from the same per-sender signals triage learns from).
+      let fam = 0;
+      if (candidate?.authorId) {
+        const sigs = await ctx.store.signals.forUser(ctx.subjectUserId);
+        fam = familiarityOf(sigs.find((s) => s.authorId === candidate.authorId));
+      }
+      const d = await decodeMessage(text, ctx.llm, {
+        rts: ctx.rts,
+        authorName: candidate?.authorName,
+        familiarity: fam,
+      });
       return { intent, text: `Probably means: ${d.impliedMeaning}`, blocks: decodeBlocks(d, text) };
     }
     default:
@@ -175,13 +200,21 @@ function stripQuotes(s: string): string {
   return s.replace(/^["“]|["”]$/g, "").trim();
 }
 
-/** Demo/live convenience: find the most recent message that mentions the user. */
-async function latestAmbiguousMessage(ctx: TempoContext): Promise<string | undefined> {
+/** Demo/live convenience: the most recent message that mentions the user —
+ * returned whole so the decode path can key relationship grounding by sender. */
+async function latestAmbiguousMessage(
+  ctx: TempoContext,
+): Promise<{ text: string; authorId?: string; authorName?: string } | undefined> {
   const res = await ctx.rts.search({
     query: "messages addressed to me that might be ambiguous or passive-aggressive",
     after: afterTsOf(ctx),
     limit: 10,
   });
   const candidate = res.messages.find((m) => m.mentionsMe) ?? res.messages[0];
-  return candidate?.text;
+  if (!candidate) return undefined;
+  return {
+    text: candidate.text,
+    authorId: candidate.authorId,
+    authorName: candidate.authorRealName ?? candidate.authorName,
+  };
 }

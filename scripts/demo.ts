@@ -31,6 +31,12 @@ import type { Db } from "../src/platform/persistence/pg/session.js";
 import { signSession, verifySession } from "../src/shared/session.js";
 import { exportUserData, deleteUserData } from "../src/application/use-cases/user-data.js";
 import { applySettings } from "../src/application/use-cases/settings.js";
+import { buildWeightMap } from "../src/modules/intelligence/index.js";
+import { decodeMessage } from "../src/modules/decoder.js";
+import { matchFulfillments, type Commitment } from "../src/modules/ledger.js";
+import { atRiskCommitments } from "../src/application/use-cases/surfaces.js";
+import { droppedBallBlocks } from "../src/platform/slack/blockkit/index.js";
+import type { RtsMessage } from "../src/ports/rts.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
@@ -368,6 +374,61 @@ async function main() {
       `  After "Delete everything": prefs=${gone.prefs ?? "gone"}, commitments=${gone.commitments.length}, ` +
         `token=${(await store.tokens.get(u)) ?? "gone"} — right-to-erasure honored.`,
     );
+  }
+
+  rule('18. Learns from you (privately) — per-sender taps re-rank triage; familiarity tunes tone reads');
+  {
+    const u = ctx.subjectUserId;
+    const show = (label: string, items: { category: string; urgency: number; authorName?: string; excerpt: string }[]) => {
+      console.log(`  ${label}`);
+      items.slice(0, 3).forEach((i, n) =>
+        console.log(`    ${n + 1}. [${i.category} ${i.urgency}] ${i.authorName} — "${i.excerpt.slice(0, 42)}…"`),
+      );
+    };
+
+    const before = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
+    show("Before learning:", before.needsYou);
+
+    // Simulate the user's own taps: keep engaging one sender, keep snoozing the
+    // current top sender. Counts per sender id only — never message content.
+    const topSender = before.needsYou[0]!.authorId!;
+    const riser = before.needsYou.find((i) => i.authorId && i.authorId !== topSender)!.authorId!;
+    for (let k = 0; k < 6; k++) {
+      await store.signals.record(u, riser, "engaged");
+      await store.signals.record(u, topSender, "deprioritized");
+    }
+    const weights = buildWeightMap(await store.signals.forUser(u));
+    const after = await runTriage(ctx.rts, ctx.llm, {
+      afterTs: afterTsOf(ctx),
+      senderAdjust: (id) => (id ? weights.get(id) ?? 0 : 0),
+    });
+    show("After you kept engaging one sender and snoozing another:", after.needsYou);
+    console.log(`  → same items, re-ranked from your taps (bounded ±20, can't override a real ACT).`);
+
+    const cold = await decodeMessage("No rush 🙂 whenever you get a chance.", ctx.llm, { familiarity: 0 });
+    const warm = await decodeMessage("No rush 🙂 whenever you get a chance.", ctx.llm, { familiarity: 8 });
+    console.log(
+      `  Tone-read confidence — unfamiliar sender ${Math.round(cold.confidence * 100)}% (adds a caveat) vs ` +
+        `familiar sender ${Math.round(warm.confidence * 100)}%.`,
+    );
+  }
+
+  rule('19. Ledger intelligence — auto-close delivered promises + a dropped-ball heads-up');
+  {
+    const promise: Commitment = {
+      id: "c_demo", direction: "i_owe", counterparty: "Priya", what: "Send the finalized Atlas API spec",
+      dueText: "Friday", status: "overdue", permalink: "https://demo/promise", sourceText: "I'll send the spec by Friday",
+    };
+    const msg = (text: string): RtsMessage => ({
+      permalink: "https://demo/m", channelId: "C1", channelType: "im", authorId: "U_SAM", text, ts: "1.0",
+    });
+    const closed = matchFulfillments([promise], [msg("Just sent Priya the finalized Atlas API spec 🎉")]);
+    const notClosed = matchFulfillments([promise], [msg("I'll send the Atlas spec by Friday")]);
+    console.log(`  A past-tense delivery message auto-closes the promise: ${closed.length === 1} (Ledger self-cleans).`);
+    console.log(`  The original future-tense promise never self-closes: ${notClosed.length === 0} ("send" ≠ "sent").`);
+
+    console.log("\n  Dropped-ball heads-up appended to the morning digest (Sam's live at-risk commitments):");
+    renderBlocks(droppedBallBlocks(await atRiskCommitments(ctx)));
   }
 
   console.log("\n" + "─".repeat(72));

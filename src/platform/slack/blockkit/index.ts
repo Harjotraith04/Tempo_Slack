@@ -73,13 +73,16 @@ export function triageBlocks(r: TriageResult, opts: { maxItems?: number } = {}):
           `_Why this matters:_ ${item.reason}`,
       ),
     );
+    // Triage action buttons carry the permalink AND the sender id, so the
+    // handler can attribute the learning signal to a person (see actionTarget).
+    const v = JSON.stringify({ p: item.permalink, s: item.authorId });
     blocks.push({
       type: "actions",
       elements: [
         linkBtn("Open in Slack", item.permalink),
-        btn("Draft a reply", "draft_reply", item.permalink, "primary"),
-        btn("Snooze", "snooze", item.permalink),
-        btn("Done", "mark_done", item.permalink),
+        btn("Draft a reply", "draft_reply", v, "primary"),
+        btn("Snooze", "snooze", v),
+        btn("Done", "mark_done", v),
       ],
     } as KnownBlock);
   }
@@ -144,6 +147,27 @@ export function ledgerBlocks(commitments: Commitment[]): KnownBlock[] {
     } as KnownBlock);
   }
   return blocks;
+}
+
+/** A calm proactive "these are slipping" nudge — derived facts only, appended to
+ * the morning digest (dropped-ball prevention). Empty when nothing is at risk. */
+export function droppedBallBlocks(commitments: Commitment[]): KnownBlock[] {
+  if (commitments.length === 0) return [];
+  const lines = commitments
+    .map(
+      (c) =>
+        `• ${STATUS_LABEL[c.status]} · *${c.what}* — ` +
+        (c.direction === "i_owe" ? `you owe ${c.counterparty}` : `${c.counterparty} owes you`) +
+        (c.dueText ? ` (${c.dueText})` : ""),
+    )
+    .join("\n");
+  const many = commitments.length > 1;
+  return [
+    divider,
+    section(
+      `⚠️ *${commitments.length} commitment${many ? "s are" : " is"} slipping* — a gentle heads-up before ${many ? "they" : "it"} falls through:\n${lines}`,
+    ),
+  ];
 }
 
 // ── Tone decode ──────────────────────────────────────────────────────────────

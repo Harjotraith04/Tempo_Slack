@@ -28,16 +28,31 @@ import {
 export async function decodeMessage(
   text: string,
   llm: LlmPort,
-  opts: { rts?: RtsClient; authorName?: string } = {},
+  opts: { rts?: RtsClient; authorName?: string; familiarity?: number } = {},
 ): Promise<ToneDecode> {
   const relationship = await relationshipHint(opts.rts, opts.authorName);
-  return llm.structured({
+  const decode = await llm.structured({
     system: DECODE_SYSTEM,
     prompt: `Message${opts.authorName ? ` from ${opts.authorName}` : ""}:\n"${text}"${relationship ? `\n\nHow they usually communicate: ${relationship}` : ""}`,
     schema: DecodeSchema,
     temperature: 0.3,
     mock: () => mockDecode(text),
   });
+  return withFamiliarity(decode, opts.familiarity ?? 0);
+}
+
+/** Learned relationship grounding: the more history the user has acting on this
+ * sender, the more confident the tone read (bounded, never past 1); with none,
+ * add an honest low-history caveat. Reuses the same per-sender signals as triage. */
+function withFamiliarity(decode: ToneDecode, familiarity: number): ToneDecode {
+  if (familiarity <= 0) {
+    return {
+      ...decode,
+      caveat: `${decode.caveat} (I don't have much history with this sender yet, so take this read lightly.)`,
+    };
+  }
+  const confidence = Math.min(1, decode.confidence + Math.min(0.1, familiarity * 0.02));
+  return { ...decode, confidence };
 }
 
 export async function checkDraft(

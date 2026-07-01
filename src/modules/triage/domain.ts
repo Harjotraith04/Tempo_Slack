@@ -14,6 +14,8 @@ export interface TriageItem {
   channelName?: string;
   channelType: RtsMessage["channelType"];
   authorName?: string;
+  /** The sender's stable Slack id — the key for learned per-sender urgency. */
+  authorId?: string;
   excerpt: string;
   category: TriageCategory;
   /** 0-100; higher = more it needs you, sooner. */
@@ -46,9 +48,11 @@ Classify each message for the user (Sam Rivera, a PM) into exactly one category:
 - NOISE: banter, broad announcements, bot chatter — safe to skip.
 Give an urgency 0-100 (seniority of asker, explicit deadlines, how many people are blocked, how long it has waited). Write a one-line plain-language reason and a concrete suggestedAction ("Draft a reply", "Send the spec", "Skim later"). Be calm and conservative: most messages are NOISE or FYI.`;
 
-export function rank(i: TriageItem): number {
+/** Ranking score. `adjust` is an optional learned per-sender term (bounded by
+ * the intelligence module) that nudges ordering without overriding classification. */
+export function rank(i: TriageItem, adjust?: (authorId?: string) => number): number {
   const catWeight: Record<TriageCategory, number> = { ACT: 30, BLOCKER: 25, FYI: 5, NOISE: 0 };
-  return i.urgency + catWeight[i.category];
+  return i.urgency + catWeight[i.category] + (adjust?.(i.authorId) ?? 0);
 }
 
 export function buildPrompt(messages: RtsMessage[]): string {

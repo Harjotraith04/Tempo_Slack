@@ -14,6 +14,7 @@ import {
   buildPgSnoozesRepo,
   buildPgMetricsRepo,
   buildPgSurfacesRepo,
+  buildPgSignalsRepo,
 } from "./repos.js";
 
 export function buildPgStore(db: Db): Store {
@@ -24,5 +25,6 @@ export function buildPgStore(db: Db): Store {
     snoozes: buildPgSnoozesRepo(db),
     metrics: buildPgMetricsRepo(db),
     surfaces: buildPgSurfacesRepo(db),
+    signals: buildPgSignalsRepo(db),
   };
 }

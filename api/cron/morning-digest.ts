@@ -21,7 +21,8 @@ import { WebClient } from "@slack/web-api";
 import { config, flags } from "../../src/config.js";
 import { buildContext } from "../../src/application/context.js";
 import { respond } from "../../src/application/orchestrator.js";
-import { updateCanvas } from "../../src/application/use-cases/surfaces.js";
+import { updateCanvas, atRiskCommitments } from "../../src/application/use-cases/surfaces.js";
+import { droppedBallBlocks } from "../../src/platform/slack/blockkit/index.js";
 import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
 import { getStore } from "../../src/platform/persistence/index.js";
 
@@ -56,6 +57,15 @@ async function sendDigest(userId: string, token: string | undefined): Promise<vo
     }
   }
 
+  // Proactive dropped-ball nudge: gently flag commitments that are slipping.
+  // Best-effort — a hiccup here must never block the digest DM.
+  let droppedBall: any[] = [];
+  try {
+    droppedBall = droppedBallBlocks(await atRiskCommitments(ctx));
+  } catch (err) {
+    console.error(`dropped-ball check failed for ${userId}`, err);
+  }
+
   if (config.slack.botToken && token) {
     const web = new WebClient(config.slack.botToken);
     const im = await web.conversations.open({ users: userId });
@@ -64,7 +74,7 @@ async function sendDigest(userId: string, token: string | undefined): Promise<vo
       await web.chat.postMessage({
         channel,
         text: `Good morning — ${digest.text}`,
-        blocks: digest.blocks as any,
+        blocks: [...(digest.blocks as any[]), ...droppedBall] as any,
       });
     }
   }

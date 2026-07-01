@@ -111,6 +111,35 @@ describe("snooze / mark_done", () => {
       expect.objectContaining({ text: expect.stringContaining("Marked done") }),
     );
   });
+
+  it("learns from triage taps: snooze deprioritizes the sender, done engages them", async () => {
+    const client = fakeClient();
+    // Triage buttons carry {p: permalink, s: authorId}.
+    await app.actions.snooze!({
+      ack: vi.fn(),
+      body: { actions: [{ value: JSON.stringify({ p: "https://s/1", s: "U_MARCO" }) }], user: { id: "U_L" }, channel: { id: "C1" } },
+      client,
+    });
+    await app.actions.mark_done!({
+      ack: vi.fn(),
+      body: { actions: [{ value: JSON.stringify({ p: "https://s/2", s: "U_DANA" }) }], user: { id: "U_L" }, channel: { id: "C1" } },
+      client,
+    });
+
+    const sigs = await store.signals.forUser("U_L");
+    expect(sigs.find((s) => s.authorId === "U_MARCO")?.deprioritized).toBe(1);
+    expect(sigs.find((s) => s.authorId === "U_DANA")?.engaged).toBe(1);
+  });
+
+  it("a bare-permalink button (ledger/legacy) records no signal", async () => {
+    const client = fakeClient();
+    await app.actions.snooze!({
+      ack: vi.fn(),
+      body: { actions: [{ value: "https://bare/1" }], user: { id: "U_NOSIG" }, channel: { id: "C1" } },
+      client,
+    });
+    expect(await store.signals.forUser("U_NOSIG")).toEqual([]);
+  });
 });
 
 describe("nudge / renegotiate", () => {

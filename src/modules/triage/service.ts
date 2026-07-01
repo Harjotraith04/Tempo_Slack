@@ -45,7 +45,11 @@ async function gatherCandidates(
 export async function runTriage(
   rts: RtsClient,
   llm: LlmPort,
-  opts: { afterTs: string },
+  opts: {
+    afterTs: string;
+    /** Learned per-sender ranking adjustment (from the intelligence layer). */
+    senderAdjust?: (authorId?: string) => number;
+  },
 ): Promise<TriageResult> {
   const candidates = await gatherCandidates(rts, opts.afterTs);
 
@@ -68,6 +72,7 @@ export async function runTriage(
         channelName: m.channelName,
         channelType: m.channelType,
         authorName: m.authorRealName ?? m.authorName,
+        authorId: m.authorId,
         excerpt: truncate(m.text, 220),
         category: c.category,
         urgency: c.urgency,
@@ -79,7 +84,7 @@ export async function runTriage(
 
   const needsYou = enriched
     .filter((i) => i.category !== "NOISE")
-    .sort((a, b) => rank(b) - rank(a));
+    .sort((a, b) => rank(b, opts.senderAdjust) - rank(a, opts.senderAdjust));
 
   return {
     needsYou,
