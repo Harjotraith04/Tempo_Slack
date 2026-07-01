@@ -91,6 +91,8 @@ export interface TokensRepo {
   get(userId: string): Promise<string | undefined>;
   /** Metadata only — never decrypts token material. */
   list(): Promise<InstalledUser[]>;
+  /** Right-to-erasure: forget this user's token entirely. */
+  deleteForUser(userId: string): Promise<void>;
 }
 
 export interface PrefsRepo {
@@ -99,6 +101,7 @@ export interface PrefsRepo {
     userId: string,
     patch: Partial<Omit<UserPrefs, "userId" | "updatedAt">>,
   ): Promise<UserPrefs>;
+  deleteForUser(userId: string): Promise<void>;
 }
 
 export interface CommitmentsRepo {
@@ -106,9 +109,12 @@ export interface CommitmentsRepo {
    * (renegotiating/done), and return `fresh` with that override applied. */
   sync(userId: string, fresh: Commitment[]): Promise<Commitment[]>;
   getByPermalink(userId: string, permalink: string): Promise<PinnedCommitment | undefined>;
+  /** Every pinned commitment for the user (for the privacy dashboard / export). */
+  listForUser(userId: string): Promise<PinnedCommitment[]>;
   markRenegotiating(userId: string, permalink: string, note?: string): Promise<PinnedCommitment | undefined>;
   markDone(userId: string, permalink: string): Promise<PinnedCommitment | undefined>;
   markNudged(userId: string, permalink: string): Promise<PinnedCommitment | undefined>;
+  deleteForUser(userId: string): Promise<void>;
 }
 
 export interface SnoozesRepo {
@@ -116,11 +122,15 @@ export interface SnoozesRepo {
   markDone(userId: string, permalink: string): Promise<Suppression>;
   isSuppressed(userId: string, permalink: string, nowTs: number): Promise<boolean>;
   active(userId: string, nowTs: number): Promise<Suppression[]>;
+  /** Every suppression for the user (active or expired) — for export. */
+  listForUser(userId: string): Promise<Suppression[]>;
+  deleteForUser(userId: string): Promise<void>;
 }
 
 export interface MetricsRepo {
   record(userId: string, patch: Partial<MetricCounts>, nowTs?: number): Promise<UserMetrics>;
   get(userId: string, nowTs?: number): Promise<UserMetrics | undefined>;
+  deleteForUser(userId: string): Promise<void>;
 }
 
 export interface SurfacesRepo {
@@ -131,6 +141,7 @@ export interface SurfacesRepo {
     userId: string,
     patch: Partial<Pick<SurfaceHandles, "canvasId" | "listId">>,
   ): Promise<SurfaceHandles>;
+  deleteForUser(userId: string): Promise<void>;
 }
 
 /** The bundle of repositories the application layer resolves via the container. */
@@ -141,4 +152,23 @@ export interface Store {
   snoozes: SnoozesRepo;
   metrics: MetricsRepo;
   surfaces: SurfacesRepo;
+}
+
+/**
+ * Everything Tempo has stored for one user — the shape the web companion's
+ * privacy dashboard renders and the data-export endpoint returns.
+ *
+ * COMPLIANCE: `installedTeam` is token METADATA only (never the decrypted
+ * token); `commitments` are `PinnedCommitment`s (structurally no `sourceText`);
+ * `metrics` are counts only. There is no RTS message content anywhere here.
+ */
+export interface UserDataExport {
+  userId: string;
+  installedTeam?: { teamId: string; installedAt: number };
+  prefs?: UserPrefs;
+  metrics?: UserMetrics;
+  surfaces?: SurfaceHandles;
+  commitments: PinnedCommitment[];
+  snoozes: Suppression[];
+  exportedAt: number;
 }

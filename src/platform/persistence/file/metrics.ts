@@ -30,5 +30,10 @@ export function buildFileMetricsRepo(): MetricsRepo {
       // A stale (>1 week old) record reads as a fresh, empty week.
       return currentWeek(userId, nowTs, rec);
     },
+    async deleteForUser(userId) {
+      const data = load();
+      delete data[userId];
+      saveMap(path(), data);
+    },
   };
 }

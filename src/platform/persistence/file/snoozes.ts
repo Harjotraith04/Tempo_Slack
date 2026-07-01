@@ -38,5 +38,15 @@ export function buildFileSnoozesRepo(): SnoozesRepo {
         (rec) => rec.userId === userId && isActiveSuppression(rec, nowTs),
       );
     },
+    async listForUser(userId) {
+      return Object.values(load()).filter((rec) => rec.userId === userId);
+    },
+    async deleteForUser(userId) {
+      const data = load();
+      for (const [key, rec] of Object.entries(data)) {
+        if (rec.userId === userId) delete data[key];
+      }
+      saveMap(path(), data);
+    },
   };
 }

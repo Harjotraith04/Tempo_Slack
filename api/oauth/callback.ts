@@ -4,9 +4,8 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { WebClient } from "@slack/web-api";
-import { config } from "../../src/config.js";
 import { getStore } from "../../src/platform/persistence/index.js";
+import { exchangeCode } from "../../src/platform/slack/oauth/index.js";
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const code = new URL(req.url ?? "", "http://localhost").searchParams.get("code");
@@ -17,17 +16,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   try {
-    const web = new WebClient();
-    const result = (await web.oauth.v2.access({
-      client_id: config.slack.clientId!,
-      client_secret: config.slack.clientSecret!,
-      code,
-      redirect_uri: `${process.env.PUBLIC_URL ?? ""}/api/oauth/callback`,
-    })) as any;
-
-    const userId: string = result.authed_user?.id;
-    const teamId: string = result.team?.id;
-    const userToken: string | undefined = result.authed_user?.access_token;
+    const redirectUri = `${process.env.PUBLIC_URL ?? ""}/api/oauth/callback`;
+    const { userId, teamId, userToken } = await exchangeCode(code, redirectUri);
 
     if (userId && userToken) await getStore().tokens.save(userId, teamId ?? "", userToken);
 

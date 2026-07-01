@@ -69,4 +69,14 @@ describe("commitments store", () => {
   it("getByPermalink returns undefined for an unknown permalink", async () => {
     expect(await commitments.getByPermalink("U5", "https://nope")).toBeUndefined();
   });
+
+  it("listForUser returns only that user's pinned commitments; deleteForUser erases them", async () => {
+    await commitments.sync("U6", [mkCommitment({ permalink: "https://a/1" }), mkCommitment({ permalink: "https://a/2" })]);
+    await commitments.sync("U7", [mkCommitment({ permalink: "https://a/3" })]);
+    expect(await commitments.listForUser("U6")).toHaveLength(2);
+
+    await commitments.deleteForUser("U6");
+    expect(await commitments.listForUser("U6")).toEqual([]);
+    expect(await commitments.listForUser("U7")).toHaveLength(1); // untouched
+  });
 });

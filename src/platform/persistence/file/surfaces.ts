@@ -32,5 +32,10 @@ export function buildFileSurfacesRepo(): SurfacesRepo {
       saveMap(path(), data);
       return next;
     },
+    async deleteForUser(userId) {
+      const data = load();
+      delete data[userId];
+      saveMap(path(), data);
+    },
   };
 }

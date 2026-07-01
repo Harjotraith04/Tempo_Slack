@@ -47,6 +47,9 @@ export function buildFileCommitmentsRepo(): CommitmentsRepo {
     async getByPermalink(userId, permalink) {
       return load()[recordKey(userId, permalink)];
     },
+    async listForUser(userId) {
+      return Object.values(load()).filter((c) => c.userId === userId);
+    },
     async markRenegotiating(userId, permalink, note) {
       return patch(userId, permalink, (existing) => ({
         ...existing,
@@ -67,6 +70,13 @@ export function buildFileCommitmentsRepo(): CommitmentsRepo {
         ...existing,
         lastNudgedAt: nowSec(),
       }));
+    },
+    async deleteForUser(userId) {
+      const data = load();
+      for (const [key, rec] of Object.entries(data)) {
+        if (rec.userId === userId) delete data[key];
+      }
+      saveMap(path(), data);
     },
   };
 }

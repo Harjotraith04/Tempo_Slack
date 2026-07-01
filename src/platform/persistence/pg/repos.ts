@@ -135,6 +135,9 @@ export function buildPgTokensRepo(db: Db): TokensRepo {
         installedAt: num(r.installed_at),
       }));
     },
+    async deleteForUser(userId) {
+      await db.query(`DELETE FROM tempo_tokens WHERE user_id = $1`, [userId]);
+    },
   };
 }
 
@@ -171,6 +174,9 @@ export function buildPgPrefsRepo(db: Db): PrefsRepo {
         ],
       );
       return next;
+    },
+    async deleteForUser(userId) {
+      await db.query(`DELETE FROM tempo_prefs WHERE user_id = $1`, [userId]);
     },
   };
 }
@@ -243,6 +249,10 @@ export function buildPgCommitmentsRepo(db: Db): CommitmentsRepo {
       return result;
     },
     getByPermalink,
+    async listForUser(userId) {
+      const rows = await db.query<Row>(`SELECT * FROM tempo_commitments WHERE user_id = $1`, [userId]);
+      return rows.map(mapCommitment);
+    },
     async markRenegotiating(userId, permalink, note) {
       return patch(userId, permalink, (existing) => ({
         ...existing,
@@ -256,6 +266,9 @@ export function buildPgCommitmentsRepo(db: Db): CommitmentsRepo {
     },
     async markNudged(userId, permalink) {
       return patch(userId, permalink, (existing) => ({ ...existing, lastNudgedAt: nowSec() }));
+    },
+    async deleteForUser(userId) {
+      await db.query(`DELETE FROM tempo_commitments WHERE user_id = $1`, [userId]);
     },
   };
 }
@@ -289,6 +302,13 @@ export function buildPgSnoozesRepo(db: Db): SnoozesRepo {
     async active(userId, nowTs) {
       const rows = await db.query<Row>(`SELECT * FROM tempo_snoozes WHERE user_id = $1`, [userId]);
       return rows.map(mapSuppression).filter((rec) => isActiveSuppression(rec, nowTs));
+    },
+    async listForUser(userId) {
+      const rows = await db.query<Row>(`SELECT * FROM tempo_snoozes WHERE user_id = $1`, [userId]);
+      return rows.map(mapSuppression);
+    },
+    async deleteForUser(userId) {
+      await db.query(`DELETE FROM tempo_snoozes WHERE user_id = $1`, [userId]);
     },
   };
 }
@@ -327,6 +347,9 @@ export function buildPgMetricsRepo(db: Db): MetricsRepo {
       if (!rec) return undefined;
       return currentWeek(userId, nowTs, rec);
     },
+    async deleteForUser(userId) {
+      await db.query(`DELETE FROM tempo_metrics WHERE user_id = $1`, [userId]);
+    },
   };
 }
 
@@ -353,6 +376,9 @@ export function buildPgSurfacesRepo(db: Db): SurfacesRepo {
         [userId, next.canvasId ?? null, next.listId ?? null, next.updatedAt],
       );
       return next;
+    },
+    async deleteForUser(userId) {
+      await db.query(`DELETE FROM tempo_surfaces WHERE user_id = $1`, [userId]);
     },
   };
 }

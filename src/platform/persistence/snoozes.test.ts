@@ -46,4 +46,13 @@ describe("snoozes store", () => {
     const permalinks = active.map((s) => s.permalink).sort();
     expect(permalinks).toEqual(["https://a/1", "https://a/3"]);
   });
+
+  it("listForUser returns all suppressions (even expired); deleteForUser erases them", async () => {
+    await snoozes.snooze("U6", "https://b/1", 100); // expired by any later now
+    await snoozes.markDone("U6", "https://b/2");
+    expect(await snoozes.listForUser("U6")).toHaveLength(2);
+
+    await snoozes.deleteForUser("U6");
+    expect(await snoozes.listForUser("U6")).toEqual([]);
+  });
 });

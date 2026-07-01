@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v2.4.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
+**Current version:** v2.6.0 &nbsp;·&nbsp; **Updated:** 2026-07-01 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -17,6 +17,7 @@
 - **Phase 4 / v2.0.0 — Native Surfaces:** DONE (Tempo Canvas · Workflow Builder custom steps · Slack Lists sync · reminders/bookmarks · finished the hexagonal inversion).
 - **Phase 5 / v2.2.0 — Real MCP outbound:** DONE (Calendar/Notion/Linear/GitHub via `@modelcontextprotocol/sdk`, Streamable HTTP, mock default, per-client double-gate).
 - **Phase 6 / v2.4.0 — Persistence & scale:** DONE (Neon Postgres adapter behind one `Store` port · async repos threaded via the DI container · file default · schema-level + guard proof no RTS content is persisted).
+- **Phase 7 / v2.6.0 — Web companion:** DONE (Next.js app under `web/` · privacy dashboard · data export/delete · web settings editor · signed-cookie session · all logic shared from `src/` so the root zero-cred gates stay green).
 
 ## Owner-only submission logistics (need a real workspace + a human; can't be built)
 These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack sandbox, tokens, and a recording — not code:
@@ -27,17 +28,73 @@ These are the remaining v1.0 "Hackathon Winner" items that require *your* Slack 
 - [ ] Architecture diagram
 - [ ] Devpost write-up + explicit impact statement
 
-## Next up → Phase 7 / v2.6.0 "Web companion"
-See `MASTER_PLAN.md` → Part V, Year 2, Phase 7 for full detail. Persistence is now real (v2.4), so a companion web app can manage what's stored and honor the trust promises visibly. Build a Next.js app on Vercel (App Router, Fluid Compute) alongside the Bolt app:
-- [ ] **Settings** page — the same prefs the App Home modal writes (verbosity / reading level / max items / read-aloud / focus + DND defaults), backed by the same `PrefsRepo`, over OAuth-authenticated sessions.
-- [ ] **Privacy dashboard** — surface exactly what Tempo stores per user (tokens metadata, prefs, pinned commitments, snoozes, counts-only metrics, surface ids) and reaffirm "never any RTS content," reading straight from the `Store` ports.
-- [ ] **Data export / delete** endpoints (`api/data/{export,delete}`) — GDPR-style: dump a user's stored rows as JSON and hard-delete them; add a `deleteAllForUser`/`exportAllForUser` seam to each repo (both file + pg adapters).
-- [ ] **OAuth onboarding** flow on the web (install → connect user token → land in Slack), reusing `api/oauth/*`.
-- [ ] Carry-over (still unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/`slackLists.*`/`reminders.add`/`bookmarks.add` `apiCall`s, the v2.2 live MCP `callTool`/transport, and now the **v2.4 live Postgres `query`/transport** (`pg/connect.ts`) — `verify:postgres` exists but hasn't been run against a real Neon database.
+## Next up → Phase 8 / v2.8.0 "Intelligence"
+See `MASTER_PLAN.md` → Part V, Year 2, Phase 8 for full detail. Everything is stored, controllable, and
+private (v2.4 + v2.6). Now make the triage/ledger *smarter per person*, learning only from the user's own
+action signals (snooze/done/draft) — **never** from stored RTS content:
+- [ ] **Learned urgency model** — a per-user / per-sender weight the triage classifier blends with its base
+  score, learned from which items the user acts on vs snoozes. New `intelligence` module + an `urgency`
+  repository on the `Store` port (counts/weights only, like `metrics`).
+- [ ] **Relationship graph** — lightweight per-counterparty signals (how often you reply, typical latency)
+  to ground the Tone Decoder's confidence — derived aggregates only, no message text.
+- [ ] **Commitment-fulfillment detection** — auto-close a pinned commitment when the live Ledger shows it
+  delivered, so the ledger self-cleans; **dropped-ball prevention** nudges before at-risk items slip.
+- [ ] Learn from snooze/done/draft events already captured — wire the existing action handlers to record
+  the learning signal (counts only) alongside today's metrics.
+- [ ] Carry-over (still unverified live seams): live RTS/Claude field mapping, the v2.0 `canvases.*`/
+  `slackLists.*`/`reminders.add`/`bookmarks.add` `apiCall`s, the v2.2 live MCP `callTool`/transport, the
+  v2.4 live Postgres `query`/transport (`pg/connect.ts`, `verify:postgres`), and now the **v2.6 web app's
+  SSR/route-handler + signed-cookie/redirect behavior** (built + type-checked, exercised only manually).
 
 ---
 
 ## History
+
+### v2.6.0 — 2026-07-01 — Web companion (Next.js): privacy dashboard · data export/delete · settings
+**Built:** the user-facing web companion Phase 7 called for — a real **Next.js App Router app under `web/`**
+that lets a user *see, export, and delete* everything Tempo has stored, and edit their settings outside
+Slack. It's the GDPR / Marketplace compliance backbone (data portability + right-to-erasure + transparency),
+unlocked by v2.4's real persistence. The load-bearing decision: **all logic lives in `src/` and is covered by
+root vitest + a demo scene; the Next.js app is a thin, react-free-at-the-root presentation layer** — so the
+zero-credential gates (`npm test`/`typecheck`/`build`/`demo`) stay green and react-free.
+- **Data-governance seam on the `Store` port** (`src/ports/store.ts`): `deleteForUser(userId)` on all six
+  repos + `listForUser(userId)` on commitments/snoozes, implemented in **both** adapters (file: filter/drop
+  the JSON map; pg: `DELETE … WHERE user_id` / `SELECT … WHERE user_id`). A new `UserDataExport` type carries
+  token **metadata only** (never the decrypted token), prefs, counts-only metrics, surfaces, `PinnedCommitment`s
+  (structurally no `sourceText`), snoozes — **no RTS content by construction**.
+- **Adapter-agnostic use-cases** (`src/application/use-cases/user-data.ts`): `exportUserData(store, userId)`
+  composes the ports into a `UserDataExport`; `deleteUserData(store, userId)` erases across all six stores
+  (token last, so a partial failure never strands erased data behind a live session). Plus
+  `settings.ts` (`parseSettingsForm` + `applySettings`) mirroring the Slack modal parser for the web form.
+- **Signed browser session** (`src/shared/session.ts`) — a stateless HMAC-signed, expiring `HttpOnly; Secure;
+  SameSite=Lax` cookie over the user id, keyed off the **same** `SHA-256(encryptionKey)` idiom the token store
+  uses (no new secret). `verifySession` is constant-time (`timingSafeEqual`) + expiry-checked. This is what
+  scopes "delete all my data" to the authenticated user only.
+- **Shared OAuth helpers** (`src/platform/slack/oauth/`) — extracted `buildAuthorizeUrl` + `exchangeCode` from
+  the root `api/oauth/*` (behavior-preserving) and reused by both the Slack-install flow and the web app.
+- **The `web/` Next.js app** (its own `package.json`/build, **not** an npm workspace — root `npm ci` stays
+  react-free) shares `src/` via `next.config.mjs`'s `experimental.externalDir` + a `.js`→`.ts` `extensionAlias`,
+  through a single bridge file `web/lib/domain.ts`. Surfaces: a landing/"Sign in with Slack" page, a
+  **privacy dashboard** (`/privacy`), a **settings** form (`/settings`), and Route Handlers for OAuth
+  start/callback, `/api/data/export` (JSON attachment), `/api/data/delete` (POST → erase + clear cookie), and
+  `/api/settings`. Calm, accessible styling (system-ui, dark-mode, visible focus, semantic landmarks). Manifest
+  gains the web callback redirect URL.
+- **Isolation** so the root gates can't be touched: `vitest.config.ts` excludes `web/**` (via
+  `configDefaults.exclude`), `tsconfig.json` excludes `web`, `.gitignore` ignores `web/.next`+`node_modules`,
+  and root `web:dev`/`web:build` scripts are separate from `build`/CI.
+**Quality:** **187 tests** passing (up from 169) across 31 files — `session.test.ts` (sign/verify round-trip ·
+tamper · userId-swap · expiry · cookie parse), `user-data.test.ts` (every category exported · **never** the
+token secret or `sourceText` · delete erases everything and leaves other users intact · settings form clears
+blanks), extended `pg.test.ts` (scoped `DELETE`/`SELECT` for the new methods) + file-store coverage.
+Typecheck clean · root build clean · `npm run demo` extended to **17 scenes** (sign a session → export → prove
+no token secret / no RTS content → settings save → delete → export now empty). Separately, `cd web && npm
+install && npm run build` **compiles all 8 routes and type-checks the shared domain**.
+**Open seams:** the Next.js app's SSR/route-handler + signed-cookie/redirect behavior is **built and
+type-checked but exercised only manually** (kept out of the root zero-cred CI, same "unverified live seam"
+posture as live RTS/MCP/Postgres). The web app is intended as its own Vercel project (Root Directory `web`)
+sharing the repo; two OAuth redirect URLs are registered. All prior unverified live seams unchanged.
+**Next:** Phase 8 / v2.8 — Intelligence (learned per-user urgency · relationship graph · commitment-
+fulfillment detection), learning only from action signals, never from stored RTS content.
 
 ### v2.4.0 — 2026-07-01 — Persistence & scale (Neon Postgres behind one repository port)
 **Built:** the durable-storage swap Phase 6 called for — every store now sits behind a single async `Store` port with **two adapters** (file + Postgres), selected by config, so persistence survives Vercel's read-only FS *without* changing a line of domain logic. File stays the default, so the zero-credential demo/tests are untouched.

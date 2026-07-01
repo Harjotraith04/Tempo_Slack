@@ -21,5 +21,10 @@ export function buildFilePrefsRepo(): PrefsRepo {
       saveMap(path(), data);
       return next;
     },
+    async deleteForUser(userId) {
+      const data = loadMap<UserPrefs>(path());
+      delete data[userId];
+      saveMap(path(), data);
+    },
   };
 }

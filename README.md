@@ -87,9 +87,20 @@ npm test          # 155 tests: RTS, MCP, the five modules, native surfaces, pers
 - Tempo **never stores anything RTS returns** — it grounds the model live and throws the data away (Slack ToS).
 - It acts only with the user's **own** permissioned token; nothing it can read is anything they couldn't already see.
 - It **never sends a message or changes anything without an explicit tap.**
-- The only persisted data is **encrypted auth tokens + preferences** (`src/db/tokens.ts`, AES-256-GCM).
+- The only persisted data is **encrypted auth tokens + preferences + derived facts** (`src/platform/persistence/`, tokens AES-256-GCM), behind one `Store` port with file **and** Neon Postgres adapters.
 
 This is also why the **for-Good / accessibility** framing is clean: it's a *personal* assistant on personal data — not surveillance of others.
+
+### Your data (the web companion, v2.6)
+
+A small **Next.js app under [`web/`](web/)** gives every user direct control over what Tempo has stored:
+
+- **Privacy dashboard** (`/privacy`) — shows *exactly* what's kept: token metadata (never the token itself), preferences, counts-only metrics, pinned commitments as **derived facts** (never message text), snoozes, and surface ids.
+- **Export** (`/api/data/export`) — download everything as JSON (right to portability).
+- **Delete** (`/api/data/delete`) — one tap erases your token, prefs, commitments, snoozes, metrics, and surface ids, and signs you out (right to erasure).
+- **Settings** (`/settings`) — the same accessibility preferences as the Slack App Home, over the web.
+
+Auth is a signed, expiring **HttpOnly session cookie** (HMAC over the user id, keyed off the same secret the token store uses) set at "Sign in with Slack". The app **shares the exact same domain** as the Slack app — the data-governance use-cases (`src/application/use-cases/user-data.ts`) and the `Store` ports — so an export can *structurally* never contain a decrypted token or RTS content (asserted in tests + demo scene 17). Run it locally: `npm run web:dev` (after `cd web && npm install`).
 
 ---
 

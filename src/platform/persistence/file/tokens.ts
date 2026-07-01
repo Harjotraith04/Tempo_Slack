@@ -44,5 +44,10 @@ export function buildFileTokensRepo(): TokensRepo {
         installedAt,
       }));
     },
+    async deleteForUser(userId) {
+      const data = load();
+      delete data[userId];
+      saveMap(STORE_PATH, data);
+    },
   };
 }

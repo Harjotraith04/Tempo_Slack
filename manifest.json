@@ -79,7 +79,10 @@
     }
   },
   "oauth_config": {
-    "redirect_urls": ["https://YOUR_DEPLOYMENT/api/oauth/callback"],
+    "redirect_urls": [
+      "https://YOUR_DEPLOYMENT/api/oauth/callback",
+      "https://YOUR_WEB_DEPLOYMENT/api/oauth/callback"
+    ],
     "scopes": {
       "user": [
         "search:read.public",

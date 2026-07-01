@@ -141,6 +141,52 @@ describe("pg surfaces repo", () => {
   });
 });
 
+describe("pg data-governance (v2.6: listForUser / deleteForUser)", () => {
+  it("deleteForUser issues a scoped DELETE on every table", async () => {
+    const specs: [string, (s: ReturnType<typeof buildPgStore>) => Promise<void>][] = [
+      ["tempo_tokens", (s) => s.tokens.deleteForUser("U1")],
+      ["tempo_prefs", (s) => s.prefs.deleteForUser("U1")],
+      ["tempo_commitments", (s) => s.commitments.deleteForUser("U1")],
+      ["tempo_snoozes", (s) => s.snoozes.deleteForUser("U1")],
+      ["tempo_metrics", (s) => s.metrics.deleteForUser("U1")],
+      ["tempo_surfaces", (s) => s.surfaces.deleteForUser("U1")],
+    ];
+    for (const [table, run] of specs) {
+      const { db, calls } = fakeDb();
+      await run(buildPgStore(db));
+      const del = calls.find((c) => /^\s*DELETE FROM/i.test(c.text))!;
+      expect(del, table).toBeTruthy();
+      expect(del.text).toContain(`DELETE FROM ${table} WHERE user_id = $1`);
+      expect(del.params).toEqual(["U1"]);
+    }
+  });
+
+  it("commitments.listForUser selects all of a user's rows and maps them", async () => {
+    const { db } = fakeDb((t) =>
+      isSelect(t)
+        ? [{ user_id: "U1", permalink: "p1", id: "c", direction: "i_owe", counterparty: "P", what: "x", due_text: null, due_ts: null, status: "open", pinned_at: 1, updated_at: 1, renegotiation_note: null, last_nudged_at: null }]
+        : [],
+    );
+    const rows = await buildPgStore(db).commitments.listForUser("U1");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.what).toBe("x");
+    expect((rows[0] as any).sourceText).toBeUndefined();
+  });
+
+  it("snoozes.listForUser returns all suppressions (active or expired)", async () => {
+    const { db } = fakeDb((t) =>
+      isSelect(t)
+        ? [
+            { user_id: "U1", permalink: "p1", kind: "snooze", until_ts: 10, created_at: 1 },
+            { user_id: "U1", permalink: "p2", kind: "done", until_ts: null, created_at: 1 },
+          ]
+        : [],
+    );
+    const rows = await buildPgStore(db).snoozes.listForUser("U1");
+    expect(rows.map((r) => r.kind).sort()).toEqual(["done", "snooze"]);
+  });
+});
+
 describe("schema (Invariant 1: never persist RTS content)", () => {
   it("the commitments table has no message-content column", () => {
     const commitmentsDdl = MIGRATIONS.find((m) => /tempo_commitments/.test(m))!;

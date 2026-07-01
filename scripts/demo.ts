@@ -28,6 +28,9 @@ import { getMcpClients } from "../src/platform/mcp/index.js";
 import type { McpSession } from "../src/platform/mcp/session.js";
 import { getStore, buildPgStore } from "../src/platform/persistence/index.js";
 import type { Db } from "../src/platform/persistence/pg/session.js";
+import { signSession, verifySession } from "../src/shared/session.js";
+import { exportUserData, deleteUserData } from "../src/application/use-cases/user-data.js";
+import { applySettings } from "../src/application/use-cases/settings.js";
 import { homeDashboardBlocks, onboardingBlocks, settingsModalView, emptyStateBlocks, metricsBlocks } from "../src/platform/slack/blockkit/index.js";
 import { resolveA11yPrefs } from "../src/accessibility/index.js";
 import { getTtsClient } from "../src/accessibility/tts/index.js";
@@ -329,6 +332,42 @@ async function main() {
 
     console.log(`  Config gate: TEMPO_STORE=${config.store.mode} (no DATABASE_URL) → getStore() is file-backed`);
     console.log(`  (default repo is buildFileStore, not the pg one): ${store === getStore()}. So this entire demo ran credential-free.`);
+  }
+
+  rule('17. Web companion — your data: signed session · privacy export · settings · delete');
+  {
+    const u = "U_PRIVACY_DEMO";
+    // Seed one user across every store — including a token, to prove the export
+    // shows install METADATA only, never the secret.
+    await store.tokens.save(u, "T_DEMO", "xoxp-demo-secret-never-exported");
+    await store.prefs.save(u, { verbosity: "brief", maxItems: 2 });
+    await store.commitments.sync(u, await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs }));
+
+    // A signed, expiring session ties a browser to this user (HMAC over userId,
+    // keyed off the same secret the token store uses). No RTS content involved.
+    const token = signSession(u, 3600, ctx.nowTs);
+    console.log(`  Signed session ${token.slice(0, 26)}… → verifies to "${verifySession(token, ctx.nowTs)}" (tamper → null).`);
+
+    const data = await exportUserData(store, u, ctx.nowTs);
+    const blob = JSON.stringify(data);
+    console.log(
+      `  Privacy export → token=${data.installedTeam ? "metadata-only" : "none"}, prefs=${!!data.prefs}, ` +
+        `commitments=${data.commitments.length}, metrics=${!!data.metrics}, surfaces=${!!data.surfaces}`,
+    );
+    console.log(
+      `  Contains the raw token secret? ${blob.includes("xoxp-demo-secret-never-exported")} · ` +
+        `any RTS message text? ${blob.includes("finalized Atlas API spec by Friday")} (Invariant 1).`,
+    );
+
+    const after = await applySettings(store, u, { verbosity: "standard", maxItems: "5", readAloud: "on" });
+    console.log(`  Settings saved via the web form → verbosity=${after.verbosity} maxItems=${after.maxItems} readAloud=${after.readAloud}`);
+
+    await deleteUserData(store, u);
+    const gone = await exportUserData(store, u, ctx.nowTs);
+    console.log(
+      `  After "Delete everything": prefs=${gone.prefs ?? "gone"}, commitments=${gone.commitments.length}, ` +
+        `token=${(await store.tokens.get(u)) ?? "gone"} — right-to-erasure honored.`,
+    );
   }
 
   console.log("\n" + "─".repeat(72));
