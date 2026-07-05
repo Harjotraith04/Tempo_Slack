@@ -1,6 +1,6 @@
 # Tempo — Build Ledger
 
-**Current version:** v4.1.0 &nbsp;·&nbsp; **Updated:** 2026-07-02 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en, ATTENTION_OS=off
+**Current version:** v4.1.1 &nbsp;·&nbsp; **Updated:** 2026-07-06 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en, ATTENTION_OS=off
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 
@@ -41,7 +41,15 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → **execute `MASTER_PLAN.md` Part VII — the Submission Master Plan** (audited 2026-07-02)
+## Next up → **run [`GO_LIVE.md`](GO_LIVE.md)** — the credential-only final mile
+Everything completable without keys is now done (see the v4.1.1 History entry): the guessed live seams are
+hardened against the published Slack API references (RTS payload mapping corrected to the flat
+`content`/`message_ts`/`author_user_id`/`channel_id` shape + channel-type inference; Slack Lists rewritten to the
+real `slackLists.create` schema + `column_id` contract), a one-command `npm run manifest:urls` fills the four
+deployment placeholders, `npm run preflight` proves credential-free readiness, `web/vercel.json` + Devpost draft
+are in place. **`GO_LIVE.md` is the single ordered checklist** for the only work left — all owner actions
+(accounts, keys, a recording). It distills `MASTER_PLAN.md` Part VII W2/W3 below into copy-paste steps.
+
 The 3-year feature roadmap (v0.1 → v4.0) is complete and green, but a 2026-07-02 full audit found **nothing is
 live**: no deployment, placeholder manifest URLs, every seam mocked, no video/diagram/sandbox/judge access —
 and the real Devpost deadline is **Mon Jul 13, 5 PM PDT** (submit Jul 12). Part VII is the single execution
@@ -60,6 +68,39 @@ Cut lines + risk register + day-by-day calendar: `MASTER_PLAN.md` §7.3–7.5.
 ---
 
 ## History
+
+### v4.1.1 — 2026-07-06 — Credential-free readiness: live seams hardened against the docs + one-command deploy prep + GO_LIVE runbook
+**Built:** everything that could be completed *without* keys, so the only work left is the owner's credential-only
+push (accounts → deploy → video → submit, now the single checklist in [`GO_LIVE.md`](GO_LIVE.md)).
+- **Live RTS field mapping corrected to the published shape** (`src/platform/slack/rts/live.ts`): the real
+  `assistant.search.context` result is *flat* — `content`, `message_ts`, `author_user_id`, `author_name`,
+  `channel_id`, `channel_name` (users: `user_id`/`full_name`/`title`/`email`/`timezone`), not the nested
+  `channel`/`author` objects previously guessed. There's no per-message channel-type flag, so channel type is now
+  inferred from the Slack channel-id prefix (D=im, G=mpim). Request params `content_types`/`channel_types` sent as
+  arrays per the reference; request `limit` capped at the documented max 20. Old fields kept as fallbacks; two new
+  tests lock the documented shape. `verify:rts` now also reports `channelType` coverage.
+- **Slack Lists rewritten to the real contract** (`src/platform/slack/webapi/live.ts`): `slackLists.create` takes
+  `name` (not `title`) + a column `schema`, returns `list_metadata.schema[]` with generated `column_id`s;
+  `slackLists.items.create` now addresses those `column_id`s with typed `rich_text` values (was the invalid
+  `{key,text}` shape). Threads the create-response column map into every row; keeps the never-throws /
+  derived-facts-only posture; the `rich_text` encoding is the one thing left to confirm live (cut line
+  `TEMPO_LISTS=off`). Canvas/reminders/bookmarks verified already-correct against the method docs (comments
+  updated). MCP in/out already SDK-conformant — left as-is.
+- **One-command deploy prep:** `scripts/set-manifest-urls.ts` + `npm run manifest:urls -- <app> [web]` fills the
+  four `YOUR_DEPLOYMENT`/`YOUR_WEB_DEPLOYMENT` placeholders (scheme/trailing-slash normalised; `--check` gates
+  it); `web/vercel.json` added; the manifest's 11 user + 8 bot scopes confirmed complete for the full surface.
+- **`npm run preflight`** (`scripts/preflight.ts`): runs typecheck + tests + build + demo + web build + all four
+  skip-safe `verify:*` + a manifest sanity check — one command that proves credential-free readiness (placeholders
+  reported as info, since the committed manifest is a template until deploy).
+- **`GO_LIVE.md`** — the single ordered credential-only checklist (Developer Program + semantic-RTS request day 1
+  → local Socket-Mode bring-up → seed → `verify:rts` fix loop → Vercel root+web deploy → OAuth → E2E → video +
+  judge invites → submit Jul 12). LEDGER "Next up" now points here. **Devpost draft** "Challenges" section filled
+  (only video + sandbox URL remain).
+**Quality:** **284 tests** (up from 282; +2 RTS documented-shape tests) across 46 files · typecheck clean · build
+clean · `npm run demo` green (26 scenes) · web build green · versions aligned at 4.1.1 (root/web/MCP-server).
+**Open seams:** live RTS/Lists/MCP/Postgres remain unverified against a real service by design — the mappings are
+now doc-aligned rather than guessed, and each `verify:*` script confirms it on the first live call (W2).
+**Next:** `GO_LIVE.md` — the owner's live bring-up + submission assets.
 
 ### v4.1.0 — 2026-07-02 — Submission W1: Agent-experience migration + serverless receiver + every fail-open gate closed
 **Built:** the P0 pre-deploy fixes from `MASTER_PLAN.md` Part VII §7.2 W1 — the code work that had to land before

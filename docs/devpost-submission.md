@@ -31,17 +31,21 @@ The accessibility spine runs through every surface: adjustable verbosity, readin
 2. **MCP, both directions:** outbound clients (Google Calendar / Notion / Linear / GitHub via `@modelcontextprotocol/sdk`, Streamable HTTP) let the Focus Guardian act in the world; and Tempo is itself an **MCP server** — `tempo_triage`, `tempo_commitments`, `tempo_decode`, `tempo_focus` — callable by Agentforce/Claude/Cursor with default-deny, signed per-user tokens. Tempo is infrastructure, not just an app.
 3. **Slack AI / agent surfaces:** the 2026 Agent experience (`agent_view`, suggested prompts, status), App Home dashboard, Block Kit actions, Workflow Builder custom steps, Canvas, and Lists.
 
-Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules depend only on ports; every external system (RTS, Claude, Slack Web API, MCP, Postgres, TTS) has mock + live adapters, so **the entire product runs credential-free**: `npm run demo` plays the whole story in 26 deterministic scenes, and 282 tests + typecheck + build + demo run on every commit. Deployed on Vercel Fluid Compute via `@vercel/slack-bolt` (sub-3-second acks, background processing), Neon Postgres (AES-256-GCM token encryption), least-privilege scopes enforced by a drift test.
+Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules depend only on ports; every external system (RTS, Claude, Slack Web API, MCP, Postgres, TTS) has mock + live adapters, so **the entire product runs credential-free**: `npm run demo` plays the whole story in 26 deterministic scenes, and 284 tests + typecheck + build + demo run on every commit. Deployed on Vercel Fluid Compute via `@vercel/slack-bolt` (sub-3-second acks, background processing), Neon Postgres (AES-256-GCM token encryption), least-privilege scopes enforced by a drift test.
 
 ## Challenges we ran into
 
-⟨Fill after W2 — candidates: live RTS field-mapping against real payloads; the assistant→agent experience migration; serverless 3-second ack; keeping the zero-credential demo green across 15 phases.⟩
+- **Grounding on an API whose payload we couldn't see yet.** RTS (`assistant.search.context`) returns a *flat* result — `content`, `message_ts`, `author_user_id`, `channel_id` — with no per-message channel-type flag, quite different from the nested shape you'd guess. We mapped strictly to the published reference, inferred DM-vs-channel from the Slack channel-ID prefix, and built a `verify:rts` field-coverage probe so the very first live call tells us exactly which field to reconcile — instead of debugging blind in the demo.
+- **The 3-second ack vs. real model work.** Slack retries anything slower than 3 seconds, but triage does live RTS + LLM reasoning. We moved to `@vercel/slack-bolt` on Fluid Compute — ack immediately, finish the work in the background via `waitUntil` — so the agent stays responsive without dropping requests.
+- **A platform that moved under us.** The Assistant experience we first built on was deprecated for new apps mid-project; we migrated to the 2026 **Agent experience** (`agent_view`, `app_home_opened` + `message.im`) while keeping both message paths working with no double-replies.
+- **"Never store what it reads" as an engineering constraint, not a slogan.** It forced derived-facts-only everywhere — e.g. the Commitment Ledger's Slack List rows carry the parsed obligation, never the source message — and we proved it at the schema level and in tests rather than promising it in the privacy page.
+- **One codebase that runs with and without credentials.** Every external system (RTS, Claude, Slack Web API, MCP, Postgres, TTS) has a mock and a live adapter behind a port, so `npm run demo` and 280+ tests stay green with zero secrets across all 15 build phases — which is also what let us harden the live seams against the docs before a single key existed.
 
 ## Accomplishments we're proud of
 
 - A genuinely new category — nobody ships assistive tech for attention/memory on Slack.
 - The never-persist-RTS-content invariant proven by schema + tests, not promised in prose.
-- 282 tests and a full product demo that run with zero credentials.
+- 284 tests and a full product demo that run with zero credentials.
 - Accessibility as a machine-checked build gate, in English and Spanish.
 
 ## Impact statement (Agent for Good)

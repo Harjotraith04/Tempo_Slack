@@ -95,9 +95,22 @@ describe("LiveSlackActions", () => {
     expect(res).toEqual({ ok: true, canvasId: "F_OLD" });
   });
 
-  it("syncListItems creates a list then writes one row per item", async () => {
+  it("syncListItems creates a list with a schema then writes rows against real column ids", async () => {
     apiCall
-      .mockResolvedValueOnce({ ok: true, list_id: "L1" }) // slackLists.create
+      .mockResolvedValueOnce({
+        ok: true,
+        list_id: "L1",
+        list_metadata: {
+          schema: [
+            { id: "Col_what", key: "what" },
+            { id: "Col_who", key: "counterparty" },
+            { id: "Col_dir", key: "direction" },
+            { id: "Col_status", key: "status" },
+            { id: "Col_due", key: "due" },
+            { id: "Col_link", key: "permalink" },
+          ],
+        },
+      }) // slackLists.create
       .mockResolvedValue({ ok: true }); // each slackLists.items.create
     const client = new LiveSlackActions({ userToken: "xoxp-test" });
     const res = await client.syncListItems({
@@ -107,8 +120,19 @@ describe("LiveSlackActions", () => {
         { what: "pricing", counterparty: "Jordan", direction: "owed_to_me", status: "open", permalink: "p2" },
       ],
     });
-    expect(apiCall).toHaveBeenNthCalledWith(1, "slackLists.create", { title: "Sam's commitments" });
-    expect(apiCall).toHaveBeenCalledWith("slackLists.items.create", expect.objectContaining({ list_id: "L1" }));
+    // create uses `name` (not `title`) and passes a column schema
+    const createCall = apiCall.mock.calls[0]!;
+    expect(createCall[0]).toBe("slackLists.create");
+    expect(createCall[1]).toMatchObject({ name: "Sam's commitments" });
+    expect((createCall[1] as { schema: unknown[] }).schema.length).toBe(6);
+    // items reference the generated column ids with a rich_text value, no source text
+    expect(apiCall).toHaveBeenCalledWith(
+      "slackLists.items.create",
+      expect.objectContaining({
+        list_id: "L1",
+        initial_fields: expect.arrayContaining([{ column_id: "Col_what", rich_text: "spec" }]),
+      }),
+    );
     expect(res).toEqual({ ok: true, listId: "L1", itemsWritten: 2 });
   });
 

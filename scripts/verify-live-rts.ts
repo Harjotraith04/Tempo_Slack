@@ -79,6 +79,7 @@ async function main(): Promise<void> {
       "permalink",
       "channelId",
       "channelName",
+      "channelType",
       "authorId",
       "authorName",
       "authorRealName",
@@ -95,8 +96,10 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    "\nCompare any field reading 0/N populated against src/rts/live.ts's normaliseMessages/\n" +
-      "normaliseUsers — Slack's actual payload shape may use different key names than assumed.",
+    "\nThe mapping in src/platform/slack/rts/live.ts follows the published payload shape\n" +
+      "(content/message_ts/author_user_id/author_name/channel_id/channel_name; users:\n" +
+      "user_id/full_name/title/email/timezone). Any field reading 0/N populated is the one to\n" +
+      "reconcile against the live payload — channelType is inferred from the channel-id prefix.",
   );
 }
 

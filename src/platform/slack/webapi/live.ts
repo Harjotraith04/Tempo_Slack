@@ -92,10 +92,12 @@ export class LiveSlackActions implements SlackActionsClient {
   // ── v2.0 native surfaces ───────────────────────────────────────────────────
   // These use the generic `apiCall` escape hatch (like rts/live.ts) for Web API
   // methods `@slack/web-api` has no typed helper for. They are the user's own
-  // canvas/list/reminders (user token, canvases:write / reminders:write) and an
-  // app-owned channel bookmark (bot token, bookmarks:write). UNVERIFIED LIVE
-  // SEAM: contract-tested against a mocked WebClient only — same posture as the
-  // rest of live.ts / LiveRtsClient (never run against a real workspace yet).
+  // canvas/list/reminders (user token, canvases:write / lists:write /
+  // reminders:write) and an app-owned channel bookmark (bot token,
+  // bookmarks:write). Shapes are aligned to the published method references
+  // (canvases.create/edit `document_content`+`replace`, reminders.add
+  // `text`/`time`, bookmarks.add `type:"link"`+`link`). Slack Lists is the one
+  // still to confirm live (see syncListItems); cut line TEMPO_LISTS=off.
 
   async upsertCanvas(opts: { canvasId?: string; title: string; markdown: string }): Promise<UpsertCanvasResult> {
     try {
@@ -119,28 +121,41 @@ export class LiveSlackActions implements SlackActionsClient {
   }
 
   async syncListItems(opts: { listId?: string; title: string; items: ListItem[] }): Promise<SyncListResult> {
+    // Slack Lists two-step (docs.slack.dev/reference/methods/slackLists.*):
+    // `slackLists.create` takes `name` (not `title`) + a `schema` of columns
+    // `{key,name,type}` and returns `list_id` + `list_metadata.schema[]` where
+    // each column carries its generated `id` ("Col…"). `slackLists.items.create`
+    // then references those column ids: each field is `{column_id, <type_key>:v}`
+    // (text columns use the `rich_text` value key). We keep a key→column_id map
+    // from the create response so items point at real columns. UNVERIFIED LIVE
+    // SEAM — the `rich_text` value encoding (string vs rich-text block) is the
+    // one thing to confirm with `TEMPO_SLACK_ACTIONS=live`; cut line TEMPO_LISTS=off.
     try {
       let listId = opts.listId;
+      let columnIds = new Map<string, string>();
       if (!listId) {
         const created = (await this.userWeb.apiCall("slackLists.create", {
-          title: opts.title,
-        })) as { ok?: boolean; list_id?: string };
+          name: opts.title,
+          schema: LIST_SCHEMA,
+        })) as { ok?: boolean; list_id?: string; list_metadata?: { schema?: { id?: string; key?: string }[] } };
         if (!created.ok || !created.list_id) return { ok: false };
         listId = created.list_id;
+        columnIds = mapColumns(created.list_metadata?.schema);
       }
       let itemsWritten = 0;
       for (const item of opts.items) {
+        // Derived commitment facts only — no source message text (Invariant 1).
+        const values: Record<string, string> = {
+          what: item.what,
+          counterparty: item.counterparty,
+          direction: item.direction,
+          status: item.status,
+          due: item.dueText ?? "",
+          permalink: item.permalink,
+        };
         const r = (await this.userWeb.apiCall("slackLists.items.create", {
           list_id: listId,
-          // Derived commitment facts only — no source message text.
-          initial_fields: [
-            { key: "what", text: item.what },
-            { key: "counterparty", text: item.counterparty },
-            { key: "direction", text: item.direction },
-            { key: "status", text: item.status },
-            { key: "due", text: item.dueText ?? "" },
-            { key: "permalink", text: item.permalink },
-          ],
+          initial_fields: listFields(values, columnIds),
         })) as { ok?: boolean };
         if (r.ok) itemsWritten++;
       }
@@ -179,4 +194,36 @@ export class LiveSlackActions implements SlackActionsClient {
       return { ok: false };
     }
   }
+}
+
+// ── Slack Lists schema/field helpers ─────────────────────────────────────────
+
+/** The Commitment-Ledger columns, all plain text; `what` is the primary column. */
+const LIST_SCHEMA = [
+  { key: "what", name: "What", type: "text", is_primary_column: true },
+  { key: "counterparty", name: "Who", type: "text" },
+  { key: "direction", name: "Direction", type: "text" },
+  { key: "status", name: "Status", type: "text" },
+  { key: "due", name: "Due", type: "text" },
+  { key: "permalink", name: "Link", type: "text" },
+] as const;
+
+/** key → generated column id ("Col…") from the create response's schema. */
+function mapColumns(schema?: { id?: string; key?: string }[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const c of schema ?? []) if (c.key && c.id) m.set(c.key, c.id);
+  return m;
+}
+
+/**
+ * Build `initial_fields` for one row. When we know the column ids, address them
+ * by `column_id`; otherwise fall back to `key` (best-effort so a partial schema
+ * response still writes something rather than throwing). Text columns take a
+ * `rich_text` value.
+ */
+function listFields(values: Record<string, string>, columnIds: Map<string, string>): Record<string, unknown>[] {
+  return Object.entries(values).map(([key, value]) => {
+    const columnId = columnIds.get(key);
+    return columnId ? { column_id: columnId, rich_text: value } : { key, rich_text: value };
+  });
 }

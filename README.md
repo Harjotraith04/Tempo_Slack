@@ -50,7 +50,7 @@ The full pipeline ships with a seeded world ("Sam returns from a week off") and 
 ```bash
 npm install
 npm run demo      # runs the whole narrative through the real modules
-npm test          # 282 tests: RTS, MCP, the five modules, native surfaces, persistence, a11y, hardening
+npm test          # 284 tests: RTS, MCP, the five modules, native surfaces, persistence, a11y, hardening
 ```
 
 `npm run demo` prints triage, tone decode, draft check, the commitment ledger (computing "overdue" from "by Friday"), the focus block + MCP task, and the re-entry brief — exactly what renders in Slack.
@@ -178,7 +178,7 @@ On Vercel, `/api/slack/events` is served by **`@vercel/slack-bolt`** (acks Slack
 ## Submission checklist (Agent for Good)
 
 - [x] Uses ≥1 required tech — **all three** (RTS + MCP + Slack AI).
-- [x] Working product (`npm run demo`, 282 tests) + Slack surfaces.
+- [x] Working product (`npm run demo`, 284 tests) + Slack surfaces.
 - [ ] ~3-min demo video (storyboard below) with working footage.
 - [ ] Architecture diagram (above).
 - [ ] Sandbox URL with access to `slackhack@salesforce.com` + `testing@devpost.com`.
