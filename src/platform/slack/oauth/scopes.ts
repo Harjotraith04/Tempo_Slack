@@ -44,6 +44,13 @@ export const SCOPES: ScopeSpec[] = [
   { scope: "app_mentions:read", token: "bot", why: "Respond when @-mentioned.", usedBy: "event: app_mention" },
   { scope: "files:write", token: "bot", why: "DM the read-aloud audio file to users who enable it.", usedBy: "files.uploadV2" },
   { scope: "bookmarks:write", token: "bot", why: "Pin a channel bookmark to the user's Tempo Canvas.", usedBy: "bookmarks.add" },
+  // ── Demo seeding only (bot token) ─────────────────────────────────────────
+  // Used exclusively by scripts/seed-workspace.ts to build the reviewable demo
+  // workspace. The product itself never creates channels or spoofs a persona;
+  // if you install Tempo without seeding, nothing in src/ calls these.
+  { scope: "channels:manage", token: "bot", why: "Create the demo channels in a sandbox so reviewers can reproduce the story.", usedBy: "conversations.create (scripts/seed-workspace.ts)" },
+  { scope: "channels:read", token: "bot", why: "Reuse existing demo channels instead of duplicating them on a re-seed.", usedBy: "conversations.list (scripts/seed-workspace.ts)" },
+  { scope: "chat:write.customize", token: "bot", why: "Attribute seeded demo messages to their personas (name + avatar).", usedBy: "chat.postMessage username/icon_emoji (scripts/seed-workspace.ts)" },
 ];
 
 export const USER_SCOPES: string[] = SCOPES.filter((s) => s.token === "user").map((s) => s.scope);
