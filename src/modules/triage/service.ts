@@ -11,6 +11,7 @@
  */
 
 import type { LlmPort, RtsClient, RtsMessage } from "./ports.js";
+import { CORPUS_QUERY } from "./ports.js";
 import {
   ClassificationSchema,
   SYSTEM,
@@ -22,23 +23,22 @@ import {
   type TriageResult,
 } from "./domain.js";
 
-/** Gather candidate messages since lastActive across the angles RTS unlocks. */
+/**
+ * Gather every message the user can see since they were last active.
+ *
+ * We deliberately do NOT hand RTS a keyword list. Retrieval is lexical and
+ * AND-scoped (see CORPUS_QUERY), so a keyword query can only *subtract* — and
+ * the message it would subtract first is the hero case: the implicit blocker
+ * where a colleague never @-mentioned you and used none of your words. RTS
+ * returns what you're permitted to see; the classifier decides what matters.
+ */
 async function gatherCandidates(
   rts: RtsClient,
   afterTs: string,
 ): Promise<RtsMessage[]> {
-  const queries = [
-    "questions, requests, or decisions that mention me or are addressed to me",
-    "someone is blocked, waiting on me, my spec, my doc, or can't start without me",
-    "a decision, plan change, or deadline affecting my projects",
-  ];
-  const results = await Promise.all(
-    queries.map((q) => rts.search({ query: q, after: afterTs, limit: 25 })),
-  );
+  const res = await rts.search({ query: CORPUS_QUERY, after: afterTs, limit: 50 });
   const byKey = new Map<string, RtsMessage>();
-  for (const r of results) {
-    for (const m of r.messages) byKey.set(m.permalink || `${m.channelId}:${m.ts}`, m);
-  }
+  for (const m of res.messages) byKey.set(m.permalink || `${m.channelId}:${m.ts}`, m);
   return [...byKey.values()];
 }
 

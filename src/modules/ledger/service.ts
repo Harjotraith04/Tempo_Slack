@@ -13,6 +13,7 @@
  */
 
 import type { LlmPort, RtsClient } from "./ports.js";
+import { CORPUS_QUERY } from "./ports.js";
 import {
   ExtractSchema,
   SYSTEM,
@@ -31,12 +32,10 @@ export async function runLedger(
   llm: LlmPort,
   opts: { nowTs: number; afterTs?: string },
 ): Promise<Commitment[]> {
-  const res = await rts.search({
-    query:
-      "promises and commitments: I'll send, I will, on it, on me, get you, by Friday, by EOD, by Wednesday",
-    after: opts.afterTs,
-    limit: 40,
-  });
+  // Corpus, not keywords: commitment language is endlessly varied ("on me",
+  // "leave it with me", "consider it done") and an AND-scoped lexical query
+  // would miss most of it. The extractor reads the window and finds promises.
+  const res = await rts.search({ query: CORPUS_QUERY, after: opts.afterTs, limit: 50 });
   const byLink = new Map(res.messages.map((m) => [m.permalink, m]));
 
   const { items } = await llm.structured({
@@ -83,10 +82,6 @@ export async function detectFulfilledCommitments(
 ): Promise<string[]> {
   const eligible = fresh.some((c) => c.direction === "i_owe");
   if (!eligible) return [];
-  const res = await rts.search({
-    query: "I sent, shipped, delivered, posted, or finished something I owed — the deliverable is done",
-    after: opts.afterTs,
-    limit: 25,
-  });
+  const res = await rts.search({ query: CORPUS_QUERY, after: opts.afterTs, limit: 50 });
   return matchFulfillments(fresh, res.messages);
 }

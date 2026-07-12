@@ -1,7 +1,7 @@
 {
   "display_information": {
     "name": "Tempo",
-    "description": "Your working memory for Slack — triages the firehose, remembers your commitments, decodes tone, protects your focus.",
+    "description": "Your working memory for Slack \u2014 triages the firehose, remembers your commitments, decodes tone, protects your focus.",
     "background_color": "#1f2330",
     "long_description": "Tempo is an executive-function co-pilot: assistive technology for the way humans actually work in Slack. It triages everything since you were last active into what truly needs you, tracks the promises you made and were made to you, decodes the implicit tone and subtext of messages, and protects your attention. Grounded live in the Slack Real-Time Search API; nothing it reads is ever stored. Built for the ~15-20% of workers who are neurodivergent, for non-native speakers, and for everyone drowning in the firehose."
   },
@@ -18,9 +18,18 @@
     "agent_view": {
       "agent_description": "I triage your Slack, remember your commitments, decode tone, and protect your focus.",
       "suggested_prompts": [
-        { "title": "What needs me today?", "message": "What needs me today?" },
-        { "title": "What did I promise?", "message": "Show my open commitments." },
-        { "title": "Catch me up", "message": "Catch me up on what I missed while I was away." }
+        {
+          "title": "What needs me today?",
+          "message": "What needs me today?"
+        },
+        {
+          "title": "What did I promise?",
+          "message": "Show my open commitments."
+        },
+        {
+          "title": "Catch me up",
+          "message": "Catch me up on what I missed while I was away."
+        }
       ]
     },
     "slash_commands": [
@@ -37,44 +46,104 @@
       "title": "Summarize what I missed",
       "description": "Tempo writes a calm, plain-language brief of what changed while you were away.",
       "input_parameters": {
-        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose Slack to summarize", "is_required": true }
+        "user": {
+          "type": "slack#/types/user_id",
+          "title": "For user",
+          "description": "Whose Slack to summarize",
+          "is_required": true
+        }
       },
       "output_parameters": {
-        "summary": { "type": "string", "title": "Summary", "description": "The re-entry brief", "is_required": true }
+        "summary": {
+          "type": "string",
+          "title": "Summary",
+          "description": "The re-entry brief",
+          "is_required": true
+        }
       }
     },
     "draft_reply": {
       "title": "Draft a reply",
-      "description": "Tempo drafts a warm, clear reply to a message. It never sends — you review and send yourself.",
+      "description": "Tempo drafts a warm, clear reply to a message. It never sends \u2014 you review and send yourself.",
       "input_parameters": {
-        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose voice to draft in", "is_required": true },
-        "message": { "type": "string", "title": "Message to reply to", "description": "The text you want to respond to", "is_required": true }
+        "user": {
+          "type": "slack#/types/user_id",
+          "title": "For user",
+          "description": "Whose voice to draft in",
+          "is_required": true
+        },
+        "message": {
+          "type": "string",
+          "title": "Message to reply to",
+          "description": "The text you want to respond to",
+          "is_required": true
+        }
       },
       "output_parameters": {
-        "draft": { "type": "string", "title": "Draft reply", "description": "The suggested reply text", "is_required": true }
+        "draft": {
+          "type": "string",
+          "title": "Draft reply",
+          "description": "The suggested reply text",
+          "is_required": true
+        }
       }
     },
     "block_focus": {
       "title": "Block focus time",
       "description": "Tempo protects a deep-work block: real calendar time plus Do-Not-Disturb.",
       "input_parameters": {
-        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose focus to protect", "is_required": true },
-        "minutes": { "type": "number", "title": "Minutes", "description": "How long to protect (default 90)", "is_required": false }
+        "user": {
+          "type": "slack#/types/user_id",
+          "title": "For user",
+          "description": "Whose focus to protect",
+          "is_required": true
+        },
+        "minutes": {
+          "type": "number",
+          "title": "Minutes",
+          "description": "How long to protect (default 90)",
+          "is_required": false
+        }
       },
       "output_parameters": {
-        "summary": { "type": "string", "title": "Summary", "description": "What was blocked", "is_required": true }
+        "summary": {
+          "type": "string",
+          "title": "Summary",
+          "description": "What was blocked",
+          "is_required": true
+        }
       }
     },
     "add_commitment": {
       "title": "Add a commitment",
       "description": "Tempo tracks a promise and sets a native reminder so it doesn't slip.",
       "input_parameters": {
-        "user": { "type": "slack#/types/user_id", "title": "For user", "description": "Whose commitment to track", "is_required": true },
-        "what": { "type": "string", "title": "What", "description": "The deliverable (e.g. 'Send the Atlas spec')", "is_required": true },
-        "counterparty": { "type": "string", "title": "To whom", "description": "Who it's for", "is_required": false }
+        "user": {
+          "type": "slack#/types/user_id",
+          "title": "For user",
+          "description": "Whose commitment to track",
+          "is_required": true
+        },
+        "what": {
+          "type": "string",
+          "title": "What",
+          "description": "The deliverable (e.g. 'Send the Atlas spec')",
+          "is_required": true
+        },
+        "counterparty": {
+          "type": "string",
+          "title": "To whom",
+          "description": "Who it's for",
+          "is_required": false
+        }
       },
       "output_parameters": {
-        "confirmation": { "type": "string", "title": "Confirmation", "description": "What Tempo tracked", "is_required": true }
+        "confirmation": {
+          "type": "string",
+          "title": "Confirmation",
+          "description": "What Tempo tracked",
+          "is_required": true
+        }
       }
     }
   },
@@ -108,7 +177,8 @@
         "bookmarks:write",
         "channels:manage",
         "channels:read",
-        "chat:write.customize"
+        "chat:write.customize",
+        "channels:history"
       ]
     }
   },

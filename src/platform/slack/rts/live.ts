@@ -36,19 +36,67 @@ import type {
 interface LiveOpts {
   userToken: string;
   subjectUserId: string;
+  /** Bot token, used only to recover display names for app-posted messages. */
+  botToken?: string;
 }
 
 /** Cap on cursor-following so a broad query can never fan out unbounded. */
 const MAX_PAGES = 5;
 
+/**
+ * RTS returns app/integration-posted messages with NO author identity — verified
+ * live: `author_user_id: "U00"` (a sentinel) and `author_name: ""`. Real Slack
+ * workspaces are full of such messages (bots, integrations, and anything posted
+ * with a display-name override), and a triage card that renders a blank sender
+ * is useless. `conversations.history` DOES carry the display name, so we hydrate
+ * the missing names from it, one call per channel, cached for the process.
+ */
+const BOT_AUTHOR_SENTINEL = "U00";
+const nameCache = new Map<string, Map<string, string>>(); // channelId → (ts → name)
+
 export class LiveRtsClient implements RtsClient {
   readonly subjectUserId: string;
   private readonly web: WebClient;
+  private readonly bot: WebClient | null;
 
   constructor(opts: LiveOpts) {
     this.subjectUserId = opts.subjectUserId;
     // Shared retry/backoff config so proactive triage survives rate limits.
     this.web = new WebClient(opts.userToken, webClientOptions);
+    this.bot = opts.botToken ? new WebClient(opts.botToken, webClientOptions) : null;
+  }
+
+  /** Fill in display names for messages RTS returned without an author. */
+  private async hydrateAuthors(messages: RtsMessage[]): Promise<void> {
+    if (!this.bot) return;
+    const needy = messages.filter((m) => !m.authorName && m.channelId && m.ts);
+    if (needy.length === 0) return;
+
+    const channels = [...new Set(needy.map((m) => m.channelId))];
+    await Promise.all(
+      channels.map(async (channelId) => {
+        if (nameCache.has(channelId)) return;
+        const byTs = new Map<string, string>();
+        try {
+          const res = (await this.bot!.conversations.history({
+            channel: channelId,
+            limit: 200,
+          })) as { messages?: { ts?: string; username?: string }[] };
+          for (const m of res.messages ?? []) {
+            if (m.ts && m.username) byTs.set(m.ts, m.username);
+          }
+        } catch {
+          // Best-effort: a missing scope or a channel the bot isn't in must never
+          // fail the search — the card just renders without a sender name.
+        }
+        nameCache.set(channelId, byTs);
+      }),
+    );
+
+    for (const m of needy) {
+      const name = nameCache.get(m.channelId)?.get(m.ts);
+      if (name) m.authorName = name;
+    }
   }
 
   async search(params: RtsSearchParams): Promise<RtsSearchResult> {
@@ -82,6 +130,7 @@ export class LiveRtsClient implements RtsClient {
     }
 
     const capped = messages.slice(0, limit);
+    await this.hydrateAuthors(capped);
     return {
       messages: capped,
       users: dedupeUsers(users),
@@ -168,13 +217,16 @@ function normaliseMessages(res: RtsRaw, me: string): RtsMessage[] {
     const channelId =
       m.channel_id ?? ch?.id ?? (typeof m.channel === "string" ? m.channel : undefined) ?? "";
     const text = m.content ?? m.text ?? "";
+    // "U00" is RTS's sentinel for an app-posted message with no human author —
+    // never surface it as if it were a real user id.
+    const rawAuthorId = m.author_user_id ?? m.author?.id ?? m.user ?? "";
     return {
       permalink: m.permalink ?? "",
       channelId,
       channelName: m.channel_name ?? ch?.name,
       channelType: channelTypeOf(m, channelId),
-      authorId: m.author_user_id ?? m.author?.id ?? m.user ?? "",
-      authorName: m.author_name ?? m.author?.name ?? m.username,
+      authorId: rawAuthorId === BOT_AUTHOR_SENTINEL ? "" : rawAuthorId,
+      authorName: m.author_name || m.author?.name || m.username || undefined,
       authorRealName: m.author?.real_name,
       text,
       ts: m.message_ts ?? m.ts ?? "",

@@ -8,6 +8,7 @@
  */
 
 import type { LlmPort, RtsClient } from "./ports.js";
+import { CORPUS_QUERY } from "./ports.js";
 import { Schema, SYSTEM, buildPrompt, mockBrief, type ReentryBrief } from "./domain.js";
 
 export async function runReentry(
@@ -15,11 +16,7 @@ export async function runReentry(
   llm: LlmPort,
   opts: { afterTs: string; awayDays: number },
 ): Promise<ReentryBrief> {
-  const res = await rts.search({
-    query: "everything important that happened while I was away: decisions, blockers, requests for me",
-    after: opts.afterTs,
-    limit: 40,
-  });
+  const res = await rts.search({ query: CORPUS_QUERY, after: opts.afterTs, limit: 50 });
 
   const brief = await llm.structured({
     system: SYSTEM,

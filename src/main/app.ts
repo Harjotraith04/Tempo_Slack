@@ -26,6 +26,7 @@ import { getStore } from "../platform/persistence/index.js";
 import { resolveA11yPrefs } from "../accessibility/index.js";
 import { getTtsClient } from "../accessibility/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../modules/onboarding.js";
+import { CORPUS_QUERY } from "../ports/rts.js";
 
 type BoltApp = InstanceType<typeof App>;
 
@@ -482,7 +483,7 @@ async function postComposedDraft(client: any, body: any, draft: string) {
 
 async function sourceTextFor(ctx: ReturnType<typeof buildContext>, permalink: string): Promise<string | undefined> {
   if (!permalink) return undefined;
-  const res = await ctx.rts.search({ query: "recent messages", limit: 50 });
+  const res = await ctx.rts.search({ query: CORPUS_QUERY, limit: 50 });
   return res.messages.find((m) => m.permalink === permalink)?.text;
 }
 

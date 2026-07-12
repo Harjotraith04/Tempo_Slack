@@ -33,6 +33,7 @@ import { teamLoadBlocks } from "../platform/slack/blockkit/index.js";
 import { config, flags } from "../config.js";
 
 import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs, resolveLocale } from "../accessibility/index.js";
+import { CORPUS_QUERY } from "../ports/rts.js";
 
 export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "team" | "help";
 
@@ -221,7 +222,7 @@ async function latestAmbiguousMessage(
   ctx: TempoContext,
 ): Promise<{ text: string; authorId?: string; authorName?: string } | undefined> {
   const res = await ctx.rts.search({
-    query: "messages addressed to me that might be ambiguous or passive-aggressive",
+    query: CORPUS_QUERY,
     after: afterTsOf(ctx),
     limit: 10,
   });

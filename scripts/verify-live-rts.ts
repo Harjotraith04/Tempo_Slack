@@ -36,27 +36,20 @@ import { LiveRtsClient } from "../src/platform/slack/rts/live.js";
 import { SUBJECT_USER_ID } from "../src/platform/slack/rts/fixtures.js";
 import type { RtsMessage, RtsUser } from "../src/ports/rts.js";
 
-/** The queries the app ACTUALLY issues, quoted from their call sites. */
+/** What the app ACTUALLY issues now: the corpus query (see ports/rts.ts). */
 const APP_QUERIES: { label: string; query: string }[] = [
-  {
-    label: "triage/service.ts:31",
-    query: "questions, requests, or decisions that mention me or are addressed to me",
-  },
-  {
-    label: "ledger/service.ts:36",
-    query: "promises and commitments: I'll send, I will, on it, on me, get you, by Friday, by EOD, by Wednesday",
-  },
-  {
-    label: "reentry/service.ts:19",
-    query: "everything important that happened while I was away: decisions, blockers, requests for me",
-  },
+  { label: "CORPUS_QUERY (triage / ledger / re-entry / decoder)", query: "" },
 ];
 
-/** Short keyword variants over the same seeded corpus — the keyword-mode fallback. */
+/**
+ * The old, natural-language queries — kept as a REGRESSION CHECK. Live RTS
+ * retrieval is lexical and AND-scoped, so these match nothing. If they ever
+ * start returning results, Slack has shipped true semantic retrieval and the
+ * corpus-query approach could be revisited.
+ */
 const KEYWORD_QUERIES: { label: string; query: string }[] = [
-  { label: "keyword: spec", query: "Atlas API spec" },
-  { label: "keyword: blocker", query: "blocked Atlas migration" },
-  { label: "keyword: checklist", query: "launch checklist owner" },
+  { label: "regression: intent-style query (expect 0)", query: "questions, requests, or decisions that mention me" },
+  { label: "lexical spot-check (expect >0)", query: "Atlas" },
 ];
 
 /**
@@ -99,9 +92,9 @@ async function probeSearchMode(userToken: string): Promise<string> {
   try {
     const info = (await web.apiCall("assistant.search.info")) as unknown as Record<string, unknown>;
     const flat = JSON.stringify(info);
-    const semantic = /"(semantic|ai_search)[^"]*":\s*true/i.test(flat);
+    const semantic = /"[a-z_]*ai_search[a-z_]*":\s*true/i.test(flat);
     console.log(`  raw: ${flat}`);
-    if (semantic) return "SEMANTIC available (Slack AI Search is on for this workspace)";
+    if (semantic) return "AI Search FLAG is on — but note: live retrieval is still LEXICAL and AND-scoped (verified). Use CORPUS_QUERY.";
     return "KEYWORD only (no Slack AI Search on this workspace)";
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

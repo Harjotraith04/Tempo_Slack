@@ -14,6 +14,7 @@
  */
 
 import type { LlmPort, RtsClient } from "./ports.js";
+import { CORPUS_QUERY } from "./ports.js";
 import {
   DECODE_SYSTEM,
   DRAFT_SYSTEM,
@@ -74,7 +75,9 @@ async function relationshipHint(
   authorName: string | undefined,
 ): Promise<string | undefined> {
   if (!rts || !authorName) return undefined;
-  const res = await rts.search({ query: `messages from ${authorName}`, limit: 5 });
+  // Lexical search can't find "messages by person X" — author isn't indexed as
+  // a term. Pull the window and filter by author client-side.
+  const res = await rts.search({ query: CORPUS_QUERY, limit: 50 });
   const samples = res.messages
     .filter((m) => (m.authorName ?? m.authorRealName ?? "").toLowerCase().includes(authorName.toLowerCase()))
     .slice(0, 3)

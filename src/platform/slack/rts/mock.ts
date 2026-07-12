@@ -107,6 +107,11 @@ export class MockRtsClient implements RtsClient {
   async search(params: RtsSearchParams): Promise<RtsSearchResult> {
     const { query, channelTypes, after, before, limit = 20 } = params;
     const qTokens = expandQuery(tokenize(query));
+    // CORPUS_QUERY ("") means "everything I can see in this window" — no lexical
+    // filter at all. Mirror the live adapter exactly: scoring an empty query
+    // would leave only the mentionsMe messages, which silently drops the hero
+    // case (the implicit blocker where nobody @-mentioned you).
+    const isCorpus = query.trim() === "";
 
     let candidates = ALL_MESSAGES.slice();
 
@@ -122,19 +127,26 @@ export class MockRtsClient implements RtsClient {
       candidates = candidates.filter((m) => Number(m.ts.split(".")[0]) < b);
     }
 
-    const scored = candidates
-      .map((m) => ({ m, sc: score(m, qTokens) }))
-      .sort((a, b) => {
-        // Prefer relevance, then recency.
-        if (b.sc !== a.sc) return b.sc - a.sc;
-        return Number(b.m.ts.split(".")[0]) - Number(a.m.ts.split(".")[0]);
-      });
+    const byRecency = (a: RtsMessage, b: RtsMessage) =>
+      Number(b.ts.split(".")[0]) - Number(a.ts.split(".")[0]);
 
-    // If nothing scored (generic "what's new" sweep), fall back to recency.
-    const anyHit = scored.some((x) => x.sc > 0);
-    const ordered = anyHit ? scored.filter((x) => x.sc > 0) : scored;
+    let messages: RtsMessage[];
+    if (isCorpus) {
+      messages = candidates.sort(byRecency).slice(0, limit);
+    } else {
+      const scored = candidates
+        .map((m) => ({ m, sc: score(m, qTokens) }))
+        .sort((a, b) => {
+          // Prefer relevance, then recency.
+          if (b.sc !== a.sc) return b.sc - a.sc;
+          return byRecency(a.m, b.m);
+        });
 
-    const messages = ordered.slice(0, limit).map((x) => x.m);
+      // If nothing scored (generic "what's new" sweep), fall back to recency.
+      const anyHit = scored.some((x) => x.sc > 0);
+      const ordered = anyHit ? scored.filter((x) => x.sc > 0) : scored;
+      messages = ordered.slice(0, limit).map((x) => x.m);
+    }
 
     return {
       messages,

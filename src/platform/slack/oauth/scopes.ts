@@ -51,6 +51,7 @@ export const SCOPES: ScopeSpec[] = [
   { scope: "channels:manage", token: "bot", why: "Create the demo channels in a sandbox so reviewers can reproduce the story.", usedBy: "conversations.create (scripts/seed-workspace.ts)" },
   { scope: "channels:read", token: "bot", why: "Reuse existing demo channels instead of duplicating them on a re-seed.", usedBy: "conversations.list (scripts/seed-workspace.ts)" },
   { scope: "chat:write.customize", token: "bot", why: "Attribute seeded demo messages to their personas (name + avatar).", usedBy: "chat.postMessage username/icon_emoji (scripts/seed-workspace.ts)" },
+  { scope: "channels:history", token: "bot", why: "Recover the display name of app/integration-posted messages, which RTS returns without an author.", usedBy: "conversations.history (rts/live.ts author hydration)" },
 ];
 
 export const USER_SCOPES: string[] = SCOPES.filter((s) => s.token === "user").map((s) => s.scope);

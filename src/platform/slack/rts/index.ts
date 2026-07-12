@@ -25,6 +25,9 @@ export function getRtsClient(opts: GetRtsOpts = {}): RtsClient {
     return new LiveRtsClient({
       userToken,
       subjectUserId: opts.subjectUserId ?? SUBJECT_USER_ID,
+      // Read-only, best-effort: recovers display names for app-posted messages,
+      // which RTS returns with no author. Absent → cards just show no sender.
+      botToken: config.slack.botToken,
     });
   }
   return new MockRtsClient();

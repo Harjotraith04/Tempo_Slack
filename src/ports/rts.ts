@@ -17,8 +17,27 @@ export type ChannelType =
 
 export type ContentType = "messages" | "files" | "channels" | "users";
 
+/**
+ * The corpus query — "everything I'm allowed to see in this time window".
+ *
+ * Verified against live `assistant.search.context` (Jul 2026): retrieval is
+ * LEXICAL and AND-scoped, not intent-based. A natural-language prompt like
+ * "questions, requests, or decisions that mention me" matches zero messages,
+ * because it ANDs every term; each extra word narrows the result further. An
+ * EMPTY query applies no lexical filter and returns the full set of messages
+ * the user can see within `after`/`before` — which is exactly what Tempo wants.
+ *
+ * So we let RTS do the thing only RTS can do — permission-aware retrieval of
+ * the user's own accessible history — and let the LLM do the classification.
+ * That split is the architecture: RTS grounds, the model reasons. Passing a
+ * hand-written keyword list here would silently drop the messages that matter
+ * (the implicit blocker nobody @-mentioned you in is exactly the one that has
+ * none of your keywords in it).
+ */
+export const CORPUS_QUERY = "";
+
 export interface RtsSearchParams {
-  /** Natural-language query. RTS runs semantic search on questions. */
+  /** Lexical query, AND-scoped. Use `CORPUS_QUERY` ("") for the full window. */
   query: string;
   contentTypes?: ContentType[];
   channelTypes?: ChannelType[];
