@@ -41,8 +41,12 @@ export const config = {
   },
   ai: {
     anthropicApiKey: opt("ANTHROPIC_API_KEY"),
-    gatewayApiKey: opt("AI_GATEWAY_API_KEY"),
-    model: req("TEMPO_MODEL", "claude-sonnet-5"),
+    // Sonnet 4.6, not 5: the live adapter passes `temperature` on every call
+    // (see platform/ai/live.ts), and Sonnet 5 rejects non-default sampling
+    // params with a 400. 4.6 accepts them, and doesn't turn on adaptive
+    // thinking by default — which would otherwise eat the pinned AI SDK's
+    // 4096-token max_tokens and truncate generateObject mid-object.
+    model: req("TEMPO_MODEL", "claude-sonnet-4-6"),
     // "live" calls Claude; "mock" uses deterministic canned reasoning so the
     // demo runs with no API key. Auto-detected from ANTHROPIC_API_KEY.
     mode: (opt("TEMPO_AI") ??
@@ -56,6 +60,14 @@ export const config = {
     receiver: (opt("TEMPO_RECEIVER") ?? (opt("VERCEL") ? "http" : "socket")) as ReceiverMode,
     isVercel: Boolean(opt("VERCEL")),
     port: Number(opt("PORT") ?? 3000),
+    // Public origin of the deployment. The OAuth start/callback routes build
+    // their redirect_uri from this; unset, the redirect_uri degrades to the
+    // relative "/api/oauth/callback" and Slack rejects the install with no
+    // useful error — so assertVercelRuntime() requires it in production.
+    publicUrl: opt("PUBLIC_URL"),
+    // Shared secret for the Vercel cron endpoint. Unset, the morning-digest
+    // route is unauthenticated (see api/cron/morning-digest.ts).
+    cronSecret: opt("CRON_SECRET"),
     rts: (opt("TEMPO_RTS") ?? "mock") as RtsMode,
     // Independent from TEMPO_RTS: a dev connected to a real sandbox for RTS
     // shouldn't have Tempo silently flip their own DND/status/profile unless

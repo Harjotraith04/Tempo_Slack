@@ -73,7 +73,10 @@ export function assertSecretsHardened(): void {
  *    bites instead of silently accepting the dev default key;
  *  - the file store writes JSON next to the process and Vercel's deployment
  *    filesystem is read-only — OAuth token saves and the cron would EROFS at
- *    runtime, so the misconfiguration is rejected up front.
+ *    runtime, so the misconfiguration is rejected up front;
+ *  - PUBLIC_URL builds the OAuth redirect_uri. Unset, it degrades to a relative
+ *    path that Slack rejects during the install with no actionable error, so we
+ *    turn a silent OAuth failure into a loud startup one.
  */
 export function assertVercelRuntime(): void {
   if (!config.runtime.isVercel) return;
@@ -83,6 +86,14 @@ export function assertVercelRuntime(): void {
       "TEMPO_STORE=file cannot run on Vercel — the deployment filesystem is read-only, so token/pref " +
         "writes would fail at runtime. Provision Postgres (e.g. Neon) and set DATABASE_URL " +
         "(TEMPO_STORE auto-detects to postgres). See .env.example.",
+    );
+  }
+  if (!config.runtime.publicUrl) {
+    throw new Error(
+      "PUBLIC_URL is required on Vercel — the OAuth redirect_uri is built from it. Without it the " +
+        "redirect_uri becomes the relative '/api/oauth/callback' and Slack rejects the install. " +
+        "Set PUBLIC_URL to this deployment's origin, e.g. https://your-app.vercel.app (no trailing " +
+        "slash). See .env.example.",
     );
   }
 }

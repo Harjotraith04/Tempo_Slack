@@ -47,12 +47,25 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  // SUBJECT_USER_ID is a fixture id ("U_SAM") that exists only in the mock
+  // workspace. Against a real one it matches nobody, so anything derived from
+  // the subject (mentionsMe) reads 0/N and looks like a mapping bug when it
+  // isn't. Pass your own Slack user id via SLACK_SUBJECT_USER_ID.
+  const subjectUserId = process.env.SLACK_SUBJECT_USER_ID ?? SUBJECT_USER_ID;
+  if (subjectUserId === SUBJECT_USER_ID) {
+    console.log(
+      `⚠️  Using the fixture subject id "${SUBJECT_USER_ID}", which does not exist in a real\n` +
+        "   workspace. Set SLACK_SUBJECT_USER_ID to your own Slack user id (U…) so the\n" +
+        "   subject-derived fields below are meaningful.\n",
+    );
+  }
+
   const client = new LiveRtsClient({
     userToken: config.slack.userToken,
-    subjectUserId: SUBJECT_USER_ID,
+    subjectUserId,
   });
 
-  console.log(`Verifying live RTS field mapping as user ${SUBJECT_USER_ID}...\n`);
+  console.log(`Verifying live RTS field mapping as user ${subjectUserId}...\n`);
 
   let allMessages: RtsMessage[] = [];
   let allUsers: RtsUser[] = [];

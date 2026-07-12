@@ -89,11 +89,24 @@ describe("Vercel posture (VERCEL=1)", () => {
     expect(() => assertVercelRuntime()).toThrow(/TEMPO_STORE=file/);
   });
 
-  it("assertVercelRuntime passes with a strong key and a Postgres store", async () => {
+  // An unset PUBLIC_URL makes the OAuth redirect_uri relative ("/api/oauth/callback"),
+  // which Slack rejects during the install with no actionable error. Fail loud instead.
+  it("assertVercelRuntime rejects a missing PUBLIC_URL on Vercel", async () => {
     process.env.VERCEL = "1";
     delete process.env.TEMPO_RECEIVER;
     process.env.TEMPO_ENCRYPTION_KEY = STRONG_KEY;
     process.env.DATABASE_URL = "postgres://user:pass@host/db";
+    delete process.env.PUBLIC_URL;
+    const { assertVercelRuntime } = await freshConfig();
+    expect(() => assertVercelRuntime()).toThrow(/PUBLIC_URL/);
+  });
+
+  it("assertVercelRuntime passes with a strong key, a Postgres store, and PUBLIC_URL", async () => {
+    process.env.VERCEL = "1";
+    delete process.env.TEMPO_RECEIVER;
+    process.env.TEMPO_ENCRYPTION_KEY = STRONG_KEY;
+    process.env.DATABASE_URL = "postgres://user:pass@host/db";
+    process.env.PUBLIC_URL = "https://tempo.vercel.app";
     const { assertVercelRuntime } = await freshConfig();
     expect(() => assertVercelRuntime()).not.toThrow();
   });

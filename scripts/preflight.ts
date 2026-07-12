@@ -6,7 +6,7 @@
  *   npm run preflight
  *
  * Runs: typecheck · tests · build · demo (zero-credential E2E) · web build ·
- * the four verify:* scripts (each self-skips with exit 0 when no creds are set,
+ * the five verify:* scripts (each self-skips with exit 0 when no creds are set,
  * or actually probes the service if you have keys) · a manifest sanity check.
  * Exits non-zero if any hard step fails. Manifest placeholders are reported as
  * information, not a failure — the committed manifest is a template until you
@@ -27,6 +27,7 @@ const STEPS: [label: string, cmd: string][] = [
   ["build", "npm run build"],
   ["demo (zero-credential E2E)", "npm run demo"],
   ["web build", "npm run web:build"],
+  ["verify:ai (skip-safe)", "npm run verify:ai"],
   ["verify:postgres (skip-safe)", "npm run verify:postgres"],
   ["verify:rts (skip-safe)", "npm run verify:rts"],
   ["verify:mcp (skip-safe)", "npm run verify:mcp"],

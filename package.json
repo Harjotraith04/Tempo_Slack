@@ -18,6 +18,7 @@
     "demo": "tsx scripts/demo.ts",
     "manifest:urls": "tsx scripts/set-manifest-urls.ts",
     "preflight": "tsx scripts/preflight.ts",
+    "verify:ai": "tsx scripts/verify-live-ai.ts",
     "verify:rts": "tsx scripts/verify-live-rts.ts",
     "verify:mcp": "tsx scripts/verify-live-mcp.ts",
     "verify:postgres": "tsx scripts/verify-live-postgres.ts",
