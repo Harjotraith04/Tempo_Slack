@@ -40,17 +40,19 @@ export const config = {
     userToken: opt("SLACK_USER_TOKEN"),
   },
   ai: {
-    anthropicApiKey: opt("ANTHROPIC_API_KEY"),
-    // Sonnet 4.6, not 5: the live adapter passes `temperature` on every call
-    // (see platform/ai/live.ts), and Sonnet 5 rejects non-default sampling
-    // params with a 400. 4.6 accepts them, and doesn't turn on adaptive
-    // thinking by default — which would otherwise eat the pinned AI SDK's
-    // 4096-token max_tokens and truncate generateObject mid-object.
-    model: req("TEMPO_MODEL", "claude-sonnet-4-6"),
-    // "live" calls Claude; "mock" uses deterministic canned reasoning so the
-    // demo runs with no API key. Auto-detected from ANTHROPIC_API_KEY.
+    // Same OPENAI_API_KEY that powers read-aloud (see `tts` below) — one key,
+    // both seams. Setting it therefore flips BOTH to live; that's intended.
+    apiKey: opt("OPENAI_API_KEY"),
+    // A gpt-4.1-class model, NOT a gpt-5.* or o-series one. The adapter passes
+    // `temperature` on every call, and the AI SDK silently STRIPS temperature
+    // for models it considers reasoning models (id starts with "o" or "gpt-5")
+    // — the call still succeeds, so a wrong id here is an invisible regression
+    // rather than a loud failure. See platform/ai/live.ts.
+    model: req("TEMPO_MODEL", "gpt-4.1-mini"),
+    // "live" calls OpenAI; "mock" uses deterministic canned reasoning so the
+    // demo runs with no API key. Auto-detected from OPENAI_API_KEY.
     mode: (opt("TEMPO_AI") ??
-      (opt("ANTHROPIC_API_KEY") ? "live" : "mock")) as "live" | "mock",
+      (opt("OPENAI_API_KEY") ? "live" : "mock")) as "live" | "mock",
   },
   runtime: {
     // Vercel sets VERCEL=1 in every deployment. There is no socket mode on

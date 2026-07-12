@@ -21,7 +21,7 @@ These have the longest lead time; kick them off before anything else.
       returns real, permission-aware results; **never demo on mock RTS in the video.**
 
 Get these accounts/keys in parallel (all free tier):
-- [ ] **Anthropic API key** (`sk-ant-…`) — flips Claude to live automatically.
+- [ ] **OpenAI API key** (`sk-…`) — flips BOTH the LLM and read-aloud (TTS) to live automatically.
 - [ ] **Neon Postgres** project → copy its `DATABASE_URL`.
 - [ ] **Vercel account** (for the two deploys in §4).
 - [ ] Generate a real **encryption key**: `openssl rand -base64 48` → `TEMPO_ENCRYPTION_KEY` (must be 32+ chars,
@@ -57,7 +57,8 @@ SLACK_CLIENT_ID=…
 SLACK_CLIENT_SECRET=…
 SLACK_APP_TOKEN=xapp-…
 SLACK_USER_TOKEN=xoxp-…
-ANTHROPIC_API_KEY=sk-ant-…           # TEMPO_AI auto-detects "live"
+OPENAI_API_KEY=sk-…                  # TEMPO_AI + TEMPO_TTS auto-detect "live"
+TEMPO_MODEL=gpt-4.1-mini             # NOT gpt-5.*/o-series: temperature is silently stripped
 TEMPO_ENCRYPTION_KEY=<32+ random>
 DATABASE_URL=postgres://…neon.tech/…?sslmode=require   # TEMPO_STORE auto-detects "postgres"
 TEMPO_RECEIVER=socket
@@ -87,7 +88,7 @@ TEMPO_SLACK_ACTIONS=live
 ## 4 · Deploy to Vercel (root app + web companion)
 ### Root app
 - [ ] `vercel link` the repo → deploy. Set env vars (Project → Settings → Environment Variables):
-      `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `ANTHROPIC_API_KEY`,
+      `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `OPENAI_API_KEY`, `TEMPO_MODEL`,
       `TEMPO_ENCRYPTION_KEY`, `DATABASE_URL`, `PUBLIC_URL=https://<app>.vercel.app`, `TEMPO_STORE=postgres`,
       `TEMPO_RTS=live`, `TEMPO_SLACK_ACTIONS=live`, `CRON_SECRET=<random>`.
       (`VERCEL=1` is set automatically → receiver defaults to HTTP and the secrets-hardening + no-file-store gates

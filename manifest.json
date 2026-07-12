@@ -80,8 +80,8 @@
   },
   "oauth_config": {
     "redirect_urls": [
-      "https://YOUR_DEPLOYMENT/api/oauth/callback",
-      "https://YOUR_WEB_DEPLOYMENT/api/oauth/callback"
+      "https://tempo-slack.vercel.app/api/oauth/callback",
+      "https://tempo-slack-web.vercel.app/api/oauth/callback"
     ],
     "scopes": {
       "user": [
@@ -111,7 +111,7 @@
   },
   "settings": {
     "event_subscriptions": {
-      "request_url": "https://YOUR_DEPLOYMENT/api/slack/events",
+      "request_url": "https://tempo-slack.vercel.app/api/slack/events",
       "bot_events": [
         "message.im",
         "app_mention",
@@ -121,7 +121,7 @@
     },
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://YOUR_DEPLOYMENT/api/slack/events"
+      "request_url": "https://tempo-slack.vercel.app/api/slack/events"
     },
     "socket_mode_enabled": false,
     "org_deploy_enabled": false,

@@ -8,7 +8,7 @@ enterprise deployment configures. (Descriptive — review with your security/com
 Tempo is internationalized (`src/accessibility/i18n/`): a dependency-free message catalog + `t()` lookup, the
 user's `locale` preference selecting the table, English as the fallback. Today the **read-aloud speech script**
 (the accessibility core) ships in English + Spanish, settable from the web companion's Settings (**Language**).
-Dynamic AI-generated content (item reasons, drafts) localizes on the live path by prompting Claude in the
+Dynamic AI-generated content (item reasons, drafts) localizes on the live path by prompting the LLM in the
 user's locale; the same catalog seam extends to every card label. This is the non-native-speaker promise —
 calm, plain-language help in your own language.
 

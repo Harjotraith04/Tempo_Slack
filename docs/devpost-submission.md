@@ -31,7 +31,7 @@ The accessibility spine runs through every surface: adjustable verbosity, readin
 2. **MCP, both directions:** outbound clients (Google Calendar / Notion / Linear / GitHub via `@modelcontextprotocol/sdk`, Streamable HTTP) let the Focus Guardian act in the world; and Tempo is itself an **MCP server** — `tempo_triage`, `tempo_commitments`, `tempo_decode`, `tempo_focus` — callable by Agentforce/Claude/Cursor with default-deny, signed per-user tokens. Tempo is infrastructure, not just an app.
 3. **Slack AI / agent surfaces:** the 2026 Agent experience (`agent_view`, suggested prompts, status), App Home dashboard, Block Kit actions, Workflow Builder custom steps, Canvas, and Lists.
 
-Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules depend only on ports; every external system (RTS, Claude, Slack Web API, MCP, Postgres, TTS) has mock + live adapters, so **the entire product runs credential-free**: `npm run demo` plays the whole story in 26 deterministic scenes, and 284 tests + typecheck + build + demo run on every commit. Deployed on Vercel Fluid Compute via `@vercel/slack-bolt` (sub-3-second acks, background processing), Neon Postgres (AES-256-GCM token encryption), least-privilege scopes enforced by a drift test.
+Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules depend only on ports; every external system (RTS, OpenAI, Slack Web API, MCP, Postgres, TTS) has mock + live adapters, so **the entire product runs credential-free**: `npm run demo` plays the whole story in 26 deterministic scenes, and 284 tests + typecheck + build + demo run on every commit. Deployed on Vercel Fluid Compute via `@vercel/slack-bolt` (sub-3-second acks, background processing), Neon Postgres (AES-256-GCM token encryption), least-privilege scopes enforced by a drift test.
 
 ## Challenges we ran into
 
@@ -39,7 +39,7 @@ Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules d
 - **The 3-second ack vs. real model work.** Slack retries anything slower than 3 seconds, but triage does live RTS + LLM reasoning. We moved to `@vercel/slack-bolt` on Fluid Compute — ack immediately, finish the work in the background via `waitUntil` — so the agent stays responsive without dropping requests.
 - **A platform that moved under us.** The Assistant experience we first built on was deprecated for new apps mid-project; we migrated to the 2026 **Agent experience** (`agent_view`, `app_home_opened` + `message.im`) while keeping both message paths working with no double-replies.
 - **"Never store what it reads" as an engineering constraint, not a slogan.** It forced derived-facts-only everywhere — e.g. the Commitment Ledger's Slack List rows carry the parsed obligation, never the source message — and we proved it at the schema level and in tests rather than promising it in the privacy page.
-- **One codebase that runs with and without credentials.** Every external system (RTS, Claude, Slack Web API, MCP, Postgres, TTS) has a mock and a live adapter behind a port, so `npm run demo` and 280+ tests stay green with zero secrets across all 15 build phases — which is also what let us harden the live seams against the docs before a single key existed.
+- **One codebase that runs with and without credentials.** Every external system (RTS, OpenAI, Slack Web API, MCP, Postgres, TTS) has a mock and a live adapter behind a port, so `npm run demo` and 280+ tests stay green with zero secrets across all 15 build phases — which is also what let us harden the live seams against the docs before a single key existed.
 
 ## Accomplishments we're proud of
 
@@ -64,7 +64,7 @@ Marketplace listing (the scopes audit, privacy policy, and data-governance work 
 - **Architecture diagram:** `docs/architecture.png` (also `.svg`)
 - **Sandbox URL:** ⟨https://⟨sandbox⟩.slack.com — invites sent to slackhack@salesforce.com + testing@devpost.com⟩
 - **Repo:** https://github.com/Harjotraith04/Tempo_Slack
-- **Tech tags:** Slack RTS API · MCP · Slack AI/Agents · TypeScript · Bolt · Vercel · Neon Postgres · Claude
+- **Tech tags:** Slack RTS API · MCP · Slack AI/Agents · TypeScript · Bolt · Vercel · Neon Postgres · OpenAI
 
 ## `#start-here` channel note (pin in the sandbox for judges)
 

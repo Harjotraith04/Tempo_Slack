@@ -29,14 +29,14 @@ flowchart TB
     end
 
     subgraph GROUND["Grounding — read, never stored"]
-        RTS["Slack Real-Time Search API<br/>assistant.search.context<br/>USER token → no action_token<br/>permission-aware, semantic"]
+        RTS["Slack Real-Time Search API<br/>assistant.search.context<br/>USER token → no action_token<br/>permission-aware, live"]
         MULTI["Attention OS: email + calendar<br/>sources behind the same port"]
     end
 
     subgraph ACT["Action — only after a human tap"]
         WEBAPI["Slack Web API<br/>DND · status · schedule ·<br/>canvas · lists · reminders"]
         MCPOUT["MCP outbound clients<br/>Google Calendar · Notion ·<br/>Linear · GitHub"]
-        CLAUDE["Claude (AI SDK)<br/>classification · extraction ·<br/>tone · drafting"]
+        LLM["OpenAI (AI SDK)<br/>classification · extraction ·<br/>tone · drafting"]
         TTS["OpenAI TTS<br/>read-aloud audio"]
     end
 
@@ -54,7 +54,7 @@ flowchart TB
     ORCH --> MODULES
     MODULES -->|RtsClient port| RTS
     MODULES -->|RtsClient port| MULTI
-    MODULES -->|LlmPort| CLAUDE
+    MODULES -->|LlmPort| LLM
     FOCUS -->|Calendar/Task ports| MCPOUT
     ORCH -->|SlackActions port| WEBAPI
     ORCH --> TTS

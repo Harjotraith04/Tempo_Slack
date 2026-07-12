@@ -1,9 +1,9 @@
 /**
- * Standalone live-Claude check — mirrors verify-live-postgres.ts / verify-live-rts.ts.
+ * Standalone live-OpenAI check — mirrors verify-live-postgres.ts / verify-live-rts.ts.
  *
  * NEVER imported by the app/orchestrator/tests, and NOT wired into `npm test` /
  * `npm run demo`, so it can't break the zero-credential path. With no
- * ANTHROPIC_API_KEY it prints a clear "skipped" and exits 0; with one it makes
+ * OPENAI_API_KEY it prints a clear "skipped" and exits 0; with one it makes
  * two real calls through the same LiveLlm adapter the modules use — one
  * structured() and one text() — and reports.
  *
@@ -29,16 +29,26 @@ const Triage = z.object({
 });
 
 async function main(): Promise<void> {
-  if (!config.ai.anthropicApiKey) {
+  if (!config.ai.apiKey) {
     console.log(
-      "Live AI verification skipped — no ANTHROPIC_API_KEY configured.\n" +
-        "This is expected for the zero-credential demo. Set ANTHROPIC_API_KEY and re-run\n" +
-        "`npm run verify:ai` to exercise the real Claude path.",
+      "Live AI verification skipped — no OPENAI_API_KEY configured.\n" +
+        "This is expected for the zero-credential demo. Set OPENAI_API_KEY and re-run\n" +
+        "`npm run verify:ai` to exercise the real OpenAI path.",
     );
     process.exit(0);
   }
 
-  console.log(`Verifying live Claude via the LiveLlm adapter (model: ${config.ai.model})…\n`);
+  // A gpt-5.*/o-series id would make the AI SDK SILENTLY strip temperature —
+  // the calls below would still pass, hiding the regression. Warn loudly.
+  if (/^(o|gpt-5)/.test(config.ai.model)) {
+    console.log(
+      `⚠️  TEMPO_MODEL="${config.ai.model}" looks like a reasoning model. The AI SDK strips\n` +
+        "   `temperature` for those WITHOUT erroring, so every call silently runs at the\n" +
+        "   default sampling. Use a gpt-4.1-class model (e.g. gpt-4.1-mini) instead.\n",
+    );
+  }
+
+  console.log(`Verifying live OpenAI via the LiveLlm adapter (model: ${config.ai.model})…\n`);
   const llm = new LiveLlm();
 
   console.log("1/2  structured() — the path every triage/ledger/decoder call takes");
@@ -61,7 +71,7 @@ async function main(): Promise<void> {
   console.log(`     ✅ ${text.trim()}\n`);
 
   console.log(`✅ Live AI OK — model ${config.ai.model} accepted both calls (temperature included).`);
-  console.log("All five reasoning modules will resolve against real Claude.");
+  console.log("All five reasoning modules will resolve against real OpenAI.");
   process.exit(0);
 }
 
@@ -69,9 +79,10 @@ main().catch((err) => {
   console.error("\n❌ Live AI verification failed:", err);
   console.error(
     `\nModel in use: ${config.ai.model}\n` +
-      "If this is a 400 mentioning `temperature` / `top_p` / `top_k`, the model rejects non-default\n" +
-      "sampling params. The adapter sends temperature on every call, so pin a model that accepts it:\n" +
-      "  TEMPO_MODEL=claude-sonnet-4-6\n",
+      "If this is a 400 mentioning `temperature`, the model rejects non-default sampling params.\n" +
+      "The adapter sends temperature on every call, so pin a model that accepts it:\n" +
+      "  TEMPO_MODEL=gpt-4.1-mini\n" +
+      "If it's a 401, the key is wrong. If it's a model_not_found, your account can't reach that id.\n",
   );
   process.exit(1);
 });

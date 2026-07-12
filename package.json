@@ -27,7 +27,7 @@
     "web:build": "npm --prefix web run build"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/openai": "^1.3.24",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@neondatabase/serverless": "^0.10.4",
     "@slack/bolt": "^4.2.0",

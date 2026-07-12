@@ -67,7 +67,7 @@ npm test          # 284 tests: RTS, MCP, the five modules, native surfaces, pers
         │
    Orchestrator ──► Modules ──► RTS client  ──► assistant.search.context
                        │         (USER token, no action_token, NO STORE)
-                       ├──────►  LLM (Claude via AI SDK, or mock)
+                       ├──────►  LLM (OpenAI via AI SDK, or mock)
                        └──────►  MCP clients ──► Calendar / Notion / Linear
         │
    Postgres/Neon: encrypted user tokens + prefs  (never RTS content)
@@ -148,7 +148,7 @@ src/
     slack/rts/     RTS client: live (assistant.search.context) · mock · fixtures · caching
     slack/webapi/  Slack write-actions: DND · status · scheduled digest
     slack/blockkit/calm, accessible Block Kit builders (+ empty/error/metrics states)
-    ai/            LLM wrapper (Claude via AI SDK, or deterministic mock)
+    ai/            LLM wrapper (OpenAI via AI SDK, or deterministic mock)
     mcp/           outward MCP clients (calendar/tasks) + real-MCP seam
     persistence/   encrypted tokens · prefs · commitments · snoozes · metrics (counts only)
   accessibility/   verbosity · reading level (plain) · read-aloud (TTS)
@@ -164,7 +164,7 @@ manifest.json      Slack app manifest (scopes, assistant, /tempo, events)
 ## Running against a real Slack workspace
 
 1. Create a Slack app from `manifest.json` (set the Request URLs / redirect to your deployment). The manifest uses the 2026 **Agent experience** (`agent_view` + `message.im`); `socket_mode_enabled` is `false` for prod — toggle Socket Mode on in the app settings for local dev.
-2. Fill `.env` from `.env.example` (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` for socket mode, `SLACK_USER_TOKEN` for the demo user, optional `ANTHROPIC_API_KEY`).
+2. Fill `.env` from `.env.example` (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` for socket mode, `SLACK_USER_TOKEN` for the demo user, optional `OPENAI_API_KEY`).
 3. Seed the sandbox so live RTS has data: `npm run seed -- --execute`.
 4. Flip to live: set `TEMPO_RTS=live` (and `TEMPO_AI=live` if you have a key).
 5. `npm run dev` (Socket Mode) and open the Tempo agent, or `/tempo triage`.

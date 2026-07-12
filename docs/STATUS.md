@@ -42,7 +42,7 @@
 Follow **[`GO_LIVE.md`](../GO_LIVE.md)** top to bottom. The critical-path summary:
 
 1. **Day 1 (start immediately — longest lead):** join the Slack Developer Program → provision a sandbox →
-   **request the semantic-RTS sandbox from Slack partnerships.** Get Anthropic key, Neon `DATABASE_URL`, Vercel
+   **request the semantic-RTS sandbox from Slack partnerships.** Get OpenAI key, Neon `DATABASE_URL`, Vercel
    account, and a strong `TEMPO_ENCRYPTION_KEY`.
 2. **Local first (Socket Mode):** create the app from `manifest.json`, fill `.env`, `npm run verify:postgres`,
    `npm run seed -- --execute`, then **`npm run verify:rts`** and reconcile any 0/N field — the make-or-break step.

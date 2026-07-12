@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tempo — an executive-function co-pilot for Slack</title>
+    <meta
+      name="description"
+      content="Tempo triages the firehose, remembers your commitments, decodes tone, and protects your attention — grounded in real Slack context via the Real-Time Search API."
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1d1c1d;
+        --muted: #616061;
+        --line: #e5e5e5;
+        --accent: #4a154b;
+        --card: #fafafa;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #12100f;
+          --fg: #f5f4f2;
+          --muted: #a8a29e;
+          --line: #2a2725;
+          --accent: #d6b8ff;
+          --card: #1a1817;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 4rem 1.5rem;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        display: flex;
+        justify-content: center;
+      }
+      main { width: 100%; max-width: 640px; }
+      h1 { font-size: 2.25rem; line-height: 1.15; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
+      .tag { color: var(--muted); font-size: 1.05rem; margin: 0 0 2rem; }
+      .cta {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+      }
+      @media (prefers-color-scheme: dark) { .cta { color: #12100f; } }
+      .cta:hover { opacity: 0.9; }
+      ul { padding-left: 1.1rem; }
+      li { margin-bottom: 0.6rem; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1.25rem 1.5rem;
+        margin-top: 2.5rem;
+      }
+      h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 0.75rem; }
+      code { background: var(--line); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.9em; }
+      footer { margin-top: 3rem; color: var(--muted); font-size: 0.875rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Tempo</h1>
+      <p class="tag">
+        An executive-function co-pilot for Slack. It triages the firehose, remembers what you promised,
+        decodes what people actually meant, and protects your attention.
+      </p>
+
+      <a class="cta" href="/api/oauth/start">Add to Slack</a>
+
+      <div class="card">
+        <h2>What it does</h2>
+        <ul>
+          <li><strong>Triage</strong> — sorts a week away into Act / Blocker / FYI / Noise, grounded in real messages.</li>
+          <li><strong>Commitment Ledger</strong> — surfaces promises you made and promises made to you, with due dates.</li>
+          <li><strong>Tone Decoder</strong> — reads subtext and real urgency, then drafts a reply.</li>
+          <li><strong>Focus Guardian</strong> — flips DND and status, and books the block.</li>
+          <li><strong>Re-entry</strong> — the brief you need after time off.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Built on</h2>
+        <p style="margin: 0">
+          Slack <strong>Real-Time Search API</strong> (<code>assistant.search.context</code>, permission-aware,
+          user-token) · <strong>MCP</strong> in both directions — Tempo is itself an MCP server at
+          <code>/api/mcp/server</code> · <strong>Slack AI &amp; agent surfaces</strong> (<code>agent_view</code>,
+          App Home, Block Kit, Canvas, Lists).
+        </p>
+      </div>
+
+      <footer>
+        Assistive technology for people with ADHD, executive-function differences, and anyone returning from
+        leave. Tempo reads only what you can already see, and never stores message content.
+      </footer>
+    </main>
+  </body>
+</html>
