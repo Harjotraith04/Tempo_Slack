@@ -69,8 +69,31 @@ function checkManifest(): boolean {
   if (!oauth.scopes?.user?.length) missing.push("oauth_config.scopes.user");
   if (!oauth.scopes?.bot?.length) missing.push("oauth_config.scopes.bot");
   if (!settings.event_subscriptions) missing.push("settings.event_subscriptions");
+
+  // Slack's validator rejects these combinations, and it does so only at
+  // app-creation/update time — i.e. in a browser, at the worst moment. Catch
+  // them here instead. Each one cost us a round trip to discover.
+  const socket = settings.socket_mode_enabled === true;
+  const functions = m.functions as Record<string, unknown> | undefined;
+  if (functions && Object.keys(functions).length > 0 && settings.org_deploy_enabled !== true) {
+    missing.push("settings.org_deploy_enabled must be true when `functions` are declared");
+  }
+  if (!socket) {
+    // With socket mode off, EVERY inbound surface needs its own request URL —
+    // including each slash command, which is easy to forget because the events
+    // and interactivity URLs sit elsewhere in the file.
+    const cmds = (features.slash_commands ?? []) as { command?: string; url?: string }[];
+    for (const c of cmds) {
+      if (!c.url) missing.push(`features.slash_commands["${c.command}"].url (required when socket mode is off)`);
+    }
+    const inter = settings.interactivity as { is_enabled?: boolean; request_url?: string } | undefined;
+    if (inter?.is_enabled && !inter.request_url) missing.push("settings.interactivity.request_url");
+    const ev = settings.event_subscriptions as { request_url?: string } | undefined;
+    if (ev && !ev.request_url) missing.push("settings.event_subscriptions.request_url");
+  }
+
   if (missing.length) {
-    console.error(`  ✗ manifest missing required keys: ${missing.join(", ")}`);
+    console.error(`  ✗ manifest invalid: ${missing.join("; ")}`);
     return false;
   }
   const placeholders = ["https://YOUR_DEPLOYMENT", "https://YOUR_WEB_DEPLOYMENT"].filter((p) => raw.includes(p));

@@ -30,8 +30,14 @@ export function createVercelHandler(): VercelHandler {
   const receiver = new VercelReceiver({ signingSecret: config.slack.signingSecret });
   const app = new App({
     token: config.slack.botToken,
+    signingSecret: config.slack.signingSecret,
     receiver,
     clientOptions: webClientOptions,
+    // REQUIRED by @vercel/slack-bolt: createHandler() calls app.init() itself.
+    // Without deferInitialization, Bolt has already run its auth setup in the
+    // constructor and that second init() re-checks a token it no longer holds —
+    // every request dies with AppInitializationError ("no token or authorize").
+    deferInitialization: true,
   });
   registerHandlers(app);
   return createHandler(app, receiver);

@@ -37,7 +37,8 @@
         "command": "/tempo",
         "description": "Triage, commitments, decode tone, focus, or catch-up",
         "usage_hint": "[triage | commitments | catchup | focus | help]",
-        "should_escape": false
+        "should_escape": false,
+        "url": "https://tempo-slack.vercel.app/api/slack/events"
       }
     ]
   },

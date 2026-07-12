@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "tsx scripts/seed-workspace.ts",
-    "demo": "tsx scripts/demo.ts",
+    "demo": "TEMPO_RTS=mock TEMPO_AI=mock TEMPO_SLACK_ACTIONS=mock TEMPO_TTS=mock TEMPO_MCP=mock tsx scripts/demo.ts",
     "manifest:urls": "tsx scripts/set-manifest-urls.ts",
     "preflight": "tsx scripts/preflight.ts",
     "verify:ai": "tsx scripts/verify-live-ai.ts",

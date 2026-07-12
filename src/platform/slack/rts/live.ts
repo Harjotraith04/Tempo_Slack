@@ -109,8 +109,22 @@ export class LiveRtsClient implements RtsClient {
       limit: Math.min(20, limit),
     };
     if (params.channelTypes?.length) base.channel_types = params.channelTypes;
-    if (params.after) base.after = params.after;
-    if (params.before) base.before = params.before;
+    // `after`/`before` must be NUMBERS (epoch seconds). The port carries Slack
+    // `ts` strings ("1783885570.724319"), and passing one through verbatim is
+    // rejected: `must provide a number [json-pointer:/after]`. Coerce to whole
+    // seconds — the sub-second part is meaningless as a window bound anyway.
+    const secs = (ts: string): number | undefined => {
+      const n = Math.floor(Number(ts));
+      return Number.isFinite(n) ? n : undefined;
+    };
+    if (params.after) {
+      const a = secs(params.after);
+      if (a !== undefined) base.after = a;
+    }
+    if (params.before) {
+      const b = secs(params.before);
+      if (b !== undefined) base.before = b;
+    }
 
     // Follow `next_cursor` until we have enough or run out of pages. Defensive:
     // if RTS doesn't paginate this method, there's simply no cursor and we stop

@@ -160,7 +160,16 @@ async function main(): Promise<void> {
   console.log("\x1b[1m▶ Retrieval mode\x1b[0m");
   console.log(`  ${await probeSearchMode(config.slack.userToken)}`);
 
-  const client = new LiveRtsClient({ userToken: config.slack.userToken, subjectUserId });
+  // Pass the bot token exactly as getRtsClient() does — it's what hydrates the
+  // display names for app-posted messages (RTS returns those with no author).
+  const client = new LiveRtsClient({
+    userToken: config.slack.userToken,
+    subjectUserId,
+    botToken: config.slack.botToken,
+  });
+  if (!config.slack.botToken) {
+    console.log("⚠️  No SLACK_BOT_TOKEN — author names cannot be hydrated; expect authorName 0/N.\n");
+  }
   console.log(`\nSearching as ${subjectUserId}. (Run this AFTER \`npm run seed -- --execute\`.)`);
 
   const app = await runSet(client, "▶ The app's real queries (semantic-style)", APP_QUERIES);

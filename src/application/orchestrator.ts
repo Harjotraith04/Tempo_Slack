@@ -50,7 +50,13 @@ export function routeIntent(input: string): Intent {
   if (/\b(triage|need(s)? me|what.?s new|unread|today|priorit)/.test(t)) return "triage";
   if (/\b(commit|promis|owe|ledger|deliver)/.test(t)) return "commitments";
   if (/\b(catch ?up|catch me up|missed|away|pto|vacation|back|re-?entry)/.test(t)) return "catchup";
-  if (/\b(focus|deep work|block (my )?time|do not disturb|dnd|protect)/.test(t)) return "focus";
+  if (/\b(focus|deep work|do not disturb|dnd|protect)/.test(t)) return "focus";
+  // "block 2 hours" / "block 90 min" / "block my calendar" — the bare "block"
+  // phrasing people actually use. The old pattern demanded the literal words
+  // "block time", so "block 2 hours" fell through to the help menu. `\bblock\b`
+  // deliberately does NOT match "blocked" (as in "we're blocked on the spec"),
+  // which is triage input, not a focus request.
+  if (/\bblock\b.*\b(\d+\s*(h|hrs?|hours?|m|mins?|minutes?)\b|time|calendar)/.test(t)) return "focus";
   if (/\b(decode|what does this mean|really mean|tone|subtext|passive)/.test(t)) return "decode";
   if (/\b(team|manager mode|workload)\b/.test(t)) return "team";
   return "help";
@@ -150,7 +156,7 @@ async function respondCore(
         : { intent, text: "Nothing major to catch up on.", blocks: emptyStateBlocks("catchup") };
     }
     case "focus": {
-      const mins = Number(input.match(/(\d{2,3})\s*(min|m)\b/)?.[1] ?? prefs?.focusDefaultMins ?? 90);
+      const mins = parseFocusMinutes(input, prefs?.focusDefaultMins ?? 90);
       const p = await planFocusBlock({
         nowTs: ctx.nowTs,
         durationMins: mins,
@@ -233,4 +239,25 @@ async function latestAmbiguousMessage(
     authorId: candidate.authorId,
     authorName: candidate.authorRealName ?? candidate.authorName,
   };
+}
+
+/**
+ * How long to protect. People say "block 2 hours" at least as often as
+ * "block 90 minutes", and the previous minutes-only pattern silently ignored
+ * the former and fell back to the default — so asking for two hours got you
+ * ninety minutes with no indication anything had been misread.
+ *
+ * Accepts: "2 hours" · "2h" · "1.5 hrs" · "90 minutes" · "90 min" · "45m".
+ * Clamped to Slack's own 5–480 minute bounds (see manifest `block_focus`).
+ */
+export function parseFocusMinutes(input: string, dflt: number): number {
+  const clamp = (n: number) => Math.max(5, Math.min(480, Math.round(n)));
+
+  const hours = input.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/i);
+  if (hours) return clamp(parseFloat(hours[1]!) * 60);
+
+  const mins = input.match(/(\d{1,3})\s*(?:minutes?|mins?|m)\b/i);
+  if (mins) return clamp(Number(mins[1]!));
+
+  return clamp(dflt);
 }
