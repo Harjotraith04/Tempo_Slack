@@ -42,7 +42,7 @@ export interface TriageResult {
  * output tokens are decoded one at a time — so this number, not the prompt
  * size, is what sets the reply latency.
  */
-export const CANDIDATE_LIMIT = 20;
+export const CANDIDATE_LIMIT = 30;
 
 export const ItemSchema = z.object({
   /**
@@ -118,6 +118,38 @@ export function mockClassify(m: RtsMessage, i: number): z.infer<typeof ItemSchem
     return echo
       ? base("FYI", 55, "Another teammate is also blocked on your spec (a 'me too' on the main blocker).", "Skim — unblocking the spec covers this too")
       : base("BLOCKER", 88, "Engineering is blocked waiting on your spec — no @mention, but it's on you.", "Send the spec or give an ETA");
+  }
+  // An incident someone else already closed. Scary words, zero action for you —
+  // the case a keyword-matcher gets wrong and a real triage must get right.
+  if ((t.includes("incident") || t.includes("rolled back") || t.includes("p95")) && (t.includes("closed") || t.includes("back to") || t.includes("healthy"))) {
+    return base("FYI", 30, "An incident spiked and was resolved by eng while you were away — no action needed.", "Skim the writeup tomorrow");
+  }
+  if (t.includes("spiked") || t.includes("error rate")) {
+    return base("FYI", 45, "A production incident — eng is on it; watch, don't jump in.", "Skim; escalate only if it drags");
+  }
+  // A customer escalation asking for a decision only the PM can make.
+  if (t.includes("churn") || t.includes("cto") || (t.includes("escalat") && t.includes("customer"))) {
+    return base("ACT", 96, "A customer is threatening to churn and a VP needs a call from you today.", "Decide: hold the date or offer early access");
+  }
+  // Sign-off / approval with a deadline.
+  if (t.includes("sign-off") || t.includes("sign off") || t.includes("approval")) {
+    return base("ACT", 84, "A deadlined approval that only you can give.", "Review and sign off");
+  }
+  // Security review GATING a launch — a blocker with no @mention on you.
+  // Deliberately requires the gating language, not the words "security review":
+  // the GA-date announcement also says "...to absorb the security review", and a
+  // looser rule filed that decision as a BLOCKER. Mentioning a review is not the
+  // same as being blocked by one.
+  if (t.includes("can't sign off") || t.includes("cant sign off") || t.includes("gated on")) {
+    return base("BLOCKER", 90, "A launch is gated on a product answer only you can give — nobody @-mentioned you.", "Answer the security question");
+  }
+  // "Mandatory training" style broadcast — shouts URGENT, needs ~5 minutes.
+  if (t.includes("security training") || t.includes("access will be suspended")) {
+    return base("NOISE", 20, "A broadcast compliance reminder — it shouts, but it isn't about you specifically.", "Do it whenever; not today's problem");
+  }
+  // The ambiguous ping — the message that costs an anxious user 20 minutes.
+  if (t.trim() === "got a sec?" || t.trim() === "got a sec") {
+    return base("ACT", 60, "A vague ping from your VP with no context — likely quick, but it will sit in your head until you answer.", "Reply and ask what it's about");
   }
   if ((t.includes("decision") || t.includes("moving")) && (t.includes("ga") || t.includes("aug"))) {
     return base("FYI", 60, "A launch-date decision was made while you were out — affects your plan.", "Skim and update your checklist");

@@ -84,19 +84,48 @@ async function main() {
     }
   }
 
+  // IDEMPOTENT. This used to post every message on every run, so a second seed
+  // (e.g. to add new scenarios) silently duplicated the entire story — a
+  // workspace showing everything twice, with a triage to match. Read what's
+  // already there and post only what's missing.
+  const existing = new Map<string, Set<string>>();
+  for (const [name, id] of channelIds) {
+    const seen = new Set<string>();
+    try {
+      const hist = (await web.conversations.history({ channel: id, limit: 1000 })) as any;
+      for (const msg of hist.messages ?? []) if (msg.text) seen.add(String(msg.text).trim());
+    } catch (e: any) {
+      // not_in_channel etc. — treat as empty and post everything for this channel
+      console.log(`  (couldn't read #${name} history: ${e?.data?.error ?? e}; assuming empty)`);
+    }
+    existing.set(name, seen);
+  }
+
   // Post history oldest → newest.
   const ordered = [...MESSAGES].sort((a, b) => b.minsAgo - a.minsAgo);
+  let posted = 0;
+  let skipped = 0;
   for (const m of ordered) {
-    const channel = channelIds.get(seedChannelName(m.channelId));
+    const name = seedChannelName(m.channelId);
+    const channel = channelIds.get(name);
     if (!channel) continue;
+
+    if (existing.get(name)?.has(m.text.trim())) {
+      skipped++;
+      continue;
+    }
     await web.chat.postMessage({
       channel,
       text: m.text,
       username: nameFor(m.authorId),
       icon_emoji: ICONS[m.authorId] ?? ":speech_balloon:",
     });
+    posted++;
   }
-  console.log(`\nSeeded ${ordered.length} messages. Set TEMPO_RTS=live to demo against real RTS.\n`);
+  console.log(
+    `\nSeeded ${posted} new message(s); skipped ${skipped} already present. ` +
+      `Set TEMPO_RTS=live to demo against real RTS.\n`,
+  );
 }
 
 main().catch((e) => {

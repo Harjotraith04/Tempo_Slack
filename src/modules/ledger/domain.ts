@@ -24,11 +24,26 @@ export interface Commitment {
 }
 
 /**
- * How many messages one ledger run pulls from RTS. Same reasoning as triage's
- * CANDIDATE_LIMIT: the live adapter pages at 20 and follows `next_cursor`
- * sequentially, and every candidate costs sequentially-decoded output tokens.
+ * How many messages one ledger run pulls from RTS.
+ *
+ * This is DELIBERATELY WIDER than triage's CANDIDATE_LIMIT (20), and the two must
+ * not be collapsed back together — they ask different questions of time.
+ *
+ * Triage asks "what has happened since I was last active": recent by definition,
+ * and 20 messages of recency is plenty. The Ledger asks "what did I promise, and
+ * what am I owed" — and a promise is interesting precisely BECAUSE it is old. The
+ * commitment that matters most is the one made eight days ago and quietly missed.
+ *
+ * With both set to 20, a busy week of chatter simply pushes older promises out of
+ * the window, and the module whose entire job is remembering what you forgot...
+ * forgets it. (Found exactly that way: enriching the demo workspace from 19 to 32
+ * messages silently dropped the hero commitment.)
+ *
+ * The cost is real but paid in the right place: the live adapter pages at 20 and
+ * follows `next_cursor` sequentially, so this is two round-trips instead of one.
+ * The Ledger is not the hot path — triage is — so it can afford the extra page.
  */
-export const CANDIDATE_LIMIT = 20;
+export const CANDIDATE_LIMIT = 40;
 
 export const ExtractSchema = z.object({
   items: z.array(

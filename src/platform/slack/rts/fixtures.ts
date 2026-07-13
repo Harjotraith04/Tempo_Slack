@@ -135,4 +135,69 @@ export const MESSAGES: SeedMessage[] = [
   { channelId: "C_RANDOM", authorId: "U_TINA", text: "lost & found: one very sad water bottle by the printer", minsAgo: 600 },
   { channelId: "C_GEN", authorId: "U_RAVI", text: "anyone got the link to the Q3 OKRs doc?", minsAgo: 400 },
   { channelId: "C_ATLAS", authorId: "U_MARCO", text: "uploaded the revised onboarding flow to the design channel fwiw", minsAgo: 300 },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // A wider slice of a real company week. These exercise the four categories
+  // harder than the original story did — the point is that ACT/BLOCKER/FYI/NOISE
+  // hold up against messy, realistic traffic, not that we need a fifth label.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── Production incident: urgent, but ALREADY HANDLED by someone else. The
+  //    interesting case — scary words, and yet it does not need Sam.
+  { channelId: "C_ENG", authorId: "U_RAVI", text: "🚨 checkout latency spiked to 4s in prod, error rate climbing. investigating now.", minsAgo: 5 * 60 },
+  { channelId: "C_ENG", authorId: "U_PRIYA", text: "found it — bad cache config from this morning's deploy. rolled back, p95 is back to 180ms. incident closed, writeup tomorrow.", minsAgo: 4 * 60 },
+
+  // ── Security review blocking the launch: a hard dependency on Sam, buried in
+  //    a channel, with no @mention. plant:security-blocker
+  {
+    channelId: "C_ENG",
+    authorId: "U_PRIYA",
+    text: "security review can't sign off on Atlas until someone from product confirms we're not storing customer message content. that's a product answer, not an eng one — and GA is gated on it.",
+    minsAgo: 2 * DAY + 120,
+    plant: "security-blocker",
+  },
+
+  // ── Customer escalation: real, urgent, needs a decision from Sam.
+  //    plant:customer-escalation
+  {
+    channelId: "C_ATLAS",
+    authorId: "U_DANA",
+    text: "Northwind's CTO emailed me directly — they're threatening to churn over the migration timeline. I need a call on whether we hold the Aug 15 date or offer them the early-access build. Today if possible.",
+    minsAgo: 1 * DAY + 30,
+    mentionsMe: true,
+    plant: "customer-escalation",
+  },
+
+  // ── Approval / sign-off: explicit, deadlined, and it is genuinely only Sam's.
+  {
+    channelId: "C_LEAD",
+    authorId: "U_DANA",
+    text: "Reminder: the Atlas pricing sheet needs PM sign-off before finance closes the quarter on Thursday. Sam, this one's yours.",
+    minsAgo: 1 * DAY + 200,
+    mentionsMe: true,
+  },
+
+  // ── Cross-team dependency: Billing is waiting on Sam and said so somewhere
+  //    Sam does not look. The classic invisible blocker.
+  {
+    channelId: "C_ENG",
+    authorId: "U_JORDAN",
+    text: "billing can't finish the usage-metering work until Atlas confirms the event schema. we've been parked on this for four days.",
+    // NOT 3*DAY: the mock derives permalinks from channel+timestamp, and the hero
+    // blocker already sits at C_ENG@3*DAY. An exact collision made gatherCandidates
+    // dedupe them and SILENTLY DELETE the flagship demo message.
+    minsAgo: 3 * DAY + 47,
+  },
+
+  // ── Vague ping. Ambiguous by design: this is exactly the message that costs a
+  //    neurodivergent user twenty minutes of anxious guessing.
+  { channelId: "D_DANA", authorId: "U_DANA", text: "got a sec?", minsAgo: 8 * 60, mentionsMe: true },
+
+  // ── Noise that LOOKS important (recruiter spam + vendor pitch).
+  { channelId: "C_GEN", authorId: "U_TINA", text: "URGENT: please complete your annual security training by Friday or your access will be suspended", minsAgo: 7 * 60 },
+  { channelId: "C_GEN", authorId: "U_TINA", text: "reminder: dentist appointments for the office plan close end of month", minsAgo: 9 * 60 },
+
+  // ── Ordinary social noise.
+  { channelId: "C_RANDOM", authorId: "U_RAVI", text: "my keyboard just died mid-standup, RIP 🪦", minsAgo: 200 },
+  { channelId: "C_RANDOM", authorId: "U_MARCO", text: "coffee machine is making a new and frankly alarming sound", minsAgo: 150 },
 ];
