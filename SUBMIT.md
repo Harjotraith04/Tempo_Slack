@@ -15,11 +15,11 @@ A judge opens the sandbox and does five things. Here is what happens today:
 |---|---|
 | DM the agent "what needs me today?" | ~~Triage computed as if they were "Sam Rivera"~~ **FIXED** — commit `445788a` |
 | Open the agent pane | ~~No greeting — the welcome handler never fires~~ **FIXED** — commit `445788a` |
-| Click "Block 2 hours" | ❌ Card says *"Do-Not-Disturb on until 4:32 PM"*. **Their DND does not change.** |
-| Curl the MCP endpoint the write-up leads with | ❌ **404** |
-| Click the OAuth link in the manifest | ❌ **404** — the web app was never deployed |
+| Click "Block 2 hours" | ~~Card claims DND is on; it isn't~~ **FIXED** — `TEMPO_SLACK_ACTIONS=live`, deployed. ⚠️ *Still needs a human smoke-test: DM "block 2 hours" and confirm the moon icon appears.* |
+| Curl the MCP endpoint the write-up leads with | ~~404~~ **FIXED** — live, all 4 tools enumerate, unauthorized callers get 401 |
+| Click the OAuth link in the manifest | ❌ **404** — the web app is still not deployed (P1 §4) |
 
-Three env vars and one deploy close all of that.
+**Two things still stand between this and done: the manifest reinstall, and the web companion deploy.**
 
 ---
 
@@ -41,11 +41,15 @@ Nothing else scores if these are missing. Stage One judging is pass/fail on them
 
 ---
 
-## P1 · Make the demo true — three env vars + one deploy (~40 min)
+## P1 · Make the demo true
 
-These are production secret changes, so run them yourself. Everything they switch on is already built and tested.
+**Done:** `TEMPO_SLACK_ACTIONS=live`, `TEMPO_MCP_SERVER=on` + token + user gate, deployed to production
+(`tempo-slack.vercel.app`). MCP verified live — `tools/list` returns all four tools, no-token gets 401.
+The MCP bearer token is in the session scratchpad; **it goes in the Devpost write-up.**
 
-### 1. Focus Guardian currently lies — turn on live Slack writes
+**Still to do:** §3 manifest reinstall · §4 web companion deploy.
+
+### 1. ~~Focus Guardian lies~~ — DONE, but smoke-test it
 
 `webapi/mock.ts` returns `{ok: true, nextDndEndTs: …}` **without calling Slack**, and the card renders
 "Do-Not-Disturb on until the block ends" anyway. The real adapter (`webapi/live.ts`, `dnd.setSnooze`) is written
@@ -82,15 +86,15 @@ curl -sX POST https://tempo-slack.vercel.app/api/mcp/server \
 **Put the endpoint + a scoped token in the Devpost write-up.** A judge scoring *Technological Implementation*
 who can call your MCP server by hand is worth more than any paragraph claiming you built one.
 
-### 3. Redeploy + reinstall the app
+### 3. ⚠️ REINSTALL THE APP — the persona fix is inert without it
 
-The manifest changed in commit `445788a` (added `users:read`, `assistant_thread_started`,
-`assistant_thread_context_changed`). The new scope and events **only take effect on reinstall.**
+Deployed, but the manifest changed in `445788a`: it added the **`users:read`** scope (which the name
+resolver needs) and the **`assistant_thread_started`** / **`assistant_thread_context_changed`** events
+(without which the agent's welcome never fires). Vercel cannot grant those.
 
-```bash
-vercel --prod                      # picks up the new env vars
-# then: api.slack.com/apps → your app → App Manifest → paste manifest.json → Save → Reinstall
-```
+**Until you reinstall, `users.info` fails and every user is called "them"** — safe, but not the fix.
+
+> api.slack.com/apps → your app → **App Manifest** → paste `manifest.json` → Save → **Reinstall to workspace**
 
 ### 4. Deploy the web companion — the frontend half of the score
 
