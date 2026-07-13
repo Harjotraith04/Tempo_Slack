@@ -5,6 +5,28 @@
 
 **Where we actually are:** the code is finished (311 tests, typecheck clean, no stubs), the root app is deployed and live, and RTS + Slack AI + Postgres + OpenAI are all genuinely running. What remains is (a) three production switches that are off, (b) the frontend that was never deployed, and (c) the submission assets, none of which exist yet.
 
+## Canonical links — one source of truth
+
+**One public domain.** `tempo-slack.vercel.app` serves the app, and *proxies* the dashboard paths to the
+`tempo-slack-web` project via `vercel.json` rewrites. Nobody links to the web host directly.
+
+| What | Where | State |
+|---|---|---|
+| **App / landing** | https://tempo-slack.vercel.app | ✅ live |
+| **Privacy dashboard** (your data · export · delete) | https://tempo-slack.vercel.app/privacy | ⏳ needs web deploy |
+| **Settings** | https://tempo-slack.vercel.app/settings | ⏳ needs web deploy |
+| **MCP server** | https://tempo-slack.vercel.app/api/mcp/server | ✅ live — 4 tools, default-deny |
+| **MCP bearer token** | session scratchpad `mcp-token.txt` | ✅ set in Vercel |
+| **Install (OAuth)** | https://tempo-slack.vercel.app/api/oauth/start | ✅ one flow, one redirect URI |
+| **Sandbox** | https://e0bhn1bngfj-52jkceoz.slack.com/ (`devpostslack`) | ⏳ judges not invited |
+| **Repo** | https://github.com/Harjotraith04/Tempo_Slack | ✅ pushed |
+| **Architecture diagram** | `docs/architecture.png` | ✅ done |
+| **Demo video** | *(not recorded)* | ⏳ |
+
+Every link above is already wired into `README.md`, `public/index.html`, `docs/devpost-submission.md`, and
+`manifest.json`. **Only two blanks remain in the whole repo** — the YouTube URL and the MCP token in the
+write-up: `grep -rn "⟨FILL\|VIDEO_ID" .`
+
 ---
 
 ## The judge's-eye problem

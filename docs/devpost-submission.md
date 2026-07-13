@@ -60,11 +60,30 @@ Marketplace listing (the scopes audit, privacy policy, and data-governance work 
 
 ## Form fields
 
-- **Video:** ⟨public YouTube URL — under 3 min, live sandbox footage, beats in MASTER_PLAN.md §1.6⟩
-- **Architecture diagram:** `docs/architecture.png` (also `.svg`)
-- **Sandbox URL:** ⟨https://⟨sandbox⟩.slack.com — invites sent to slackhack@salesforce.com + testing@devpost.com⟩
+- **Track:** Slack Agent for Good
+- **Video:** ⟨FILL: public YouTube URL — under 3 min, live sandbox footage⟩
+- **Architecture diagram:** upload `docs/architecture.png` (source: `docs/architecture.mmd`)
+- **Sandbox URL:** https://e0bhn1bngfj-52jkceoz.slack.com/
+  <br><sub>workspace `devpostslack` · judges must be **Member**, not Guest</sub>
 - **Repo:** https://github.com/Harjotraith04/Tempo_Slack
+- **Live app:** https://tempo-slack.vercel.app
+- **Privacy dashboard / settings / export / delete:** https://tempo-slack.vercel.app/privacy
 - **Tech tags:** Slack RTS API · MCP · Slack AI/Agents · TypeScript · Bolt · Vercel · Neon Postgres · OpenAI
+
+### Call Tempo's MCP server yourself (judges)
+
+Tempo isn't just an MCP *client* — it **is** an MCP server. Point MCP Inspector at it, or:
+
+```bash
+curl -sX POST https://tempo-slack.vercel.app/api/mcp/server \
+  -H "Authorization: Bearer ⟨FILL: TEMPO_MCP_SERVER_TOKEN⟩" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Returns `tempo_triage`, `tempo_commitments`, `tempo_decode`, `tempo_focus`. Callers are default-deny: no
+token, or an unrecognised one, gets a 401 — there is no ambient authority.
 
 ## `#start-here` channel note (pin in the sandbox for judges)
 

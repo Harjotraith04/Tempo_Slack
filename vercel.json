@@ -4,8 +4,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "functions": {
-    "api/slack/events.ts": { "maxDuration": 120, "memory": 2048 },
-    "api/cron/morning-digest.ts": { "maxDuration": 300, "memory": 2048 },
+    "api/slack/events.ts": { "maxDuration": 120 },
+    "api/cron/morning-digest.ts": { "maxDuration": 300 },
     "api/mcp/server.ts": { "maxDuration": 60 }
   },
   "crons": [
@@ -13,5 +13,13 @@
       "path": "/api/cron/morning-digest",
       "schedule": "0 16 * * 1-5"
     }
+  ],
+  "rewrites": [
+    { "source": "/privacy", "destination": "https://tempo-slack-web.vercel.app/privacy" },
+    { "source": "/privacy-policy", "destination": "https://tempo-slack-web.vercel.app/privacy-policy" },
+    { "source": "/settings", "destination": "https://tempo-slack-web.vercel.app/settings" },
+    { "source": "/api/settings", "destination": "https://tempo-slack-web.vercel.app/api/settings" },
+    { "source": "/api/data/:path*", "destination": "https://tempo-slack-web.vercel.app/api/data/:path*" },
+    { "source": "/_next/:path*", "destination": "https://tempo-slack-web.vercel.app/_next/:path*" }
   ]
 }

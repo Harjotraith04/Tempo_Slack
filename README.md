@@ -6,6 +6,20 @@
 Built for the **Slack Agent Builder Challenge** · Track: **Slack Agent for Good** (accessibility + cognitive health).
 Uses all three challenge technologies: **Real-Time Search (RTS) API · MCP · Slack AI / Assistant**.
 
+## Live
+
+| | |
+|---|---|
+| **App** | https://tempo-slack.vercel.app |
+| **Your data / privacy dashboard** | https://tempo-slack.vercel.app/privacy |
+| **MCP server** (Tempo *is* an MCP server) | `https://tempo-slack.vercel.app/api/mcp/server` — `tempo_triage` · `tempo_commitments` · `tempo_decode` · `tempo_focus` |
+| **Judging sandbox** | https://e0bhn1bngfj-52jkceoz.slack.com/ (workspace `devpostslack`) |
+| **Architecture** | [`docs/architecture.png`](docs/architecture.png) |
+| **Submission write-up** | [`docs/devpost-submission.md`](docs/devpost-submission.md) |
+
+Callers of the MCP server are **default-deny**: without a valid bearer token you get a 401, and there is no
+ambient authority — every external agent presents its own per-user identity.
+
 ---
 
 ## Why Tempo

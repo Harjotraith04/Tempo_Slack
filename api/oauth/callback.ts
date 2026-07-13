@@ -1,6 +1,16 @@
 /**
- * OAuth callback. Exchanges the code, then stores the user's encrypted USER
- * token (authed_user.access_token) — the token Tempo runs RTS with.
+ * OAuth callback — the ONE install flow.
+ *
+ * Exchanges the code, stores the user's encrypted USER token
+ * (authed_user.access_token) — the token Tempo runs RTS with — and starts a
+ * signed browser session so the same install also signs them into the privacy
+ * dashboard at /privacy (served from the web project behind a rewrite; see
+ * vercel.json).
+ *
+ * The web app used to carry a second, duplicate OAuth flow on its own domain.
+ * That existed only because the dashboard lived on a different origin, where
+ * this cookie could not reach it. Now everything is same-origin, so there is one
+ * flow, one redirect_uri, and one session.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -11,6 +21,8 @@ import {
   parseCookies,
   statesMatch,
   clearStateCookie,
+  signSession,
+  serializeSessionCookie,
   OAUTH_STATE_COOKIE,
 } from "../../src/shared/session.js";
 
@@ -38,14 +50,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     if (userId && userToken) await getStore().tokens.save(userId, teamId ?? "", userToken);
 
+    // Single-use state cookie, plus the browser session — the latter is what
+    // lets /privacy and /settings recognise them without a second sign-in.
+    const cookies = [clearStateCookie()];
+    if (userId) cookies.push(serializeSessionCookie(signSession(userId)));
+
     res.statusCode = 200;
-    res.setHeader("Set-Cookie", clearStateCookie()); // single-use
+    res.setHeader("Set-Cookie", cookies);
     res.setHeader("Content-Type", "text/html");
     res.end(
-      `<html><body style="font-family:system-ui;padding:48px;max-width:520px;margin:auto">` +
+      `<html><body style="font-family:system-ui;padding:48px;max-width:520px;margin:auto;line-height:1.6">` +
         `<h2>Tempo is connected ✅</h2>` +
         `<p>You can close this tab and open the Tempo assistant in Slack. ` +
         `Tempo will only ever act with your own permissions, and never stores what it reads.</p>` +
+        `<p><a href="/privacy">See everything Tempo stores about you →</a></p>` +
         `</body></html>`,
     );
   } catch (err) {

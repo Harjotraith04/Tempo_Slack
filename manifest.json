@@ -150,8 +150,7 @@
   },
   "oauth_config": {
     "redirect_urls": [
-      "https://tempo-slack.vercel.app/api/oauth/callback",
-      "https://tempo-slack-web.vercel.app/api/oauth/callback"
+      "https://tempo-slack.vercel.app/api/oauth/callback"
     ],
     "scopes": {
       "user": [
