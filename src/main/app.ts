@@ -337,6 +337,31 @@ export function registerHandlers(app: BoltApp) {
     await getStore().prefs.save(userId, parseSettingsSubmission(view));
   });
 
+  // The chat suggestion buttons — "What needs me today?", "Protect 2 hours", …
+  // Chat is a doorway into the product, not a dead end, so tapping one runs the
+  // real capability through the same orchestrator path as typing it would.
+  for (const [action, phrase] of [
+    ["chat_suggest_triage", "what needs me today?"],
+    ["chat_suggest_commitments", "show my commitments"],
+    ["chat_suggest_focus", "block 2 hours"],
+    ["chat_suggest_catchup", "catch me up"],
+    ["chat_suggest_decode", "decode the last message"],
+  ] as const) {
+    app.action(action, async ({ ack, body, client }) => {
+      await ack();
+      const userId = (body as any)?.user?.id ?? "U_SAM";
+      await safely(
+        action,
+        async () => {
+          const res = await tempoRespond(await contextFor(client, userId), phrase);
+          await ephemeral(client, body, res.text, res.blocks as any);
+          await maybeSendReadAloud(client, userId, res.speech);
+        },
+        () => replyError(client, body),
+      );
+    });
+  }
+
   app.action("show_rest", async ({ ack, body, client }) => {
     await ack();
     const userId = (body as any)?.user?.id ?? "U_SAM";

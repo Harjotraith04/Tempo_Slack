@@ -378,6 +378,51 @@ export function homeBlocks(): KnownBlock[] {
   ];
 }
 
+// ── Conversation ─────────────────────────────────────────────────────────────
+
+/** The one thing Tempo can actually do next, offered as a button. Chat is a
+ * doorway into the product, not a dead end. */
+const SUGGEST_LABEL: Record<string, string> = {
+  triage: "What needs me today?",
+  commitments: "Show my commitments",
+  focus: "Protect 2 hours",
+  catchup: "Catch me up",
+  decode: "Decode a message",
+};
+
+/**
+ * A plain conversational reply.
+ *
+ * `supportive` deliberately changes almost nothing visually — no alarm colours,
+ * no worried emoji. Someone who has just said they're drowning does not need
+ * Tempo to make a scene about it; they need a calm sentence and one small button.
+ * The restraint IS the design.
+ */
+export function chatBlocks(r: {
+  reply: string;
+  supportive: boolean;
+  suggest: string;
+  crisis?: boolean;
+}): KnownBlock[] {
+  const blocks: KnownBlock[] = [section(r.reply)];
+
+  // The crisis card offers no product buttons at all. Nudging someone toward
+  // "want me to triage your inbox?" in that moment would be grotesque.
+  if (r.crisis) return blocks;
+
+  const label = SUGGEST_LABEL[r.suggest];
+  if (label) {
+    blocks.push({
+      type: "actions",
+      elements: [btn(label, `chat_suggest_${r.suggest}`, r.suggest, r.supportive ? "primary" : undefined)],
+    } as KnownBlock);
+  }
+  if (r.supportive) {
+    blocks.push(context("No pressure, and nothing happens unless you tap. I'm not going anywhere."));
+  }
+  return blocks;
+}
+
 export function helpBlocks(): KnownBlock[] {
   return homeBlocks();
 }

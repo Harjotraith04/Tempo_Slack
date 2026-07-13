@@ -88,6 +88,12 @@ export function toSpeech(input: SpeechInput, locale: Locale = "en"): string {
   const opener = t(leadKey, locale);
   // Read-aloud must be plain: turn list joins into sentences and strip ALL
   // markdown so a screen reader / TTS never speaks "asterisk" or "greater-than".
-  const body = input.text.replace(/\s*;\s*/g, ". ").replace(/[*_>#`~]/g, "");
+  // Slack link syntax has to go too — <https://x|label> must be spoken as
+  // "label", never as the raw URL, character by character.
+  const body = input.text
+    .replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, "$2") // <url|label> -> label
+    .replace(/<(https?:\/\/[^>]+)>/g, "$1")            // <url>       -> url
+    .replace(/\s*;\s*/g, ". ")
+    .replace(/[*_>#`~]/g, "");
   return `${opener} ${body} ${t("speech.outro", locale)}`;
 }

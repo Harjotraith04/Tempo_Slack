@@ -12,6 +12,7 @@ import { afterTsOf, type TempoContext } from "./context.js";
 import { liveTriage, liveCommitments } from "./read-models.js";
 import { decodeMessage } from "../modules/decoder.js";
 import { runReentry } from "../modules/reentry.js";
+import { converse, CRISIS_SPEECH } from "../modules/converse.js";
 import { planFocusBlock } from "../modules/focus.js";
 import { familiarity as familiarityOf } from "../modules/intelligence/index.js";
 // The application layer wires outbound adapters to the ports the domain modules
@@ -24,6 +25,7 @@ import {
   reentryBlocks,
   focusBlocks,
   helpBlocks,
+  chatBlocks,
   handoffBlocks,
   emptyStateBlocks,
 } from "../platform/slack/blockkit/index.js";
@@ -35,7 +37,7 @@ import { config, flags } from "../config.js";
 import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs, resolveLocale } from "../accessibility/index.js";
 import { CORPUS_QUERY } from "../ports/rts.js";
 
-export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "team" | "help";
+export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "team" | "help" | "chat";
 
 export interface TempoResponse {
   intent: Intent;
@@ -59,7 +61,14 @@ export function routeIntent(input: string): Intent {
   if (/\bblock\b.*\b(\d+\s*(h|hrs?|hours?|m|mins?|minutes?)\b|time|calendar)/.test(t)) return "focus";
   if (/\b(decode|what does this mean|really mean|tone|subtext|passive)/.test(t)) return "decode";
   if (/\b(team|manager mode|workload)\b/.test(t)) return "team";
-  return "help";
+  // Explicit menu request still gets the menu.
+  if (/\b(help|what can you do|commands|how do i use|capabilities)\b/.test(t)) return "help";
+  // Everything else is a CONVERSATION, not a dead end. This used to return
+  // "help", which meant "hi", "who are you", "thanks" and — worst of all — "I'm
+  // overwhelmed" all got answered with a feature menu. For a product about
+  // cognitive load, answering distress with a command list is the most off-brand
+  // thing it could possibly do.
+  return "chat";
 }
 
 export interface RespondOpts {
@@ -78,6 +87,15 @@ export async function respond(
   const a11y = resolveA11yPrefs(prefs);
   const locale = resolveLocale(prefs);
   const r = await respondCore(ctx, input, opts.record ?? true);
+
+  // The crisis path speaks for itself, verbatim. Running it through the usual
+  // pipeline would condense it, then bolt on the standard lead-in ("Here's what
+  // I found.") and outro ("Take it one step at a time.") — chirpy scaffolding
+  // around the one message that must never sound automated.
+  if (r.speech) {
+    return { ...r, text: r.text, blocks: r.blocks, speech: r.speech };
+  }
+
   const text = applyReadingLevel(condense(r.text, a11y.verbosity), a11y.readingLevel);
   return { ...r, text, speech: toSpeech({ intent: r.intent, text }, locale) };
 }
@@ -101,7 +119,7 @@ async function respondCore(
   ctx: TempoContext,
   input: string,
   record: boolean,
-): Promise<Omit<TempoResponse, "speech">> {
+): Promise<Omit<TempoResponse, "speech"> & { speech?: string }> {
   const intent = routeIntent(input);
   const after = afterTsOf(ctx);
   const prefs = await ctx.store.prefs.get(ctx.subjectUserId);
@@ -204,6 +222,17 @@ async function respondCore(
         ? `The team view stays hidden until at least ${r.minMembers} members opt in (currently ${r.memberCount}) — to keep everyone anonymous.`
         : `Team (anonymized): ${r.totalObligations} open obligations across ${r.memberCount} members; load is ${r.loadDistribution}.`;
       return { intent: "team", text, blocks: teamLoadBlocks(r) };
+    }
+    case "chat": {
+      const r = await converse(input, ctx.llm, { name: ctx.subjectName });
+      return {
+        intent: "chat",
+        text: r.reply,
+        blocks: chatBlocks(r),
+        // Crisis words are hand-written; they bypass condensing, reading-level
+        // rewrites and the standard speech scaffolding entirely.
+        ...(r.crisis ? { speech: CRISIS_SPEECH } : {}),
+      };
     }
     default:
       return { intent: "help", text: "Here's what I can do.", blocks: helpBlocks() };
