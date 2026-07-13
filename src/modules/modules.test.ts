@@ -86,7 +86,7 @@ describe("focus", () => {
   it("plans a focus block and creates a task via MCP", async () => {
     const p = await planFocusBlock({ nowTs: DEMO_NOW, durationMins: 90, title: "Write Atlas spec", taskTitle: "Atlas API spec", mcp: getMcpClients(), slack: getSlackActions({}) }); // focus uses MCP + Slack ports, no LLM
     expect(p.endTs - p.startTs).toBe(90 * 60);
-    expect(p.calendar.eventId).toMatch(/^evt_/);
+    expect(p.calendar?.eventId).toMatch(/^evt_/);
     expect(p.task?.taskId).toMatch(/^task_/);
   });
 

@@ -273,14 +273,25 @@ function clock(ts: number): string {
 }
 
 export function focusBlocks(p: FocusPlan): KnownBlock[] {
+  // `p.calendar` is absent when the calendar MCP server couldn't be reached. The
+  // block still happened — DND and status are real — so the card says what is
+  // true and nothing more, rather than claiming a calendar hold that never landed.
+  const window = p.calendar
+    ? `${clock(p.startTs)}–${clock(p.endTs)} blocked on your calendar.`
+    : `${clock(p.startTs)}–${clock(p.endTs)} protected in Slack.`;
+
   return [
     header("Focus time protected"),
     section(
-      `*${p.title}*\n${clock(p.startTs)}–${clock(p.endTs)} blocked on your calendar.\n` +
+      `*${p.title}*\n${window}\n` +
         (p.task ? `Task created: <${p.task.url}|${p.task.provider}>\n` : "") +
         `Do-Not-Disturb on until ${clock(p.dndUntilTs)} — only true blockers break through.`,
     ),
-    context(`Calendar: <${p.calendar.htmlLink}|${p.calendar.provider}> · ${p.summary}`),
+    context(
+      p.calendar
+        ? `Calendar: <${p.calendar.htmlLink}|${p.calendar.provider}> · ${p.summary}`
+        : p.summary,
+    ),
   ];
 }
 

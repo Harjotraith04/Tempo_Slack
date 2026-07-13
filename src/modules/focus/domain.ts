@@ -11,7 +11,10 @@ export interface FocusPlan {
   title: string;
   startTs: number;
   endTs: number;
-  calendar: CalendarResult;
+  /** Undefined when the calendar MCP server was unreachable or errored. The
+   * focus block still happened — DND and status are the substance; the calendar
+   * event is a garnish, and a garnish must never take down the meal. */
+  calendar?: CalendarResult;
   task?: TaskResult;
   dndUntilTs: number;
   summary: string;

@@ -12,6 +12,16 @@
 import type { McpClients, SlackActionsClient, TaskResult } from "./ports.js";
 import { clockLabel, nextSlot, type FocusPlan } from "./domain.js";
 
+/** Run an outbound side-effect, degrading to `undefined` instead of throwing. */
+async function safely<T>(work: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await work();
+  } catch (err) {
+    console.error("focus: outbound MCP call failed; continuing without it", err);
+    return undefined;
+  }
+}
+
 export async function planFocusBlock(opts: {
   nowTs: number;
   durationMins?: number;
@@ -33,21 +43,36 @@ export async function planFocusBlock(opts: {
   const endTs = startTs + duration;
   const title = opts.title ?? "Deep work (protected by Tempo)";
 
-  const cal = await calendar.blockFocus({
-    title,
-    startTs,
-    endTs,
-    description: opts.sourcePermalink ? `From Slack: ${opts.sourcePermalink}` : undefined,
-  });
+  // Outbound MCP is BEST-EFFORT and must run behind its own guard.
+  //
+  // The mock never throws, so for a long time this was written as a bare await —
+  // and the moment a real MCP server was pointed at it, an unreachable host, a
+  // slow one, or a rejected token would throw here, *before* the DND and status
+  // calls below ever ran. The user would have asked Tempo to protect their focus
+  // and gotten an error, with their DND untouched.
+  //
+  // That's backwards. DND + status are the substance of a focus block; the
+  // calendar event and task are a garnish. A garnish must never take down the
+  // meal. So a failure degrades to "no calendar link" and the block still happens.
+  const cal = await safely(() =>
+    calendar.blockFocus({
+      title,
+      startTs,
+      endTs,
+      description: opts.sourcePermalink ? `From Slack: ${opts.sourcePermalink}` : undefined,
+    }),
+  );
 
   let task: TaskResult | undefined;
   if (opts.taskTitle) {
-    task = await tasks.create({
-      title: opts.taskTitle,
-      due: opts.due,
-      sourcePermalink: opts.sourcePermalink,
-      notes: "Created by Tempo from a Slack obligation.",
-    });
+    task = await safely(() =>
+      tasks.create({
+        title: opts.taskTitle!,
+        due: opts.due,
+        sourcePermalink: opts.sourcePermalink,
+        notes: "Created by Tempo from a Slack obligation.",
+      }),
+    );
   }
 
   // Slack-native: DND + status, because the user just asked Tempo to protect
@@ -76,7 +101,11 @@ export async function planFocusBlock(opts: {
     calendar: cal,
     task,
     dndUntilTs: endTs,
-    summary: `Blocked ${durationMins} min for "${title}"${task ? ` and created a task` : ""}. Do-Not-Disturb on until the block ends; only true blockers will break through.`,
+    // Say only what actually happened. Claiming a calendar hold that failed is
+    // exactly the kind of confident lie that makes an assistant untrustworthy.
+    summary: `Blocked ${durationMins} min for "${title}"${task ? " and created a task" : ""}.${
+      cal ? "" : " (Couldn't reach your calendar — the Slack block is still on.)"
+    } Do-Not-Disturb on until the block ends; only true blockers will break through.`,
     dndApplied: dnd.ok,
     statusApplied: status.ok,
     digestScheduledFor,
