@@ -47,4 +47,7 @@ manifest never requests more. RTS runs on **your** user token, scoped to exactly
 
 ## Contact
 
-Data questions / requests: **privacy@\<your-domain\>** (replace before listing).
+Data questions / requests: open an issue at [https://github.com/Harjotraith04/Tempo_Slack/issues](https://github.com/Harjotraith04/Tempo_Slack/issues).
+
+You do not need to ask us to exercise any of the rights above — every one of them is a button. Export and
+delete live in the web dashboard (`/privacy`), and delete is immediate and total.

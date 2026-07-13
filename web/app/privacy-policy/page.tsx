@@ -66,7 +66,10 @@ export default function PrivacyPolicy() {
         you can already see.
       </p>
 
-      <p className="muted">Data questions: privacy@your-domain (replace before listing).</p>
+      <p className="muted">
+        Data questions: <a href="https://github.com/Harjotraith04/Tempo_Slack/issues">open an issue</a>. You never need to ask us to export or delete —
+        both are buttons on your <a href="/privacy">privacy dashboard</a>.
+      </p>
       <p>
         <Link className="btn secondary" href="/">
           ← Back

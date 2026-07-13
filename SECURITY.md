@@ -32,5 +32,6 @@ CI without any real workspace.
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately to **security@\<your-domain\>** (replace before listing).
+Please report suspected vulnerabilities privately via a [GitHub security advisory](https://github.com/Harjotraith04/Tempo_Slack/security/advisories/new) — that keeps the report private
+until a fix ships. For anything non-sensitive, an issue at [https://github.com/Harjotraith04/Tempo_Slack/issues](https://github.com/Harjotraith04/Tempo_Slack/issues) is fine.
 We aim to acknowledge within 3 business days. Please do not open public issues for security reports.
