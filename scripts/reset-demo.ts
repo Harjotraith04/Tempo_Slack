@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   }
 
   await web.users.profile.set({
-    profile: JSON.stringify({ status_text: "", status_emoji: "", status_expiration: 0 }),
+    profile: { status_text: "", status_emoji: "", status_expiration: 0 },
   });
   console.log("  ✅ Focus status cleared");
 
