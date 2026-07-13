@@ -109,17 +109,17 @@ Verify: `curl -o /dev/null -w '%{http_code}' https://tempo-slack-web.vercel.app/
 
 ---
 
-## P2 · Cheap points — me (~1h)
+## P2 · Cheap points — DONE (commits `ca02f0b`, `94dbb16`)
 
-- [ ] **Landing page** (`public/index.html`) — currently a 106-line text shim. Add the architecture diagram,
-      3 product screenshots, and the video embed. This is what a judge lands on, and it's the cheapest possible
-      "balanced frontend/backend" win — far cheaper than building a dashboard.
-- [ ] **Architecture diagram** — `docs/architecture.png` is accurate but renders as a wide, pale, low-contrast
+- [x] **Landing page** (`public/index.html`) — currently a 106-line text shim. Add the architecture diagram,
+      the video embed, and the impact story. **One thing left for you: replace `VIDEO_ID` in
+      `public/index.html` with the YouTube id once the demo is up.**
+- [x] **Architecture diagram** — `docs/architecture.png` is accurate but renders as a wide, pale, low-contrast
       band; at Devpost gallery scale the text is illegible. Re-render dark + narrow.
-- [ ] **Contact placeholders** — `privacy@your-domain` / `security@your-domain` still sit in `PRIVACY.md:50`,
+- [x] **Contact placeholders** — `privacy@your-domain` / `security@your-domain` still sit in `PRIVACY.md:50`,
       `SECURITY.md:35`, `web/app/privacy-policy/page.tsx:69`. An assistive-tech app whose privacy contact is a
       placeholder undercuts its own strongest claim.
-- [ ] **Stale trackers** — `docs/STATUS.md` and `LEDGER.md:3` still say "nothing is live" / `RTS=mock, AI=mock,
+- [x] **Stale trackers** — `docs/STATUS.md` and `LEDGER.md:3` still say "nothing is live" / `RTS=mock, AI=mock,
       STORE=file`. A judge browsing the repo reads them as current state.
 
 ---
