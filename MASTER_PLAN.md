@@ -1,5 +1,8 @@
 # Tempo — Master Plan
 
+> ⚠️ **SUPERSEDED — kept for history.** This describes the pre-deployment world (a second Vercel project, a `web/` Next.js app, placeholder URLs). None of that exists any more: there is ONE Vercel project and the dashboard is served from `api/web/*` on the same domain.
+> **The only current tracker is [`SUBMIT.md`](SUBMIT.md).**
+
 > **Tempo** — your working memory for Slack. Assistive technology for human attention and memory.
 > One document: the vision, the hackathon-winning strategy, the full product, a professional modular-monolith architecture, the complete code structure, every Slack + MCP integration, and a multi-phase 3-year roadmap.
 >

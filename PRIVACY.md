@@ -32,6 +32,20 @@ Any message, file, channel name, or thread content returned by RTS. Conversation
 didn't explicitly approve. No PII-bearing RTS payloads, ever. This is enforced structurally (the commitment
 type omits the raw text; no store has a message-content column) and by tests.
 
+## Consent — you choose where Tempo may look
+
+Tempo reads only what **you** can already see: Real-Time Search runs on your own user token, so it can never reach a channel you aren't in. **Consent scoping** lets you narrow that further, from Slack (App Home → ⚙️ Settings):
+
+| Control | Default | Effect |
+|---|---|---|
+| **Only watch these channels** | *blank* — everywhere you can see | Pick channels and Tempo grounds **only** there. It reads nowhere else. |
+| **Never track these people** | *nobody* | Tempo ignores them wherever they post — messages and sender roster alike. |
+
+Two things worth stating plainly, because they are the parts that are easy to get wrong:
+
+- **It holds on every surface.** The Slack app, the scheduled morning digest, and the inbound MCP server all resolve your scope through one code path. An external agent calling Tempo over MCP gets the same restrictions you set in Slack — it cannot read around them.
+- **You can always see and change it.** Your current scope is listed on your [privacy dashboard](https://tempo-slack.vercel.app/privacy) alongside everything else Tempo stores, and clearing the picker restores "everywhere you can see".
+
 ## Your rights (access, export, delete)
 
 The **web companion** (`/privacy`) shows you *exactly* what's stored about you, lets you **download all of it

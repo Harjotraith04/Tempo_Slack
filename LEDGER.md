@@ -47,7 +47,13 @@ redirect URL in `manifest.json`; publish the `/privacy-policy` URL; **10+ active
 Marketplace requirement); pass Slack's own security + functional review; capture real screenshots; replace the
 `privacy@`/`security@` contact placeholders; submit. Full package: `docs/marketplace-listing.md`.
 
-## Next up → **run [`GO_LIVE.md`](GO_LIVE.md)** — the credential-only final mile
+## Next up → **[`SUBMIT.md`](SUBMIT.md)** — everything is live; only the video + Devpost form remain
+
+> The section below is the *original* Next-up from before deployment, kept for history. `GO_LIVE.md` is
+> superseded — the app is deployed, RTS/AI/Postgres/DND are live, and the `web/` companion was replaced by
+> server-rendered pages on the same domain.
+
+### (history) Next up → run `GO_LIVE.md` — the credential-only final mile
 Everything completable without keys is now done (see the v4.1.1 History entry): the guessed live seams are
 hardened against the published Slack API references (RTS payload mapping corrected to the flat
 `content`/`message_ts`/`author_user_id`/`channel_id` shape + channel-type inference; Slack Lists rewritten to the
@@ -159,7 +165,7 @@ mapping) and **W3 — submission assets**.
 work tools** — and the whole 3-year, 15-phase roadmap is now complete, green, and demoable credential-free.
 - **Multi-source grounding** (`src/platform/sources/`) — `MultiSourceRtsClient` implements the *same*
   `RtsClient` port the domain already depends on, but fans one search across a primary (Slack RTS) + extra
-  sources (mock email/calendar today; MCP-backed adapters in production), tags each result with its `source`,
+  sources (mock email/calendar only — the seam is real, the integrations are not), tags each result with its `source`,
   and merges/dedupes into one calm list. Because it's just another `RtsClient`, **triage / commitments /
   re-entry ground across every source with zero domain change** — `RtsMessage.source` + `TriageItem.source`
   carry provenance, surfaced as "· via email" in the card. Gated by `flags.attentionOs` (`TEMPO_ATTENTION_OS`,

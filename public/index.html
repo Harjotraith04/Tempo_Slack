@@ -188,17 +188,35 @@
 
       <section id="demo">
         <h2>See it work</h2>
+        <!--
+          OWNER: when the demo is uploaded, replace this whole <figure> with the
+          iframe below and drop in the YouTube id:
+
+          <figure>
+            <div class="frame ratio">
+              <iframe src="https://www.youtube-nocookie.com/embed/YOUR_VIDEO_ID"
+                title="Tempo — 3-minute demo" allowfullscreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+            </div>
+            <figcaption>Sam returns from a week away. Tempo turns 400 unreads into the four things that need them.</figcaption>
+          </figure>
+
+          Until then this card stands in — an iframe pointed at a placeholder id
+          renders as a dead grey YouTube error box, which is a worse first
+          impression than saying plainly that the video is coming.
+        -->
         <figure>
-          <div class="frame ratio">
-            <!-- OWNER: replace VIDEO_ID with the YouTube id once the demo is uploaded. -->
-            <iframe
-              src="https://www.youtube-nocookie.com/embed/VIDEO_ID"
-              title="Tempo — 3-minute demo"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-            ></iframe>
+          <div class="card">
+            <h3>Sam returns from a week away.</h3>
+            <p style="color: var(--muted)">
+              400 unreads. One promise he made and forgot. One person quietly blocked on him who never
+              @-mentioned him. Tempo turns that into the four things that actually need him — and protects
+              the afternoon so he can do them.
+            </p>
+            <p style="margin: 0">
+              <a class="cta secondary" href="https://github.com/Harjotraith04/Tempo_Slack">Read the code</a>
+            </p>
           </div>
-          <figcaption>Sam returns from a week away. Tempo turns 400 unreads into the four things that need them.</figcaption>
         </figure>
       </section>
 
@@ -222,7 +240,8 @@
           </div>
           <div class="card">
             <h3>Focus Guardian</h3>
-            <p>Books the block: real Do-Not-Disturb, a status your team can see, and calendar time via MCP.</p>
+            <p>Books the block: <strong>real</strong> Do-Not-Disturb and a status your team can see, plus a calendar
+              hold via outbound MCP (mock-backed in this submission).</p>
           </div>
           <div class="card">
             <h3>Re-entry</h3>
@@ -263,12 +282,16 @@
           <div class="card">
             <span class="num">2</span>
             <div>
-              <h3>MCP — in both directions</h3>
+              <h3>MCP — and Tempo <em>is</em> the server</h3>
               <p>
-                Tempo <em>calls</em> MCP servers to book calendar time, and Tempo <em>is</em> an MCP server at
-                <code>/api/mcp/server</code> — exposing <code>tempo_triage</code>, <code>tempo_commitments</code>,
-                <code>tempo_decode</code>, and <code>tempo_focus</code> to Agentforce, Claude, or Cursor, behind
-                signed per-user tokens and a default-deny gate.
+                Tempo isn't just an MCP client: it <strong>is</strong> a live MCP server at
+                <code>/api/mcp/server</code>, exposing <code>tempo_triage</code>, <code>tempo_commitments</code>,
+                <code>tempo_decode</code> and <code>tempo_focus</code> to Agentforce, Claude or Cursor behind
+                signed per-user tokens and a default-deny gate. Anyone can call an MCP server; few expose one.
+                <br /><br />
+                Outbound MCP clients (calendar, tasks) are built against the same SDK but ship
+                <strong>mock-backed</strong> here — we didn't stand up third-party OAuth we couldn't test
+                end to end, and we'd rather say so than pretend.
               </p>
             </div>
           </div>

@@ -98,7 +98,7 @@ And the boundary is content-tight: **the MCP tools return derived facts only** �
 The 2026 **Agent experience** (`agent_view`, suggested prompts, thread status), App Home dashboard, Block Kit actions, the `/tempo` slash command, **Workflow Builder custom steps**, Canvas, Lists, reminders and bookmarks.
 
 ### The engineering
-A **hexagonal TypeScript modular monolith** on Bolt — ~13,000 lines, **381 tests across 53 files**, typecheck + build + demo green on every commit via GitHub Actions.
+A **hexagonal TypeScript modular monolith** on Bolt — ~13,000 lines, **411 tests across 55 files**, typecheck + build + demo green on every commit via GitHub Actions.
 
 Domain modules depend only on **ports** (`rts`, `ai`, `slack`, `store`, `mcp`). Every external system has a **mock and a live adapter**, which is why **the entire product runs credential-free**: `npm run demo` plays the whole narrative deterministically with zero secrets. That is not a demo trick — it is what let us harden every live seam against the published API references *before a single key existed*.
 
@@ -141,7 +141,7 @@ Almost everything worth knowing came from the moment mocks met the real API.
 - **A category nobody ships.** There is no assistive technology for attention, tone, and working memory on Slack. There are plenty of helpdesk bots.
 - **Honesty as a design constraint.** Confidence scores and caveats on every tone read. A focus summary that admits what failed. This is the difference between a demo and something a person could actually lean on.
 - **Accessibility as a machine-checked build gate**, in English and Spanish — not a paragraph in a README.
-- **381 tests and a complete product demo that run with zero credentials.**
+- **411 tests and a complete product demo that run with zero credentials.**
 - **Least privilege enforced by CI** — 25 scopes, each with a justification and the method that needs it, with a drift test against the manifest.
 
 ---
@@ -166,4 +166,4 @@ And like every good piece of assistive technology, it turns out to serve everyon
 
 ## What's next
 
-Marketplace listing (the scopes audit, privacy policy and data-governance work are already done), more locales, connecting the outbound MCP clients to real calendar and task servers, and the **Attention OS**: the same permission-aware working memory extended across email and calendar via MCP source adapters — already running behind a feature flag.
+Marketplace listing (the scopes audit, privacy policy and data-governance work are already done), more locales, connecting the outbound MCP clients to real calendar and task servers, and the **Attention OS**: the same permission-aware working memory extended across email and calendar via MCP source adapters. **Those sources are mock-only today, behind a flag that ships off — the seam is real, the integration is not, and we will not call it one.**

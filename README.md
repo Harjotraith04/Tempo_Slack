@@ -39,10 +39,21 @@ This is not a helpdesk bot wrapped in Slack UI. It's a new category: **Slack as 
 | **1. Triage** ("the Surface") | Scans everything since you were last active and surfaces the *few* things that actually need you — **ACT / BLOCKER / FYI / NOISE** — including *implicit* blockers where nobody @-mentioned you. |
 | **2. Commitment Ledger** ("the Memory") | Finds promises you made and promises made to you, parses the due date, and flags what's **overdue / at risk** before it slips. |
 | **3. Tone Decoder** ("the Translator") | Explains a message's *implied* meaning, tone, and real urgency — and checks how *your* draft will land, with a softer rewrite. The accessibility core. |
-| **4. Focus Guardian** ("the Shield") | Blocks deep-work time on your calendar and creates a task **via MCP**; sets an interrupt budget so only true blockers break through. |
+| **4. Focus Guardian** ("the Shield") | Flips **real** Slack Do-Not-Disturb + status (your own token); books a calendar hold and task via outbound **MCP** *(mock-backed in this submission)*; sets an interrupt budget so only true blockers break through. |
 | **5. Re-entry** ("the Bridge") | After time away, a calm, plain-language brief: what was decided, what changed for your projects, who's waiting on you. |
+| **6. Conversation** ("the Door") | Everything else you might say. Tempo answers in its own voice and always offers the one thing it can genuinely do next — chat is a doorway into the product, not a dead end. |
 
 Everything is **human-in-the-loop**: Tempo drafts and proposes; you approve. It **never auto-sends**.
+
+### The one place we take the LLM *out* of the loop
+
+Tempo is built for people under cognitive strain — neurodivergent workers, people burning out, people drowning. Given that audience, someone will eventually type something that isn't about Slack at all.
+
+**In that moment a generative model is exactly the wrong thing to have in the loop.** It can improvise, minimise, moralise, or hallucinate a helpline that doesn't exist. So `src/modules/converse/safety.ts` runs **before any model call** and, on a match, returns **fixed words written by a human**. [`converse.test.ts`](src/modules/converse/converse.test.ts) spies on the `LlmPort` and **fails if it is touched at all** — not "prompted carefully", *never reached*.
+
+Those words are warm, brief, and honest that Tempo is a work tool and not a counsellor. They point to [findahelpline.com](https://findahelpline.com) — international, because a US-only number is useless to most of the world — and to a trusted human. They don't diagnose, don't promise it'll be fine, and don't interrogate. The card shows **no product buttons**: nudging someone toward "want me to triage your inbox?" in that moment would be grotesque.
+
+The **false-positive** direction is tested just as hard, because it is also real harm. *"This deadline is killing me"* must **not** trip it — answering ordinary workplace hyperbole with a hotline card is patronising, breaks trust, and teaches people not to talk to Tempo honestly. Genuine-but-non-crisis distress (*"I'm burnt out"*, *"I can't keep up"*) goes to a supportive path where the empathy is **backed by an action**: cut the firehose to the two or three things that matter, or protect the time. Reducing cognitive load *is* the product.
 
 ### Native surfaces (v2.0)
 
@@ -64,7 +75,7 @@ The full pipeline ships with a seeded world ("Sam returns from a week off") and 
 ```bash
 npm install
 npm run demo      # runs the whole narrative through the real modules
-npm test          # 284 tests: RTS, MCP, the five modules, native surfaces, persistence, a11y, hardening
+npm test          # 411 tests: RTS, MCP, the five modules, native surfaces, persistence, a11y, hardening
 ```
 
 `npm run demo` prints triage, tone decode, draft check, the commitment ledger (computing "overdue" from "by Friday"), the focus block + MCP task, and the re-entry brief — exactly what renders in Slack.
@@ -107,7 +118,7 @@ npm test          # 284 tests: RTS, MCP, the five modules, native surfaces, pers
 
 This is also why the **for-Good / accessibility** framing is clean: it's a *personal* assistant on personal data — not surveillance of others.
 
-**Attention OS (v4.0).** Tempo's grounding generalizes beyond Slack: `MultiSourceRtsClient` (`src/platform/sources/`) fans one search across Slack + other work tools (mock email/calendar today, MCP-backed adapters in production) and merges them into **one calm working memory** — triage, commitments, and re-entry span every source with zero domain change (Slack is the sole source unless `TEMPO_ATTENTION_OS=on`). The calm-UX primitives are also extracted as an open **[accessibility SDK](docs/accessibility-sdk.md)** for others to build on.
+**Attention OS (v4.0).** Tempo's grounding generalizes beyond Slack: `MultiSourceRtsClient` (`src/platform/sources/`) fans one search across Slack + other work tools (mock email/calendar only — the seam is real, the integrations are not, and the flag ships **off**) and merges them into **one calm working memory** — triage, commitments, and re-entry span every source with zero domain change (Slack is the sole source unless `TEMPO_ATTENTION_OS=on`). The calm-UX primitives are also extracted as an open **[accessibility SDK](docs/accessibility-sdk.md)** for others to build on.
 
 **Multilingual & certified-accessible (v3.8).** Tempo is internationalized (`src/accessibility/i18n/`): a message catalog + `t()` with a `locale` preference (English + Spanish today, settable from the web Settings), so your read-aloud script speaks *your* language — the non-native-speaker promise. And accessibility is a machine-checked gate: `auditResponse` asserts every response has a non-empty, markdown-free read-aloud script, labeled buttons, and true plain language, run across **every** response type in CI. Enterprise-Grid / residency posture is in [`ENTERPRISE.md`](ENTERPRISE.md).
 
@@ -119,16 +130,27 @@ This is also why the **for-Good / accessibility** framing is clean: it's a *pers
 
 **Least-privilege scopes.** Every OAuth scope Tempo requests is declared and justified in one place (`src/platform/slack/oauth/scopes.ts`), and a test asserts `manifest.json` requests **exactly** that set — no more, no less. RTS runs on your own user token, scoped to what you can already see. See [`PRIVACY.md`](PRIVACY.md) and [`SECURITY.md`](SECURITY.md); the full listing package is in [`docs/marketplace-listing.md`](docs/marketplace-listing.md).
 
-### Your data (the web companion, v2.6)
+### Consent — you choose where Tempo may look
 
-A small **Next.js app under [`web/`](web/)** gives every user direct control over what Tempo has stored:
+Tempo already reads only what *you* can see: RTS runs on your own user token. **Consent scoping** narrows it further, from Slack (App Home → ⚙️ Settings):
 
-- **Privacy dashboard** (`/privacy`) — shows *exactly* what's kept: token metadata (never the token itself), preferences, counts-only metrics, pinned commitments as **derived facts** (never message text), snoozes, and surface ids.
-- **Export** (`/api/data/export`) — download everything as JSON (right to portability).
-- **Delete** (`/api/data/delete`) — one tap erases your token, prefs, commitments, snoozes, metrics, and surface ids, and signs you out (right to erasure).
-- **Settings** (`/settings`) — the same accessibility preferences as the Slack App Home, over the web.
+- **"Only watch these channels"** — leave blank and Tempo watches everywhere you can see; pick some and it grounds *only* there.
+- **"Never track these people"** — Tempo ignores them wherever they post.
 
-Auth is a signed, expiring **HttpOnly session cookie** (HMAC over the user id, keyed off the same secret the token store uses) set at "Sign in with Slack". The app **shares the exact same domain** as the Slack app — the data-governance use-cases (`src/application/use-cases/user-data.ts`) and the `Store` ports — so an export can *structurally* never contain a decrypted token or RTS content (asserted in tests + demo scene 17). Run it locally: `npm run web:dev` (after `cd web && npm install`).
+It's one `RtsClient` decorator (`src/platform/slack/rts/scoped.ts`) wired into `buildUserContext()` once, so Triage, the Ledger, the Tone Decoder and Re-entry all inherit it with no change in any of them — **and it holds on every surface**: the Slack app, the morning-digest cron, and the inbound MCP server all route through the same chokepoint (`src/application/consent.test.ts` asserts none of them can hand-roll a context that skips it).
+
+"Reads only what you can see" becomes **"and only where you allow."**
+
+### Your data — the privacy dashboard
+
+Server-rendered pages on the **same domain** as the Slack app (`api/web/*` — plain Node handlers, no React, no second deployment):
+
+- **[`/privacy`](https://tempo-slack.vercel.app/privacy)** — *every* field Tempo stores, listed: token metadata (never the token), all preferences, your consent scope, counts-only metrics, pinned commitments as **derived facts** (never message text), snoozes, learned sender signals, surface ids.
+- **`/api/data/export`** — download all of it as JSON (portability).
+- **`/api/data/delete`** — one tap erases everything and signs you out (erasure). Immediate and total.
+- **[`/settings`](https://tempo-slack.vercel.app/settings)** — the same accessibility preferences as the Slack App Home.
+
+Auth is a signed, expiring **HttpOnly session cookie** (HMAC over the user id, keyed off the same secret the token store uses), set by the one OAuth flow. The pages share the data-governance use-cases (`src/application/use-cases/user-data.ts`) and the `Store` ports with the Slack app, so an export can *structurally* never contain a decrypted token or RTS content (asserted in tests + the demo).
 
 ---
 
@@ -192,7 +214,7 @@ On Vercel, `/api/slack/events` is served by **`@vercel/slack-bolt`** (acks Slack
 ## Submission checklist (Agent for Good)
 
 - [x] Uses ≥1 required tech — **all three** (RTS + MCP + Slack AI).
-- [x] Working product (`npm run demo`, 284 tests) + Slack surfaces.
+- [x] Working product (`npm run demo`, 411 tests) + Slack surfaces.
 - [ ] ~3-min demo video (storyboard below) with working footage.
 - [ ] Architecture diagram (above).
 - [ ] Sandbox URL with access to `slackhack@salesforce.com` + `testing@devpost.com`.

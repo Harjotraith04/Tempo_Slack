@@ -2,9 +2,10 @@
 
 **Version:** v4.1.1 · **Updated:** 2026-07-07 · **Deadline:** Mon Jul 13 2026, 5 PM PDT (submit Jul 12)
 
- ⚠️ **SUPERSEDED — this file is history.** Since it was written, Tempo was deployed
-> (https://tempo-slack.vercel.app), RTS/AI/Postgres went live, and a submission-day audit found the real
-> remaining gaps. **The only current tracker is [`SUBMIT.md`](../SUBMIT.md).** Read that instead.
+> ⚠️ **SUPERSEDED — this file is history.** Since it was written, Tempo was deployed
+> (https://tempo-slack.vercel.app); RTS, AI, Postgres and the Slack write-actions all went live; the `web/`
+> Next.js app and its second Vercel project were deleted (the dashboard is now `api/web/*` on the same domain).
+> **The only current tracker is [`SUBMIT.md`](../SUBMIT.md).** Read that instead.
 
 ---
 
@@ -12,7 +13,7 @@
 
 | Area | State |
 |---|---|
-| Feature roadmap (5 modules, RTS, MCP in/out, web, i18n, a11y, …) | ✅ Complete & green (284 tests, typecheck, build, 26-scene demo, web build) |
+| Feature roadmap (5 modules, RTS, MCP in/out, web, i18n, a11y, …) | ✅ Complete & green (411 tests, typecheck, build, 26-scene demo, web build) |
 | W1 — P0 code fixes (Agent experience, `@vercel/slack-bolt`, fail-open gates) | ✅ Done (v4.1.0) |
 | **Credential-free readiness** (this pass, v4.1.1) | ✅ Done — see below |
 | W2 — live bring-up (deploy, OAuth, seed, verify live seams) | ⏳ Owner — needs keys → `GO_LIVE.md` |

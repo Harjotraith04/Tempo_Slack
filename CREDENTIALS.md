@@ -1,5 +1,8 @@
 # CREDENTIALS — everything Tempo needs to go live
 
+> ⚠️ **SUPERSEDED — kept for history.** This describes the pre-deployment world (a second Vercel project, a `web/` Next.js app, placeholder URLs). None of that exists any more: there is ONE Vercel project and the dashboard is served from `api/web/*` on the same domain.
+> **The only current tracker is [`SUBMIT.md`](SUBMIT.md).**
+
 The single checklist of every account, key, and approval Tempo needs. Nothing else in the repo is
 blocking: the code is complete and `npm run preflight` is green with **zero** credentials.
 

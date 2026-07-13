@@ -24,8 +24,15 @@ flowchart TB
                 TONE["Tone Decoder<br/>subtext + draft check"]
                 FOCUS["Focus Guardian<br/>interrupt budget"]
                 REENTRY["Re-entry<br/>time-away brief"]
+                CONVERSE["Conversation<br/>chat + wellbeing"]
             end
         end
+    end
+
+    SAFETY["⛔ CRISIS CHECK — deterministic<br/>runs BEFORE any model call<br/>fixed human-written words<br/>the LLM is never reached"]
+
+    subgraph CONSENT["Consent — the user decides where Tempo may look"]
+        SCOPE["ScopedRtsClient<br/>channel allowlist + muted people<br/>one decorator, every module inherits it<br/>enforced on ALL surfaces (app · cron · MCP)"]
     end
 
     subgraph GROUND["Grounding — read, never stored"]
@@ -52,8 +59,11 @@ flowchart TB
     MCPIN --> ORCH
     OAUTH --> DB
     ORCH --> MODULES
-    MODULES -->|RtsClient port| RTS
-    MODULES -->|RtsClient port| MULTI
+    CONVERSE -->|"every message, first"| SAFETY
+    SAFETY -.->|"crisis: STOP, never call the LLM"| CONVERSE
+    MODULES -->|RtsClient port| SCOPE
+    SCOPE --> RTS
+    SCOPE --> MULTI
     MODULES -->|LlmPort| LLM
     FOCUS -->|Calendar/Task ports| MCPOUT
     ORCH -->|SlackActions port| WEBAPI
@@ -63,5 +73,7 @@ flowchart TB
 
     classDef tech fill:#4A154B,stroke:#4A154B,color:#fff,stroke-width:2px
     classDef privacy fill:#1a7f37,stroke:#1a7f37,color:#fff
+    classDef safety fill:#7f1d1d,stroke:#f87171,color:#fff,stroke-width:2px
     class RTS,MCPIN,MCPOUT,AGENT tech
-    class DB privacy
+    class DB,SCOPE privacy
+    class SAFETY safety

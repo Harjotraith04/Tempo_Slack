@@ -125,7 +125,7 @@ TEMPO_SLACK_ACTIONS=live
 ## 5 · Dress rehearsal (the judge's 7 minutes)
 Walk the `MASTER_PLAN.md` §1.6 storyline live in the sandbox, end to end:
 open Tempo → onboarding → "what needs me?" → RTS-grounded triage card with working buttons → `/tempo commitments`
-→ ledger with nudge/renegotiate drafts → "block 2 hours" → DND + status flip (+ calendar via MCP) → App Home
+→ ledger with nudge/renegotiate drafts → "block 2 hours" → real DND + status flip (calendar via MCP is mock-backed) → App Home
 dashboard + settings modal → read-aloud. Confirm the Vercel cron morning-digest DM fires (or trigger
 `/api/cron/morning-digest` with the `CRON_SECRET` header). **Freeze features here.**
 

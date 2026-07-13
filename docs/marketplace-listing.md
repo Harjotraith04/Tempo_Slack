@@ -32,7 +32,7 @@ TAM extends far beyond the target community to everyone drowning in unreads.
   **auto-close** when you deliver + **dropped-ball** nudges before things slip.
 - **Tone Decoder — "The Translator":** literal vs. implied meaning, tone, real urgency, and a softer rewrite
   of *your* draft — with an honest confidence + caveat.
-- **Focus Guardian — "The Shield":** a real calendar block + a task via MCP, plus Slack DND + status.
+- **Focus Guardian — "The Shield":** **real** Slack DND + status (your own token), plus a calendar hold and task via outbound MCP *(mock-backed in this submission)*.
 - **Re-entry — "The Bridge":** a plain-language brief of what changed while you were away.
 - **Learns from you (privately):** tunes ranking + tone confidence from your own taps — counts only, never
   content, and fully exportable/erasable.

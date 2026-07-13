@@ -18,10 +18,23 @@ Five modules, all grounded live in the user's own permissioned data, all human-i
 - **Triage — "The Surface."** Sorts everything since you were last active into ACT / BLOCKER / FYI / NOISE — including *implicit* blockers nobody @-mentioned you on — and delivers a calm "3 things actually need you" card. Never more than your chosen max; the rest waits behind a button.
 - **Commitment Ledger — "The Memory."** Finds the promises you made and were made to you, parses due dates, flags overdue and at-risk, and drafts the nudge or the deadline-renegotiation — you review and send.
 - **Tone Decoder — "The Translator."** Explains what "no rush 🙂" actually means — implied urgency, subtext, and how your own draft will land, with a softer rewrite and an honest confidence caveat.
-- **Focus Guardian — "The Shield."** One tap protects a deep-work block: **real Slack Do-Not-Disturb + status** (your own token, genuinely flipped), plus a calendar hold and task via outbound **MCP**. Only true blockers break through.
+- **Focus Guardian — "The Shield."** One tap protects a deep-work block: **real Slack Do-Not-Disturb + status** (your own token, genuinely flipped — verified on a live account), plus a calendar hold and task via outbound **MCP** *(mock-backed in this submission — see below)*. Only true blockers break through.
 - **Re-entry — "The Bridge."** A plain-language brief after time away: what was decided, what changed, who's waiting on you — so day one back isn't spent excavating.
+- **Conversation — "The Door."** Everything else. Tempo answers in its own voice and always offers the one thing it can genuinely do next, so chat is a doorway into the product rather than a dead end.
 
-The accessibility spine runs through every surface: adjustable verbosity, reading level (plain-language mode), max items, **read-aloud audio (TTS)**, dyslexia-friendly formatting, English/Spanish speech, and a machine-checked accessibility audit that fails the build if any response regresses. A morning digest DM (Vercel cron) proves the proactive path; a web companion gives full data export/delete.
+### The one place we take the LLM *out* of the loop
+
+Tempo is built for people under cognitive strain — neurodivergent workers, people burning out, people drowning in a firehose. Given that audience, **someone will eventually type something that isn't about Slack at all.** An agent for that audience has to have an answer for that moment, and "let the model improvise" is not one.
+
+So the crisis check runs **before any model call**, and on a match returns **fixed words written by a human**. No generation, no temperature, no surprises. Our test spies on the LLM port and **fails if it is touched at all** — not "prompted carefully": *never reached*. Those words are warm, brief, and honest that Tempo is a work tool and not a counsellor; they point to **findahelpline.com** (international — a US-only number is useless to most of the world) and to a trusted human. They don't diagnose, don't promise it'll be fine, don't interrogate. The card shows **no product buttons** — nudging someone toward "want me to triage your inbox?" in that moment would be grotesque.
+
+The **false-positive** direction is tested just as hard, because it is also real harm: *"this deadline is killing me"* must **not** trip it. Answering ordinary workplace hyperbole with a hotline card is patronising, and it teaches people not to talk to Tempo honestly. Genuine-but-non-crisis distress goes to a supportive path where the empathy is **backed by an action** — cut the firehose to the two or three things that matter, or protect the time. Reducing cognitive load *is* the product.
+
+### Consent: you choose where Tempo may look
+
+Tempo already reads only what *you* can see (RTS runs on your own token). Consent scoping narrows it further, from the Slack settings modal: **"only watch these channels"** and **"never track these people."** It's one `RtsClient` decorator wired in once, so every module inherits it — **and it holds on every surface**: the Slack app, the scheduled morning digest, and the inbound MCP server all resolve it through the same chokepoint, so an external agent calling Tempo over MCP cannot read around your settings. *"Reads only what you can see"* becomes *"and only where you allow."*
+
+The accessibility spine runs through every surface: adjustable verbosity, reading level (plain-language mode), max items, **read-aloud audio (TTS)**, dyslexia-friendly formatting, English/Spanish speech, and a machine-checked accessibility audit that fails the build if any response regresses. A morning digest DM (Vercel cron) proves the proactive path; a privacy dashboard on the same domain gives full export/delete.
 
 **Privacy is architectural, not a promise:** Tempo grounds every answer live via RTS and discards it. What it reads is **never persisted** — enforced at the schema level and by tests. It acts only with each user's own token, on their own permissioned data, and never without a tap.
 
@@ -31,7 +44,7 @@ The accessibility spine runs through every surface: adjustable verbosity, readin
 2. **MCP, both directions — and the inbound one is live.** Tempo *is* an **MCP server** at `/api/mcp/server` — `tempo_triage`, `tempo_commitments`, `tempo_decode`, `tempo_focus` — callable right now by Agentforce/Claude/Cursor behind default-deny, signed per-user tokens (**try it yourself with the curl below**). Tempo is infrastructure, not just an app. Outbound MCP clients (Google Calendar / Notion / Linear / GitHub via `@modelcontextprotocol/sdk` over Streamable HTTP) are built and behind the same port, but **ship against a mock in this submission** — we chose not to stand up third-party OAuth we couldn't test end-to-end, and the Focus Guardian is explicitly hardened so an unreachable calendar server degrades to "couldn't reach your calendar" while the real DND still lands.
 3. **Slack AI / agent surfaces:** the 2026 Agent experience (`agent_view`, suggested prompts, status), App Home dashboard, Block Kit actions, Workflow Builder custom steps, Canvas, and Lists.
 
-Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules depend only on ports; every external system (RTS, OpenAI, Slack Web API, MCP, Postgres, TTS) has mock + live adapters, so **the entire product runs credential-free**: `npm run demo` plays the whole story in 26 deterministic scenes, and 323 tests + typecheck + build + demo run on every commit. Deployed on Vercel Fluid Compute via `@vercel/slack-bolt` (sub-3-second acks, background processing), Neon Postgres (AES-256-GCM token encryption), least-privilege scopes enforced by a drift test.
+Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules depend only on ports; every external system (RTS, OpenAI, Slack Web API, MCP, Postgres, TTS) has mock + live adapters, so **the entire product runs credential-free**: `npm run demo` plays the whole story in 26 deterministic scenes, and 411 tests + typecheck + build + demo run on every commit. Deployed on Vercel Fluid Compute via `@vercel/slack-bolt` (sub-3-second acks, background processing), Neon Postgres (AES-256-GCM token encryption), least-privilege scopes enforced by a drift test.
 
 ## Challenges we ran into
 
@@ -39,13 +52,13 @@ Engineering: a hexagonal TypeScript modular monolith (Bolt) — domain modules d
 - **The 3-second ack vs. real model work.** Slack retries anything slower than 3 seconds, but triage does live RTS + LLM reasoning. We moved to `@vercel/slack-bolt` on Fluid Compute — ack immediately, finish the work in the background via `waitUntil` — so the agent stays responsive without dropping requests.
 - **A platform that moved under us.** The Assistant experience we first built on was deprecated for new apps mid-project; we migrated to the 2026 **Agent experience** (`agent_view`, `app_home_opened` + `message.im`) while keeping both message paths working with no double-replies.
 - **"Never store what it reads" as an engineering constraint, not a slogan.** It forced derived-facts-only everywhere — e.g. the Commitment Ledger's Slack List rows carry the parsed obligation, never the source message — and we proved it at the schema level and in tests rather than promising it in the privacy page.
-- **One codebase that runs with and without credentials.** Every external system (RTS, OpenAI, Slack Web API, MCP, Postgres, TTS) has a mock and a live adapter behind a port, so `npm run demo` and 320+ tests stay green with zero secrets across all 15 build phases — which is also what let us harden the live seams against the docs before a single key existed.
+- **One codebase that runs with and without credentials.** Every external system (RTS, OpenAI, Slack Web API, MCP, Postgres, TTS) has a mock and a live adapter behind a port, so `npm run demo` and 411 tests stay green with zero secrets across all 15 build phases — which is also what let us harden the live seams against the docs before a single key existed.
 
 ## Accomplishments we're proud of
 
 - A genuinely new category — nobody ships assistive tech for attention/memory on Slack.
 - The never-persist-RTS-content invariant proven by schema + tests, not promised in prose.
-- 323 tests and a full product demo that run with zero credentials.
+- 411 tests and a full product demo that run with zero credentials.
 - Accessibility as a machine-checked build gate, in English and Spanish.
 
 ## Impact statement (Agent for Good)
@@ -54,7 +67,7 @@ Tempo targets the people Slack quietly disables: **neurodivergent workers** (~15
 
 ## What's next
 
-Marketplace listing (the scopes audit, privacy policy, and data-governance work are already done), more locales, and the Attention OS: the same permission-aware working memory across email and calendar via MCP source adapters — already running behind a feature flag.
+Marketplace listing (the scopes audit, privacy policy, and data-governance work are already done), more locales, connecting the outbound MCP clients to real calendar/task servers, and the Attention OS: the same permission-aware working memory across email and calendar via MCP source adapters. **Those sources are mock-only today, behind a flag that is off — we build the seam, we do not call it an integration.**
 
 ---
 
@@ -91,6 +104,6 @@ token, or an unrecognised one, gets a 401 — there is no ambient authority.
 > 1. Open **Tempo** from the Agents section (or click the workspace's Tempo icon) → tap a suggested prompt: *"What needs me today?"*
 > 2. `/tempo commitments` — the promises Sam made & is owed, with nudge/renegotiate drafts.
 > 3. Ask *"how does this sound: fine, we can discuss it later"* — the Tone Decoder.
-> 4. *"Block 2 hours for deep work"* — watch DND + status flip, calendar via MCP.
+> 4. *"Block 2 hours for deep work"* — watch your **real** DND + status flip. (The calendar line on that card is a *mock* MCP server — the inbound MCP server below is the live one.)
 > 5. Open **App Home** for the live dashboard + ⚙️ accessibility settings (try read-aloud!).
 > Tempo never stores what it reads and never acts without your tap. Full story: `npm run demo` in the repo.

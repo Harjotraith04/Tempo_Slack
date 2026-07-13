@@ -120,7 +120,7 @@ function main(): void {
     console.error(`\n${failed.length} step(s) failed. Not ready — fix the above.`);
     process.exit(1);
   }
-  console.log("\nAll green. Credential-free readiness confirmed → follow GO_LIVE.md for the live bring-up.");
+  console.log("\nAll green. → Recording runbook: DEMO.md · Submission state: SUBMIT.md");
 }
 
 main();

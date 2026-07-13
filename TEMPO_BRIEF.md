@@ -61,7 +61,7 @@ memory possible. Tempo could not have been built before this.
 | 1 | **Triage** | *the Surface* | Scans everything since you were last active and sorts it into **ACT / BLOCKER / FYI / NOISE** — including *implicit* blockers where nobody @-mentioned you. "3 things actually need you today." Ranked and capped at your `maxItems`; the rest waits behind a button. |
 | 2 | **Commitment Ledger** | *the Memory* | Finds promises **you made** and promises **made to you**; parses the due date ("by Friday" → overdue); flags **overdue / at-risk** *before* it slips; drafts a nudge or a deadline renegotiation. Auto-closes when delivered. |
 | 3 | **Tone Decoder** | *the Translator* | Explains a message's **implied** meaning, tone, and *real* urgency — and checks how **your** draft will land, offering a softer rewrite. Reports honest confidence. **This is the accessibility core.** |
-| 4 | **Focus Guardian** | *the Shield* | Flips real Slack **DND + status**, books a calendar hold and creates a task **via MCP**, and sets an **interrupt budget** so only true blockers break through. |
+| 4 | **Focus Guardian** | *the Shield* | Flips **real** Slack **DND + status** (verified live), books a calendar hold + task via outbound **MCP** *(mock-backed in this submission)*, and sets an **interrupt budget** so only true blockers break through. |
 | 5 | **Re-entry** | *the Bridge* | After time away: a calm, plain-language brief — what was decided, what changed for your projects, who's waiting on you. |
 
 ### The trust guarantee
@@ -359,7 +359,7 @@ Attention OS (one working memory spanning Slack + email + calendar behind the sa
 | Version | v4.2.0 |
 | TypeScript files | 196 (145 source + 51 test) |
 | Lines of code | ~14.6k total (~10.4k non-test, ~4.3k test) |
-| Tests | **300+** (51 test files, vitest) |
+| Tests | **411** (55 test files, vitest) |
 | Production dependencies | **10** |
 | Git-tracked files | 225 |
 | Demo | **26 scenes**, runs **credential-free** |
@@ -380,7 +380,7 @@ Slack's 3-second ack deadline · RTS `limit` capped at 20.
 
 - ❌ **"Powered by Claude / Anthropic."** **False.** It is **OpenAI `gpt-4.1-mini`** + `tts-1`. The Anthropic dependency was removed; only two stale code comments still say "Claude" (`src/platform/ai/index.ts`, `scripts/verify-live-ai.ts`). A judge who greps the repo will find OpenAI.
 - ❌ **"Creates a real Google Calendar event."** Outbound MCP ships against a **mock** by design — third-party OAuth that couldn't be tested end-to-end was deliberately not stood up. Frame it as *"MCP-ready, mock-backed."*
-- ❌ **A specific test count from the docs.** They disagree with each other (284 / 311 / 323). **Say "300+"**, or run `npm test` and use the real number.
+- ✅ **411 tests across 55 files** — every doc now says this. If you change anything, re-run `npm test` and use the real number rather than quoting a stale one.
 - ❌ **A `web/` Next.js app.** It was deleted. The web pages are hand-rolled server-rendered HTML in `src/platform/web`.
 - ❌ **Attention OS email/calendar sources as working integrations.** They are mock-only **by design** — a roadmap direction, not a shipped integration.
 
