@@ -6,6 +6,9 @@
 Built for the **Slack Agent Builder Challenge** · Track: **Slack Agent for Good** (accessibility + cognitive health).
 Uses all three challenge technologies: **Real-Time Search (RTS) API · MCP · Slack AI / Assistant**.
 
+> 🎬 **Recording the demo?** → [`FLOW.md`](FLOW.md)
+> 📄 **All other docs** → [`docs/`](docs/) · current state: [`docs/SUBMIT.md`](docs/SUBMIT.md)
+
 ## Live
 
 | | |
@@ -120,7 +123,7 @@ This is also why the **for-Good / accessibility** framing is clean: it's a *pers
 
 **Attention OS (v4.0).** Tempo's grounding generalizes beyond Slack: `MultiSourceRtsClient` (`src/platform/sources/`) fans one search across Slack + other work tools (mock email/calendar only — the seam is real, the integrations are not, and the flag ships **off**) and merges them into **one calm working memory** — triage, commitments, and re-entry span every source with zero domain change (Slack is the sole source unless `TEMPO_ATTENTION_OS=on`). The calm-UX primitives are also extracted as an open **[accessibility SDK](docs/accessibility-sdk.md)** for others to build on.
 
-**Multilingual & certified-accessible (v3.8).** Tempo is internationalized (`src/accessibility/i18n/`): a message catalog + `t()` with a `locale` preference (English + Spanish today, settable from the web Settings), so your read-aloud script speaks *your* language — the non-native-speaker promise. And accessibility is a machine-checked gate: `auditResponse` asserts every response has a non-empty, markdown-free read-aloud script, labeled buttons, and true plain language, run across **every** response type in CI. Enterprise-Grid / residency posture is in [`ENTERPRISE.md`](ENTERPRISE.md).
+**Multilingual & certified-accessible (v3.8).** Tempo is internationalized (`src/accessibility/i18n/`): a message catalog + `t()` with a `locale` preference (English + Spanish today, settable from the web Settings), so your read-aloud script speaks *your* language — the non-native-speaker promise. And accessibility is a machine-checked gate: `auditResponse` asserts every response has a non-empty, markdown-free read-aloud script, labeled buttons, and true plain language, run across **every** response type in CI. Enterprise-Grid / residency posture is in [`ENTERPRISE.md`](docs/ENTERPRISE.md).
 
 **Team mode is opt-in, aggregated, and anonymized.** The default posture is a *personal* agent on *personal* data. With `TEMPO_TEAM=on` + an explicit opt-in roster, `/tempo team` shows an **aggregate-only** view (team load, response fairness, focus health) computed from the counts Tempo already keeps — **never** any individual's messages or a single person's numbers, and **k-anonymity-redacted** below 3 opted-in members so no one can be inferred (`src/modules/team/`, asserted in tests).
 
@@ -128,7 +131,7 @@ This is also why the **for-Good / accessibility** framing is clean: it's a *pers
 
 **Learns from you (privately).** Tempo tunes triage ranking and tone-read confidence to *you* — but it learns **only from your own taps** (snooze / mark-done / draft), stored as **counts per sender id**, never from message content. The learned weight is bounded, so it reorders near-ties without ever overriding a genuine urgent ask. Those per-sender signals appear in your data export and are erased by "Delete everything," like everything else.
 
-**Least-privilege scopes.** Every OAuth scope Tempo requests is declared and justified in one place (`src/platform/slack/oauth/scopes.ts`), and a test asserts `manifest.json` requests **exactly** that set — no more, no less. RTS runs on your own user token, scoped to what you can already see. See [`PRIVACY.md`](PRIVACY.md) and [`SECURITY.md`](SECURITY.md); the full listing package is in [`docs/marketplace-listing.md`](docs/marketplace-listing.md).
+**Least-privilege scopes.** Every OAuth scope Tempo requests is declared and justified in one place (`src/platform/slack/oauth/scopes.ts`), and a test asserts `manifest.json` requests **exactly** that set — no more, no less. RTS runs on your own user token, scoped to what you can already see. See [`PRIVACY.md`](docs/PRIVACY.md) and [`SECURITY.md`](docs/SECURITY.md); the full listing package is in [`docs/marketplace-listing.md`](docs/marketplace-listing.md).
 
 ### Consent — you choose where Tempo may look
 
@@ -235,8 +238,8 @@ On Vercel, `/api/slack/events` is served by **`@vercel/slack-bolt`** (acks Slack
 
 Tempo is built as a **continuously buildable** product. Two documents drive it:
 
-- **[`MASTER_PLAN.md`](MASTER_PLAN.md)** — the whole plan: vision, hackathon strategy, the professional modular-monolith architecture, the full code structure, every Slack + MCP integration, and the multi-phase 3-year roadmap. The build loop lives in its Part VI.
-- **[`LEDGER.md`](LEDGER.md)** — the current repo version + progress. Read it, build the next item from the master plan, then update it.
+- **[`MASTER_PLAN.md`](docs/MASTER_PLAN.md)** — the whole plan: vision, hackathon strategy, the professional modular-monolith architecture, the full code structure, every Slack + MCP integration, and the multi-phase 3-year roadmap. The build loop lives in its Part VI.
+- **[`LEDGER.md`](docs/LEDGER.md)** — the current repo version + progress. Read it, build the next item from the master plan, then update it.
 
 ## License
 

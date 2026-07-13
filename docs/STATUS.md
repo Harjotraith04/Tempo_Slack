@@ -5,7 +5,7 @@
 > ⚠️ **SUPERSEDED — this file is history.** Since it was written, Tempo was deployed
 > (https://tempo-slack.vercel.app); RTS, AI, Postgres and the Slack write-actions all went live; the `web/`
 > Next.js app and its second Vercel project were deleted (the dashboard is now `api/web/*` on the same domain).
-> **The only current tracker is [`SUBMIT.md`](../SUBMIT.md).** Read that instead.
+> **The only current tracker is [`SUBMIT.md`](SUBMIT.md).** Read that instead.
 
 ---
 
@@ -35,12 +35,12 @@
    placeholders (with `--check` gate); `web/vercel.json` added; all 19 OAuth scopes confirmed complete.
 3. **`npm run preflight`:** runs typecheck + tests + build + demo + web build + all four skip-safe `verify:*` +
    manifest sanity — one command that proves credential-free readiness. Currently **all green**.
-4. **Docs:** [`GO_LIVE.md`](../GO_LIVE.md) runbook written; Devpost draft "Challenges" filled (only the video +
+4. **Docs:** [`GO_LIVE.md`](GO_LIVE.md) runbook written; Devpost draft "Challenges" filled (only the video +
    sandbox URL remain); LEDGER "Next up" points at `GO_LIVE.md`.
 
 ## What to do next (owner — needs keys)
 
-Follow **[`GO_LIVE.md`](../GO_LIVE.md)** top to bottom. The critical-path summary:
+Follow **[`GO_LIVE.md`](GO_LIVE.md)** top to bottom. The critical-path summary:
 
 1. **Day 1 (start immediately — longest lead):** join the Slack Developer Program → provision a sandbox →
    **request the semantic-RTS sandbox from Slack partnerships.** Get OpenAI key, Neon `DATABASE_URL`, Vercel
@@ -53,7 +53,7 @@ Follow **[`GO_LIVE.md`](../GO_LIVE.md)** top to bottom. The critical-path summar
    `testing@devpost.com`, paste the video + sandbox URLs into `docs/devpost-submission.md`, **submit Jul 12.**
 
 ## Key files
-- **[`GO_LIVE.md`](../GO_LIVE.md)** — the full ordered runbook (the thing to actually follow).
+- **[`GO_LIVE.md`](GO_LIVE.md)** — the full ordered runbook (the thing to actually follow).
 - `docs/devpost-submission.md` — paste-ready write-up (2 URLs left to fill).
 - `docs/architecture.svg` / `.png` — submission diagram (done).
 - `MASTER_PLAN.md` Part VII §7.4 — risk register & cut lines. `LEDGER.md` — full history.

@@ -54,7 +54,7 @@ Returns `tempo_triage`, `tempo_commitments`, `tempo_decode`, `tempo_focus`. Defa
 
 ## Remaining — owner only
 
-- [ ] **Record the ≤3-min video.** Beats, commands and exact phrases: **[`DEMO.md`](DEMO.md)**. Run `npm run reset:demo` between takes so the DND moon icon appears *fresh* on camera.
+- [ ] **Record the ≤3-min video.** Beats, commands and exact phrases: **[`DEMO.md`](../FLOW.md)**. Run `npm run reset:demo` between takes so the DND moon icon appears *fresh* on camera.
 - [ ] **Fill three values:**
   - `docs/devpost-submission.md:64` → the YouTube URL
   - `docs/devpost-submission.md:79` → the `TEMPO_MCP_SERVER_TOKEN`

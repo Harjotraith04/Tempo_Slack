@@ -48,8 +48,8 @@ TAM extends far beyond the target community to everyone drowning in unreads.
   [`src/main/app.ts`](../src/main/app.ts).
 
 ## Privacy & security
-- Privacy policy: [`PRIVACY.md`](../PRIVACY.md) (and the live web page at `/privacy-policy`).
-- Security posture + disclosure: [`SECURITY.md`](../SECURITY.md).
+- Privacy policy: [`PRIVACY.md`](PRIVACY.md) (and the live web page at `/privacy-policy`).
+- Security posture + disclosure: [`SECURITY.md`](SECURITY.md).
 - Least-privilege scopes, each justified: [`src/platform/slack/oauth/scopes.ts`](../src/platform/slack/oauth/scopes.ts).
 
 ## Screenshots / video **[owner]**
@@ -60,7 +60,7 @@ Capture from `npm run demo` (20 scenes) and the running web companion:
 4. Focus Guardian — DND + status + a calendar block + a task, via MCP.
 5. Re-entry — "what changed while you were out."
 6. Web privacy dashboard — "exactly what Tempo stores about you," with export + delete.
-~3-min video beats are in [`MASTER_PLAN.md`](../MASTER_PLAN.md) §1.6.
+~3-min video beats are in [`MASTER_PLAN.md`](MASTER_PLAN.md) §1.6.
 
 ## Submission checklist
 - [x] Text description + explicit impact statement (above).

@@ -1,7 +1,7 @@
 /**
- * Preflight — proves the repo is credential-free ready before the GO_LIVE.md
- * bring-up. One command that runs the CI core plus every skip-safe live check,
- * so "nothing left to build" is verified, not assumed.
+ * Preflight — one command that proves the repo is green before recording (see FLOW.md).
+ * Runs the CI core plus every skip-safe live check, so "it works" is verified
+ * rather than assumed.
  *
  *   npm run preflight
  *
@@ -120,7 +120,7 @@ function main(): void {
     console.error(`\n${failed.length} step(s) failed. Not ready — fix the above.`);
     process.exit(1);
   }
-  console.log("\nAll green. → Recording runbook: DEMO.md · Submission state: SUBMIT.md");
+  console.log("\nAll green. → Recording script: FLOW.md · Submission state: docs/SUBMIT.md");
 }
 
 main();
