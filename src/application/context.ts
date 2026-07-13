@@ -15,6 +15,7 @@ import { MultiSourceRtsClient, getExtraSources } from "../platform/sources/index
 import type { LlmPort } from "../ports/ai.js";
 import type { Store } from "../ports/store.js";
 import { createContainer, type Container } from "./container.js";
+import { resolveDisplayName } from "../platform/slack/webapi/displayName.js";
 import { DEMO_NOW, SAM_LAST_ACTIVE, SUBJECT_USER_ID } from "../platform/slack/rts/fixtures.js";
 
 export interface TempoContext {
@@ -48,6 +49,47 @@ export interface BuildContextOpts {
   /** The user's consent scope — which channels Tempo may read, who it must
    * ignore. Absent/empty = everywhere, i.e. the behaviour before this existed. */
   scope?: RtsScope;
+}
+
+/**
+ * The ONE way an entrypoint should build a context for a real Slack user.
+ *
+ * Bolt, the morning-digest cron and the inbound MCP server each need the same
+ * three lookups — the user's stored token, their display name, and their prefs —
+ * and each was hand-rolling them. Two of the three forgot the consent scope, so
+ * "only watch #eng" held in the Slack app while the cron DM'd the user content
+ * from channels they had explicitly de-selected and the MCP server ignored their
+ * settings entirely. A consent control that holds on one surface out of three is
+ * worse than none: it makes a promise it doesn't keep.
+ *
+ * So the lookups live here, once. Forgetting the scope now requires bypassing
+ * this function, rather than merely not remembering to add a field.
+ *
+ * `client` is Bolt's WebClient when we have one; otherwise we mint a bot client.
+ */
+export async function buildUserContext(opts: {
+  subjectUserId: string;
+  /** Anything with `users.info` — Bolt's client, or a WebClient. */
+  client: { users: { info: (a: { user: string }) => Promise<unknown> } };
+  container?: Container;
+  lastActiveTs?: number;
+}): Promise<TempoContext> {
+  const store = (opts.container ?? createContainer()).store();
+  const [storedToken, prefs, subjectName] = await Promise.all([
+    store.tokens.get(opts.subjectUserId),
+    store.prefs.get(opts.subjectUserId),
+    resolveDisplayName(opts.client as never, opts.subjectUserId),
+  ]);
+
+  return buildContext({
+    subjectUserId: opts.subjectUserId,
+    subjectName,
+    userToken: storedToken ?? config.slack.userToken,
+    container: opts.container,
+    lastActiveTs: opts.lastActiveTs,
+    // The consent scope. Absent/empty = watch everywhere.
+    scope: { watchedChannels: prefs?.watchedChannels, mutedUsers: prefs?.mutedUsers },
+  });
 }
 
 export function buildContext(opts: BuildContextOpts = {}): TempoContext {

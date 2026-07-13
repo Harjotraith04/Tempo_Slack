@@ -10,3 +10,8 @@
 export * from "./env.js";
 export * from "./modes.js";
 export * from "./feature-flags.js";
+
+/** The app version, reported by the MCP server's serverInfo (what a judge's MCP
+ * client displays). Kept here so it can't drift from package.json unnoticed —
+ * it was hardcoded to "4.1.0" while the package said 4.2.0. */
+export const VERSION = "4.2.0";

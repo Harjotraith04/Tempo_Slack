@@ -19,14 +19,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { WebClient } from "@slack/web-api";
 import { config, flags, assertVercelRuntime } from "../../src/config.js";
-import { buildContext } from "../../src/application/context.js";
+import { buildUserContext } from "../../src/application/context.js";
 import { respond } from "../../src/application/orchestrator.js";
 import { updateCanvas, atRiskCommitments } from "../../src/application/use-cases/surfaces.js";
 import { buildProactiveBlocks } from "../../src/application/use-cases/proactive.js";
 import { droppedBallBlocks } from "../../src/platform/slack/blockkit/index.js";
 import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
 import { getStore } from "../../src/platform/persistence/index.js";
-import { resolveDisplayName } from "../../src/platform/slack/webapi/displayName.js";
 
 interface DigestTarget {
   userId: string;
@@ -45,10 +44,13 @@ async function targets(): Promise<DigestTarget[]> {
 }
 
 async function sendDigest(userId: string, token: string | undefined): Promise<void> {
-  const ctx = buildContext({
+  // Through the shared chokepoint, so the digest honours the user's consent scope.
+  // It previously called buildContext() directly and passed no scope — meaning the
+  // one unattended surface was the one that DM'd people content from channels they
+  // had explicitly told Tempo not to read.
+  const ctx = await buildUserContext({
     subjectUserId: userId,
-    subjectName: await resolveDisplayName(new WebClient(config.slack.botToken), userId),
-    userToken: token,
+    client: new WebClient(config.slack.botToken),
   });
   const digest = await respond(ctx, "what needs me today?");
 

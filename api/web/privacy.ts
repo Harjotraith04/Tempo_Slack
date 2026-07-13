@@ -34,11 +34,34 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         : "not connected",
     ),
     row("Access token", "stored, encrypted (AES-256-GCM) — never shown or exported"),
+    // "The complete record" has to actually BE complete.
+    //
+    // This page listed four preference fields and called itself the complete
+    // record, while the JSON export beside it returned eleven. A transparency page
+    // that under-reports is the single most damaging thing this product could ship:
+    // the whole pitch is "check the claim rather than trust it", and the first
+    // person to check would have caught us short. Every field in UserPrefs is here.
     row(
-      "Preferences",
+      "Preferences · reading",
       p
-        ? `verbosity ${p.verbosity ?? "standard"}, reading ${p.readingLevel ?? "standard"}, max ${p.maxItems ?? 3}, read-aloud ${p.readAloud ? "on" : "off"}`
+        ? `verbosity ${p.verbosity ?? "standard"} · reading level ${p.readingLevel ?? "standard"} · max ${p.maxItems ?? 3} items · language ${p.locale ?? "en"}`
         : "none saved",
+    ),
+    row(
+      "Preferences · focus",
+      p
+        ? `read-aloud ${p.readAloud ? "on" : "off"} · default focus ${p.focusDefaultMins ?? "—"} min · default DND ${p.dndDefaultMins ?? "—"} min`
+        : "none saved",
+    ),
+    row(
+      "Consent · channels Tempo may read",
+      p?.watchedChannels?.length
+        ? `${p.watchedChannels.length} channel(s) you chose — Tempo reads nowhere else`
+        : "every channel you can already see (no filter set)",
+    ),
+    row(
+      "Consent · people Tempo ignores",
+      p?.mutedUsers?.length ? `${p.mutedUsers.length} muted` : "nobody muted",
     ),
     row(
       "Weekly impact (counts only)",
@@ -52,6 +75,19 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     ),
     row("Pinned commitments", `${d.commitments.length} (derived facts, no message text)`),
     row("Snoozed / done items", `${d.snoozes.length} (permalink + status only)`),
+    row(
+      "Learned sender signals",
+      `${d.senderSignals.length} (per-sender counts only — how often you engaged, never what was said)`,
+    ),
+    row(
+      "Activity timestamps",
+      [
+        p?.lastActiveTs ? `last active ${new Date(p.lastActiveTs * 1000).toLocaleDateString()}` : null,
+        p?.onboardedAt ? `onboarded ${new Date(p.onboardedAt * 1000).toLocaleDateString()}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "none",
+    ),
   ].join("");
 
   // `what` and `counterparty` are free text lifted from Slack messages — the one

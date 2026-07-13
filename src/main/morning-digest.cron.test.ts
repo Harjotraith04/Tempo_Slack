@@ -6,8 +6,15 @@ const { listInstalledUsersMock, getUserTokenMock, respondMock } = vi.hoisted(() 
   respondMock: vi.fn(),
 }));
 
+// The cron now reads prefs too — it has to, in order to honour the user's consent
+// scope (which channels Tempo may watch, who it must ignore). It previously built
+// its context without them, which is exactly how the unattended surface ended up
+// DMing people content from channels they had explicitly de-selected.
 vi.mock("../platform/persistence/index.js", () => ({
-  getStore: () => ({ tokens: { list: listInstalledUsersMock, get: getUserTokenMock } }),
+  getStore: () => ({
+    tokens: { list: listInstalledUsersMock, get: getUserTokenMock },
+    prefs: { get: async () => undefined },
+  }),
 }));
 
 vi.mock("../application/orchestrator.js", () => ({

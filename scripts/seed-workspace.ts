@@ -90,12 +90,21 @@ async function main() {
   // already there and post only what's missing.
   const existing = new Map<string, Set<string>>();
   for (const [name, id] of channelIds) {
+    // Reusing an existing channel does NOT mean the bot is a member of it, and a
+    // non-member can neither read history nor post. Join first — otherwise the
+    // history read throws, we assume the channel is empty, and then every
+    // postMessage fails too, killing the run half-way through the story.
+    try {
+      await web.conversations.join({ channel: id });
+    } catch {
+      /* already a member, or a private channel we were invited to — either is fine */
+    }
+
     const seen = new Set<string>();
     try {
       const hist = (await web.conversations.history({ channel: id, limit: 1000 })) as any;
       for (const msg of hist.messages ?? []) if (msg.text) seen.add(String(msg.text).trim());
     } catch (e: any) {
-      // not_in_channel etc. — treat as empty and post everything for this channel
       console.log(`  (couldn't read #${name} history: ${e?.data?.error ?? e}; assuming empty)`);
     }
     existing.set(name, seen);
@@ -105,6 +114,7 @@ async function main() {
   const ordered = [...MESSAGES].sort((a, b) => b.minsAgo - a.minsAgo);
   let posted = 0;
   let skipped = 0;
+  let failed = 0;
   for (const m of ordered) {
     const name = seedChannelName(m.channelId);
     const channel = channelIds.get(name);
@@ -114,17 +124,26 @@ async function main() {
       skipped++;
       continue;
     }
-    await web.chat.postMessage({
-      channel,
-      text: m.text,
-      username: nameFor(m.authorId),
-      icon_emoji: ICONS[m.authorId] ?? ":speech_balloon:",
-    });
-    posted++;
+    // One bad channel must not abandon the seed half-written. A partially-posted
+    // story is worse than a failed one: the next run dedupes against it and the
+    // gaps become permanent.
+    try {
+      await web.chat.postMessage({
+        channel,
+        text: m.text,
+        username: nameFor(m.authorId),
+        icon_emoji: ICONS[m.authorId] ?? ":speech_balloon:",
+      });
+      posted++;
+    } catch (e: any) {
+      failed++;
+      console.log(`  ⚠️  #${name}: ${e?.data?.error ?? e} — skipping "${m.text.slice(0, 40)}…"`);
+    }
   }
   console.log(
-    `\nSeeded ${posted} new message(s); skipped ${skipped} already present. ` +
-      `Set TEMPO_RTS=live to demo against real RTS.\n`,
+    `\nSeeded ${posted} new message(s); skipped ${skipped} already present` +
+      (failed ? `; ${failed} FAILED (see above)` : "") +
+      `. Set TEMPO_RTS=live to demo against real RTS.\n`,
   );
 }
 

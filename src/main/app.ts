@@ -16,7 +16,8 @@ import { App, Assistant, ExpressReceiver, LogLevel } from "@slack/bolt";
 import { config, flags, assertSlackRuntime, assertSecretsHardened } from "../config.js";
 import { webClientOptions } from "../shared/webClientOptions.js";
 import { withTimeout } from "../shared/timeout.js";
-import { buildContext } from "../application/context.js";
+import { buildUserContext, type TempoContext } from "../application/context.js";
+import { resolveDisplayName } from "../platform/slack/webapi/displayName.js";
 import { createContainer } from "../application/container.js";
 import { respond as tempoRespond, routeIntent, triageAll } from "../application/orchestrator.js";
 import { updateCanvas, syncCommitmentsToList, remindAboutCommitment } from "../application/use-cases/surfaces.js";
@@ -28,7 +29,6 @@ import { resolveA11yPrefs } from "../accessibility/index.js";
 import { getTtsClient } from "../accessibility/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../modules/onboarding.js";
 import { CORPUS_QUERY } from "../ports/rts.js";
-import { resolveDisplayName } from "../platform/slack/webapi/displayName.js";
 
 type BoltApp = InstanceType<typeof App>;
 
@@ -149,25 +149,12 @@ async function replyWithPlaceholder<T extends { text: string; blocks: unknown[] 
   return res;
 }
 
-/** Prefer the user's stored OAuth token; fall back to the single demo token. */
-async function resolveUserToken(slackUserId: string): Promise<string | undefined> {
-  return (await getStore().tokens.get(slackUserId)) ?? config.slack.userToken;
-}
-
 /** Composition root for the inbound layer — one container shared by every
  * handler; each per-user context reuses it (see contextFor). */
 const container = createContainer();
 
 async function contextFor(client: any, slackUserId: string) {
-  const prefs = await getStore().prefs.get(slackUserId);
-  return buildContext({
-    subjectUserId: slackUserId,
-    subjectName: await resolveDisplayName(client, slackUserId),
-    userToken: await resolveUserToken(slackUserId),
-    container,
-    // The user's consent scope. Absent/empty = watch everywhere.
-    scope: { watchedChannels: prefs?.watchedChannels, mutedUsers: prefs?.mutedUsers },
-  });
+  return buildUserContext({ subjectUserId: slackUserId, client, container });
 }
 
 /** Publishes the App Home tab: live triage + commitments, reusing the same
@@ -622,7 +609,7 @@ async function postComposedDraft(client: any, body: any, draft: string) {
   await dm(client, userId, text);
 }
 
-async function sourceTextFor(ctx: ReturnType<typeof buildContext>, permalink: string): Promise<string | undefined> {
+async function sourceTextFor(ctx: TempoContext, permalink: string): Promise<string | undefined> {
   if (!permalink) return undefined;
   const res = await ctx.rts.search({ query: CORPUS_QUERY, limit: 50 });
   return res.messages.find((m) => m.permalink === permalink)?.text;

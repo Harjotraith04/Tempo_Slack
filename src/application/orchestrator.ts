@@ -96,7 +96,14 @@ export async function respond(
     return { ...r, text: r.text, blocks: r.blocks, speech: r.speech };
   }
 
-  const text = applyReadingLevel(condense(r.text, a11y.verbosity), a11y.readingLevel);
+  // A conversational reply is already calibrated: two or three sentences, ending
+  // in the one thing Tempo can actually do. condense() in `brief` mode keeps only
+  // the FIRST sentence — which for a supportive reply means keeping the empathy
+  // and deleting the help. So chat opts out.
+  const text =
+    r.intent === "chat"
+      ? r.text
+      : applyReadingLevel(condense(r.text, a11y.verbosity), a11y.readingLevel);
   return { ...r, text, speech: toSpeech({ intent: r.intent, text }, locale) };
 }
 

@@ -77,6 +77,62 @@ describe("ordinary chat is never a crisis", () => {
   }
 });
 
+describe("REGRESSION: 'end my ___' must not fire a hotline card", () => {
+  // The pattern was `end(ing)?\s+(my|it all|my own)\s*(life)?` — `(life)?` optional
+  // and `\s*` matching zero, so it collapsed to "end my ANYTHING". In an
+  // executive-function tool, "end my day" is one of the most ordinary things a
+  // person can type, and it was answered with a suicide hotline. The single worst
+  // false positive this product could produce, and no fixture caught it.
+  const ORDINARY = [
+    "end my day",
+    "end my week",
+    "I want to end my day early",
+    "let's end my meeting early",
+    "ending my subscription",
+    "help me end my workday at 5",
+  ];
+  for (const t of ORDINARY) {
+    it(`ignores: "${t}"`, () => expect(isCrisis(t)).toBe(false));
+  }
+
+  it("still catches the real phrasing it was meant to catch", () => {
+    expect(isCrisis("I want to end my life")).toBe(true);
+    expect(isCrisis("I want to end my own life")).toBe(true);
+    expect(isCrisis("I want to end it all")).toBe(true);
+  });
+});
+
+describe("REGRESSION: an idiom must not launder a real crisis beside it", () => {
+  // The idiom check used to veto the WHOLE STRING: one bit of workplace hyperbole
+  // anywhere disabled every crisis pattern in the message. Real distress is rarely
+  // a clean one-liner — it arrives hedged, mid-message, wrapped in deflecting
+  // humour, which is exactly the shape that defeated it. Missing a genuine crisis
+  // is the worst outcome this file has, and this is how it happened.
+  const COMPOUND = [
+    "this deadline is killing me. honestly I want to die.",
+    "I'm dying to go home but honestly I want to kill myself",
+    "just shoot me, I want to end my life",
+    "lol this sprint is killing me, but seriously I've been thinking about suicide",
+    "I'm dead tired and I don't want to be here anymore",
+  ];
+  for (const t of COMPOUND) {
+    it(`catches: "${t}"`, () => expect(isCrisis(t)).toBe(true));
+  }
+
+  it("still ignores the idiom when it stands alone", () => {
+    // The false-positive protection must survive the fix.
+    expect(isCrisis("this deadline is killing me")).toBe(false);
+    expect(isCrisis("I'm dying to go home")).toBe(false);
+    expect(isCrisis("just shoot me, another standup")).toBe(false);
+  });
+
+  it("scrubbing cannot fuse words into a phrase that was never written", () => {
+    // Idioms are replaced with a space, not "" — otherwise removing a match
+    // between "kill" and "myself" could manufacture "killmyself".
+    expect(isCrisis("we're killing it, myself included")).toBe(false);
+  });
+});
+
 describe("the fixed response says the right things", () => {
   it("points to an INTERNATIONAL resource, not a US-only number", () => {
     // Tempo's users are worldwide; a US hotline is useless to most of them.

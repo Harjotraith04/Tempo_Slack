@@ -11,11 +11,11 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { config, isMcpServerEnabled, assertVercelRuntime } from "../../src/config.js";
-import { buildContext } from "../../src/application/context.js";
+import { buildUserContext } from "../../src/application/context.js";
 import { getStore } from "../../src/platform/persistence/index.js";
 import { handleMcpHttp } from "../../src/platform/mcp/server/index.js";
 import { resolveMcpCaller } from "../../src/platform/mcp/server/auth.js";
-import { resolveDisplayName } from "../../src/platform/slack/webapi/displayName.js";
+import { VERSION } from "../../src/config.js";
 import { WebClient } from "@slack/web-api";
 
 async function readJson(req: IncomingMessage): Promise<unknown> {
@@ -51,13 +51,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
     const body = await readJson(req);
     await handleMcpHttp(req, res, body, {
-      buildContext: async () =>
-        buildContext({
+      // External agents get the SAME consent scope the user set in Slack. Without
+      // this, any MCP caller read the user's entire visible Slack regardless of
+      // the channels they'd chosen or the people they'd muted.
+      buildContext: () =>
+        buildUserContext({
           subjectUserId: caller.userId,
-          subjectName: await resolveDisplayName(new WebClient(config.slack.botToken), caller.userId),
-          userToken,
+          client: new WebClient(config.slack.botToken),
         }),
-      version: "4.1.0",
+      version: VERSION,
     });
   } catch (err) {
     console.error("mcp server error", err);

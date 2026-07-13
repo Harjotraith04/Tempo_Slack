@@ -29,15 +29,18 @@
 
 /**
  * Everyday workplace hyperbole. These read as distress to a naive keyword match
- * and are not. Checked first — an idiom match short-circuits to "not a crisis".
+ * and are not. Each is SCRUBBED from the text before the crisis patterns run —
+ * see `isCrisis` for why that, and not a veto.
+ *
+ * Every pattern here has the global flag: scrubbing must remove *all* occurrences.
  */
 const IDIOMS: RegExp[] = [
-  /\b(deadline|meeting|commute|backlog|sprint|inbox|standup|this week|my boss|that email)\b[^.!?]{0,30}\b(killing|kills|murder(ing)?|death of)\b/i,
-  /\bdying to\b/i, // "dying to go home", "dying to see it"
-  /\b(dead|died|dying)\s+(tired|inside from|of boredom|of laughter)\b/i,
-  /\bkill(ing)?\s+(it|time|the build|this|two birds)\b/i,
-  /\b(i could|i'?d)\s+(just\s+)?die\b/i, // "I could just die of embarrassment"
-  /\bshoot me\b/i, // "just shoot me" — exasperation
+  /\b(deadline|meeting|commute|backlog|sprint|inbox|standup|this week|my boss|that email)\b[^.!?]{0,30}\b(killing|kills|murder(ing)?|death of)\b/gi,
+  /\bdying to\b/gi, // "dying to go home", "dying to see it"
+  /\b(dead|died|dying)\s+(tired|inside from|of boredom|of laughter)\b/gi,
+  /\bkill(ing)?\s+(it|time|the build|this|two birds)\b/gi,
+  /\b(i could|i'?d)\s+(just\s+)?die\b/gi, // "I could just die of embarrassment"
+  /\bshoot me\b/gi, // "just shoot me" — exasperation
 ];
 
 /**
@@ -46,7 +49,14 @@ const IDIOMS: RegExp[] = [
  */
 const CRISIS: RegExp[] = [
   /\b(kill|killing|hurt|harm)\s+(my ?self|myself)\b/i,
-  /\bend(ing)?\s+(my|it all|my own)\s*(life)?\b/i,
+  // `life` / `it all` is REQUIRED, not optional.
+  //
+  // This was `end(ing)?\s+(my|it all|my own)\s*(life)?` — and because `(life)?`
+  // is optional and `\s*` matches zero characters, it silently collapsed to
+  // "end my ANYTHING". In an executive-function tool, "end my day" is one of the
+  // most ordinary things a person could type, and it was answered with a suicide
+  // hotline. That is the worst false positive this product can produce.
+  /\bend(ing)?\s+(my\s+(own\s+)?life|it\s+all)\b/i,
   /\b(commit|committing)\s+suicide\b/i,
   /\bsuicid(e|al)\b/i,
   /\b(want|wanting|going)\s+to\s+die\b/i,
@@ -60,13 +70,35 @@ const CRISIS: RegExp[] = [
   /\bi\s+can'?t\s+(go on|do this any ?more|keep going)\b.*\b(live|life|alive|exist)/i,
 ];
 
-/** True when the message contains unambiguous crisis language. */
+/**
+ * True when the message contains unambiguous crisis language.
+ *
+ * The idioms are SCRUBBED, not used as a veto — and that distinction is the whole
+ * correctness of this function.
+ *
+ * It used to read: `if (IDIOMS.some(re => re.test(t))) return false`. That tests
+ * the WHOLE STRING, so a single workplace idiom anywhere in a message silently
+ * disabled every crisis pattern in it:
+ *
+ *   "this deadline is killing me. honestly I want to die."   → MISSED
+ *   "I'm dying to go home but honestly I want to kill myself" → MISSED
+ *
+ * Real distress is rarely a clean one-liner. It arrives hedged, buried mid-message,
+ * wrapped in deflecting humour — which is precisely the shape that defeated the
+ * veto. Removing the idiom's own text and then looking at what remains keeps the
+ * false-positive protection ("this deadline is killing me" still reads as nothing)
+ * without letting an idiom launder a genuine disclosure sitting right next to it.
+ */
 export function isCrisis(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
-  // An everyday idiom is never a crisis, even if it contains a scary word.
-  if (IDIOMS.some((re) => re.test(t))) return false;
-  return CRISIS.some((re) => re.test(t));
+
+  // Replace with a space, not "", so scrubbing can never fuse two words into a
+  // phrase that wasn't there ("kill" + "myself" → "killmyself").
+  let remainder = t;
+  for (const idiom of IDIOMS) remainder = remainder.replace(idiom, " ");
+
+  return CRISIS.some((re) => re.test(remainder));
 }
 
 /**

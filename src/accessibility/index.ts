@@ -20,6 +20,21 @@ export type ReadingLevel = "plain" | "standard";
 
 const KNOWN_INTENTS = new Set(["triage", "commitments", "catchup", "focus", "decode", "team", "help"]);
 
+/**
+ * Conversation is spoken as-is: no lead-in, no outro.
+ *
+ * Every other intent gets scaffolding ("Here's what needs you." … "Take it one
+ * step at a time.") because it's delivering a *result*. A conversational reply is
+ * already a complete human sentence, and the scaffolding actively hurts it — a
+ * read-aloud user who typed "I'm completely overwhelmed" was hearing:
+ *
+ *   "Here's what I found. That sounds genuinely heavy… Take it one step at a time."
+ *
+ * which is exactly the chirpy automation the crisis bypass exists to prevent,
+ * applied to the case that actually happens.
+ */
+const UNSCAFFOLDED_INTENTS = new Set(["chat"]);
+
 export interface A11yPrefs {
   verbosity: Verbosity;
   readingLevel: ReadingLevel;
@@ -54,7 +69,13 @@ export function resolveA11yPrefs(stored?: {
 export function condense(text: string, verbosity: Verbosity): string {
   if (verbosity === "standard") return text;
   const first = text.split(/(?<=[.!?])\s+/)[0] ?? text;
-  return first.replace(/[—–-].*$/, "").trim();
+  // Cut a trailing em/en-dash ASIDE, not a hyphen.
+  //
+  // This was `[—–-]`, a class that includes the plain ASCII hyphen — so brief mode
+  // truncated at the first hyphen ANYWHERE: "Review the auth-service PR" became
+  // "Review the auth". A dash used as punctuation is surrounded by whitespace; a
+  // hyphen inside a compound word is not, which is exactly what distinguishes them.
+  return first.replace(/\s+[—–]\s+.*$/, "").replace(/\s+-\s+.*$/, "").trim();
 }
 
 /**
@@ -95,5 +116,9 @@ export function toSpeech(input: SpeechInput, locale: Locale = "en"): string {
     .replace(/<(https?:\/\/[^>]+)>/g, "$1")            // <url>       -> url
     .replace(/\s*;\s*/g, ". ")
     .replace(/[*_>#`~]/g, "");
+
+  // A conversational reply speaks for itself — see UNSCAFFOLDED_INTENTS.
+  if (UNSCAFFOLDED_INTENTS.has(input.intent)) return body.trim();
+
   return `${opener} ${body} ${t("speech.outro", locale)}`;
 }

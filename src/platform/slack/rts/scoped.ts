@@ -57,14 +57,27 @@ export class ScopedRtsClient implements RtsClient {
 
   async search(params: RtsSearchParams): Promise<RtsSearchResult> {
     const res = await this.inner.search(params);
-    const messages = res.messages.filter(
-      (m) =>
-        (this.watched === undefined || this.watched.has(m.channelId)) &&
-        !this.muted.has(m.authorId),
-    );
+
+    const messages = res.messages.filter((m) => {
+      // A muted person is muted everywhere, in every source.
+      if (this.muted.has(m.authorId)) return false;
+      if (this.watched === undefined) return true;
+      // The channel allowlist is about SLACK CHANNELS. Attention-OS sources
+      // (email, calendar) carry synthetic ids ("EMAIL", "CAL") that can never be
+      // in a Slack channel picker — so applying the allowlist to them would have
+      // silently deleted 100% of a user's email and calendar the moment they
+      // picked any channel, with no error and no hint. The two features would
+      // have been quietly mutually exclusive.
+      if (m.source && m.source !== "slack") return true;
+      return this.watched.has(m.channelId);
+    });
+
+    // A muted author must not reach the prompt through the roster either — the
+    // LLM is handed `users` alongside the messages.
+    const users = res.users.filter((u) => !this.muted.has(u.id));
 
     // `returned` must reflect what Tempo actually reasoned over, not what Slack
     // handed back — the metrics and the "I scanned N messages" line read it.
-    return { ...res, messages, meta: { ...res.meta, returned: messages.length } };
+    return { ...res, messages, users, meta: { ...res.meta, returned: messages.length } };
   }
 }
