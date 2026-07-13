@@ -13,6 +13,7 @@
 import type { LlmPort, RtsClient, RtsMessage } from "./ports.js";
 import { CORPUS_QUERY } from "./ports.js";
 import {
+  CANDIDATE_LIMIT,
   ClassificationSchema,
   SYSTEM,
   buildPrompt,
@@ -36,7 +37,7 @@ async function gatherCandidates(
   rts: RtsClient,
   afterTs: string,
 ): Promise<RtsMessage[]> {
-  const res = await rts.search({ query: CORPUS_QUERY, after: afterTs, limit: 50 });
+  const res = await rts.search({ query: CORPUS_QUERY, after: afterTs, limit: CANDIDATE_LIMIT });
   const byKey = new Map<string, RtsMessage>();
   for (const m of res.messages) byKey.set(m.permalink || `${m.channelId}:${m.ts}`, m);
   return [...byKey.values()];
@@ -65,7 +66,13 @@ export async function runTriage(
 
   const enriched: TriageItem[] = items
     .map((c): TriageItem | null => {
-      const m = byLink.get(c.permalink);
+      // Resolve by prompt index (see ItemSchema.id). The permalink lookup is a
+      // fallback for a model that echoes the URL instead of the index.
+      const byIndex =
+        Number.isInteger(c.id) && c.id >= 0 && c.id < candidates.length
+          ? candidates[c.id]
+          : undefined;
+      const m = byIndex ?? (c.permalink ? byLink.get(c.permalink) : undefined);
       if (!m) return null;
       return {
         permalink: m.permalink,

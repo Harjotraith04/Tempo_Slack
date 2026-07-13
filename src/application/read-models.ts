@@ -29,6 +29,12 @@ export async function liveTriage(ctx: TempoContext): Promise<TriageResult> {
 /** Live commitments with local overrides layered on + delivered promises
  * auto-closed (so the Ledger self-cleans everywhere it's read). */
 export async function liveCommitments(ctx: TempoContext): Promise<Commitment[]> {
+  // Deliberately NOT bounded by `afterTsOf(ctx)`. Triage asks "what happened
+  // while I was away", but a commitment is usually made BEFORE you go away —
+  // scoping the ledger to the since-last-active window drops the user's own
+  // open promises (verified: it deleted "Send the finalized Atlas API spec"
+  // from the demo). The scan is bounded by CANDIDATE_LIMIT instead, which is
+  // what actually costs time — one RTS page, not the width of the window.
   const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
   for (const pl of await detectFulfilledCommitments(ctx.rts, fresh, { afterTs: afterTsOf(ctx) })) {
     await ctx.store.commitments.markDone(ctx.subjectUserId, pl);

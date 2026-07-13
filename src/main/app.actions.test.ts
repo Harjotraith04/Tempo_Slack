@@ -59,6 +59,7 @@ function fakeClient() {
     chat: {
       postEphemeral: vi.fn().mockResolvedValue({ ok: true }),
       postMessage: vi.fn().mockResolvedValue({ ok: true }),
+      update: vi.fn().mockResolvedValue({ ok: true }),
     },
     views: {
       open: vi.fn().mockResolvedValue({ ok: true }),
@@ -463,19 +464,48 @@ describe("v2.0 Workflow Builder custom steps", () => {
 });
 
 describe("agent-experience DM handler (top-level message.im)", () => {
-  it("routes a plain human DM through the orchestrator and replies with blocks", async () => {
+  it("posts an instant placeholder, then edits the real blocks into it", async () => {
     const client = fakeClient();
-    const say = vi.fn().mockResolvedValue(undefined);
+    // Bolt's say() resolves to the chat.postMessage response, so the handler
+    // can edit the message it just posted.
+    const say = vi.fn().mockResolvedValue({ ok: true, channel: "D1", ts: "111.222" });
     expect(app.messages.length).toBe(1);
     await app.messages[0]!({
       message: { channel_type: "im", text: "what needs me today?", user: "U_DM1" },
       say,
       client,
     });
+
+    // The user sees something immediately — the triage itself is an RTS+LLM
+    // round-trip, and a silent DM reads as a broken app.
     expect(say).toHaveBeenCalledTimes(1);
-    const arg = say.mock.calls[0]![0];
+    expect(say.mock.calls[0]![0].text).toContain("Reading your Slack");
+
+    // ...and the answer replaces it in place, rather than arriving as a second
+    // message below a stale "Reading your Slack…".
+    expect(client.chat.update).toHaveBeenCalledTimes(1);
+    const arg = client.chat.update.mock.calls[0]![0];
+    expect(arg.channel).toBe("D1");
+    expect(arg.ts).toBe("111.222");
     expect(arg.text.length).toBeGreaterThan(0);
     expect(Array.isArray(arg.blocks)).toBe(true);
+  });
+
+  it("never strands the placeholder: falls back to a new message if the edit fails", async () => {
+    const client = fakeClient();
+    client.chat.update.mockRejectedValueOnce(new Error("edit failed"));
+    const say = vi.fn().mockResolvedValue({ ok: true, channel: "D1", ts: "111.222" });
+    await app.messages[0]!({
+      message: { channel_type: "im", text: "what needs me today?", user: "U_DM1" },
+      say,
+      client,
+    });
+    // Placeholder, then the real answer posted separately — the one thing that
+    // must never happen is the user being left with only "Reading your Slack…".
+    expect(say).toHaveBeenCalledTimes(2);
+    const answer = say.mock.calls[1]![0];
+    expect(answer.text.length).toBeGreaterThan(0);
+    expect(Array.isArray(answer.blocks)).toBe(true);
   });
 
   it("ignores threaded messages — those belong to the Assistant middleware", async () => {

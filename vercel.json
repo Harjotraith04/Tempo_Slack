@@ -3,6 +3,11 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "public",
+  "functions": {
+    "api/slack/events.ts": { "maxDuration": 120, "memory": 2048 },
+    "api/cron/morning-digest.ts": { "maxDuration": 300, "memory": 2048 },
+    "api/mcp/server.ts": { "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/cron/morning-digest",

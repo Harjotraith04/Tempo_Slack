@@ -23,10 +23,24 @@ export interface Commitment {
   sourceText: string;
 }
 
+/**
+ * How many messages one ledger run pulls from RTS. Same reasoning as triage's
+ * CANDIDATE_LIMIT: the live adapter pages at 20 and follows `next_cursor`
+ * sequentially, and every candidate costs sequentially-decoded output tokens.
+ */
+export const CANDIDATE_LIMIT = 20;
+
 export const ExtractSchema = z.object({
   items: z.array(
     z.object({
-      permalink: z.string(),
+      /**
+       * The `[n]` index of the message in the prompt — NOT its permalink.
+       * Echoing a ~28-token URL per message was the ledger's share of the
+       * latency problem; see triage/domain.ts ItemSchema for the full story.
+       */
+      id: z.number().int().min(0),
+      /** Fallback only, for a model that volunteers the permalink anyway. */
+      permalink: z.string().optional(),
       isCommitment: z.boolean(),
       direction: z.enum(["i_owe", "owed_to_me"]),
       counterparty: z.string(),
@@ -77,12 +91,11 @@ export function sortByUrgency(commitments: Commitment[]): Commitment[] {
 }
 
 export function buildPrompt(messages: RtsMessage[]): string {
-  return messages
-    .map(
-      (m) =>
-        `permalink=${m.permalink} from=${m.authorRealName ?? m.authorName} to_channel=#${m.channelName} (${m.channelType})\n  "${m.text}"`,
-    )
-    .join("\n");
+  const lines = messages.map(
+    (m, i) =>
+      `[${i}] from=${m.authorRealName ?? m.authorName} to_channel=#${m.channelName} (${m.channelType})\n  "${m.text}"`,
+  );
+  return `Extract commitments from these ${messages.length} messages. Return one entry per message, setting "id" to the number in its square brackets.\n\n${lines.join("\n")}`;
 }
 
 export function hash(s: string): string {
@@ -93,12 +106,16 @@ export function hash(s: string): string {
 
 // ── Deterministic mock extractor ─────────────────────────────────────────────
 
-export function mockExtract(m: RtsMessage): z.infer<typeof ExtractSchema>["items"][number] | null {
+export function mockExtract(
+  m: RtsMessage,
+  i: number,
+): z.infer<typeof ExtractSchema>["items"][number] | null {
   const t = m.text.toLowerCase();
   const me = (m.authorName ?? "").toLowerCase() === "sam";
 
   if (t.includes("finalized atlas api spec") && t.includes("friday")) {
     return {
+      id: i,
       permalink: m.permalink,
       isCommitment: true,
       direction: "i_owe",
@@ -109,6 +126,7 @@ export function mockExtract(m: RtsMessage): z.infer<typeof ExtractSchema>["items
   }
   if (t.includes("pricing numbers") && t.includes("wednesday")) {
     return {
+      id: i,
       permalink: m.permalink,
       isCommitment: true,
       direction: "owed_to_me",
@@ -121,6 +139,7 @@ export function mockExtract(m: RtsMessage): z.infer<typeof ExtractSchema>["items
   if ((t.includes("i'll") || t.includes("i will")) && /by\s+\w+/.test(t)) {
     const due = t.match(/by\s+([a-z]+)/)?.[1];
     return {
+      id: i,
       permalink: m.permalink,
       isCommitment: true,
       direction: me ? "i_owe" : "owed_to_me",
@@ -129,7 +148,7 @@ export function mockExtract(m: RtsMessage): z.infer<typeof ExtractSchema>["items
       dueText: due ? `by ${due}` : undefined,
     };
   }
-  return { permalink: m.permalink, isCommitment: false, direction: "i_owe", counterparty: "", what: "" };
+  return { id: i, permalink: m.permalink, isCommitment: false, direction: "i_owe", counterparty: "", what: "" };
 }
 
 // ── Fulfillment detection (v2.8) ─────────────────────────────────────────────

@@ -15,6 +15,7 @@
 import { App, Assistant, ExpressReceiver, LogLevel } from "@slack/bolt";
 import { config, flags, assertSlackRuntime, assertSecretsHardened } from "../config.js";
 import { webClientOptions } from "../shared/webClientOptions.js";
+import { withTimeout } from "../shared/timeout.js";
 import { buildContext } from "../application/context.js";
 import { createContainer } from "../application/container.js";
 import { respond as tempoRespond, routeIntent, triageAll } from "../application/orchestrator.js";
@@ -36,6 +37,24 @@ const DEFAULT_SNOOZE_SECS = 4 * 3600;
 /** Calm, honest failure copy — reassures the user nothing was changed. */
 const SNAG = "I hit a snag — nothing was changed. Try again in a moment.";
 
+/** The first thing the user sees, within ~1s of hitting enter. */
+const THINKING = "_Reading your Slack…_";
+
+/**
+ * Ceiling on one orchestrator turn. Well above the ~10s a live triage takes and
+ * well under the function's own limit, so the user gets SNAG instead of silence.
+ */
+const RESPOND_TIMEOUT_MS = 45_000;
+
+/** Marks an error whose user-facing message has already been delivered, so
+ * `safely()` doesn't post a second apology on top of it. */
+class AlreadyToldTheUser extends Error {
+  constructor(readonly reason: unknown) {
+    super("already reported to the user");
+    this.name = "AlreadyToldTheUser";
+  }
+}
+
 /**
  * Runs a handler's post-ack work, and on failure logs it and runs an optional
  * recovery (e.g. a calm ephemeral) — a thrown error must never crash a Slack
@@ -50,6 +69,12 @@ export async function safely(
   try {
     await work();
   } catch (err) {
+    // The placeholder path already rewrote its own message to SNAG. Running
+    // `recover` here would apologise twice.
+    if (err instanceof AlreadyToldTheUser) {
+      console.error(`${label} error`, err.reason);
+      return;
+    }
     console.error(`${label} error`, err);
     if (recover) {
       try {
@@ -59,6 +84,68 @@ export async function safely(
       }
     }
   }
+}
+
+/**
+ * Post a placeholder immediately, do the slow work, then EDIT the placeholder
+ * into the real answer.
+ *
+ * A live triage is an RTS + LLM round-trip, and Slack shows no typing indicator
+ * for a bot posting into a DM — so without this the user stares at nothing and
+ * concludes the app is broken. (The Assistant pane has `setStatus` for exactly
+ * this, but the Agent experience delivers DMs as plain `message.im`, which that
+ * middleware never sees — so this path had no affordance at all.)
+ *
+ * The one unacceptable outcome is a message left reading "Reading your Slack…"
+ * forever, so every failure path is covered:
+ *   - placeholder fails to post → just post the answer as a new message
+ *   - chat.update fails         → post the answer as a new message
+ *   - the work throws           → rewrite the placeholder to SNAG, then signal
+ *                                 that the user has already been told
+ */
+async function replyWithPlaceholder<T extends { text: string; blocks: unknown[] }>(
+  client: any,
+  say: any,
+  work: () => Promise<T>,
+  opts: { threadTs?: string } = {},
+): Promise<T> {
+  const thread = opts.threadTs ? { thread_ts: opts.threadTs } : {};
+  let channel: string | undefined;
+  let ts: string | undefined;
+  try {
+    const ph = (await say({ text: THINKING, ...thread })) as
+      | { channel?: string; ts?: string }
+      | undefined;
+    channel = ph?.channel;
+    ts = ph?.ts;
+  } catch (err) {
+    // A failed placeholder must never cost the user their answer.
+    console.error("placeholder post failed", err);
+  }
+
+  let res: T;
+  try {
+    res = await work();
+  } catch (err) {
+    if (channel && ts) {
+      await client.chat
+        .update({ channel, ts, text: SNAG, blocks: [] })
+        .catch((e: unknown) => console.error("placeholder error-update failed", e));
+      throw new AlreadyToldTheUser(err);
+    }
+    throw err;
+  }
+
+  if (channel && ts) {
+    try {
+      await client.chat.update({ channel, ts, text: res.text, blocks: res.blocks as any });
+      return res;
+    } catch (err) {
+      console.error("chat.update failed; falling back to a new message", err);
+    }
+  }
+  await say({ text: res.text, blocks: res.blocks as any, ...thread });
+  return res;
 }
 
 /** Prefer the user's stored OAuth token; fall back to the single demo token. */
@@ -156,8 +243,13 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "agent_dm",
       async () => {
-        const res = await tempoRespond(await contextFor(userId), m.text);
-        await say({ text: res.text, blocks: res.blocks as any });
+        const res = await replyWithPlaceholder(client, say, async () =>
+          withTimeout(
+            tempoRespond(await contextFor(userId), m.text),
+            RESPOND_TIMEOUT_MS,
+            "tempoRespond(agent_dm)",
+          ),
+        );
         await maybeSendReadAloud(client, userId, res.speech);
       },
       () => say(SNAG),
@@ -180,14 +272,24 @@ export function registerHandlers(app: BoltApp) {
 
   app.event("app_mention", async ({ event, say, client }) => {
     const userId = (event as any).user ?? "U_SAM";
+    const threadTs = (event as any).ts;
     await safely(
       "app_mention",
       async () => {
-        const res = await tempoRespond(await contextFor(userId), (event as any).text ?? "triage");
-        await say({ text: res.text, blocks: res.blocks as any, thread_ts: (event as any).ts });
+        const res = await replyWithPlaceholder(
+          client,
+          say,
+          async () =>
+            withTimeout(
+              tempoRespond(await contextFor(userId), (event as any).text ?? "triage"),
+              RESPOND_TIMEOUT_MS,
+              "tempoRespond(app_mention)",
+            ),
+          { threadTs },
+        );
         await maybeSendReadAloud(client, userId, res.speech);
       },
-      () => say({ text: SNAG, thread_ts: (event as any).ts }),
+      () => say({ text: SNAG, thread_ts: threadTs }),
     );
   });
 

@@ -15,6 +15,7 @@
 import type { LlmPort, RtsClient } from "./ports.js";
 import { CORPUS_QUERY } from "./ports.js";
 import {
+  CANDIDATE_LIMIT,
   ExtractSchema,
   SYSTEM,
   buildPrompt,
@@ -35,21 +36,27 @@ export async function runLedger(
   // Corpus, not keywords: commitment language is endlessly varied ("on me",
   // "leave it with me", "consider it done") and an AND-scoped lexical query
   // would miss most of it. The extractor reads the window and finds promises.
-  const res = await rts.search({ query: CORPUS_QUERY, after: opts.afterTs, limit: 50 });
-  const byLink = new Map(res.messages.map((m) => [m.permalink, m]));
+  const res = await rts.search({ query: CORPUS_QUERY, after: opts.afterTs, limit: CANDIDATE_LIMIT });
+  const candidates = res.messages;
+  const byLink = new Map(candidates.map((m) => [m.permalink, m]));
 
   const { items } = await llm.structured({
     system: SYSTEM,
-    prompt: buildPrompt(res.messages),
+    prompt: buildPrompt(candidates),
     schema: ExtractSchema,
     temperature: 0.1,
-    mock: () => ({ items: res.messages.map(mockExtract).filter(Boolean) as any }),
+    mock: () => ({ items: candidates.map(mockExtract).filter(Boolean) as any }),
   });
 
   const commitments: Commitment[] = [];
   for (const it of items) {
     if (!it.isCommitment) continue;
-    const m = byLink.get(it.permalink);
+    // Resolve by prompt index (see ExtractSchema.id); permalink is the fallback.
+    const byIndex =
+      Number.isInteger(it.id) && it.id >= 0 && it.id < candidates.length
+        ? candidates[it.id]
+        : undefined;
+    const m = byIndex ?? (it.permalink ? byLink.get(it.permalink) : undefined);
     if (!m) continue;
     const dueTs = parseDue(it.dueText, m.ts);
     commitments.push({
@@ -82,6 +89,6 @@ export async function detectFulfilledCommitments(
 ): Promise<string[]> {
   const eligible = fresh.some((c) => c.direction === "i_owe");
   if (!eligible) return [];
-  const res = await rts.search({ query: CORPUS_QUERY, after: opts.afterTs, limit: 50 });
+  const res = await rts.search({ query: CORPUS_QUERY, after: opts.afterTs, limit: CANDIDATE_LIMIT });
   return matchFulfillments(fresh, res.messages);
 }

@@ -33,8 +33,31 @@ export interface TriageResult {
   handledQuietly: number;
 }
 
+/**
+ * How many messages one triage pulls from RTS.
+ *
+ * The live adapter pages at 20 per request and follows `next_cursor`
+ * SEQUENTIALLY, so the round-trip count is ceil(limit/20): 50 → 3, 20 → 1.
+ * Every candidate also costs output tokens in the classify call below, and
+ * output tokens are decoded one at a time — so this number, not the prompt
+ * size, is what sets the reply latency.
+ */
+export const CANDIDATE_LIMIT = 20;
+
 export const ItemSchema = z.object({
-  permalink: z.string(),
+  /**
+   * The `[n]` index of the message in the prompt — NOT its permalink.
+   *
+   * This field used to be `permalink: z.string()`, and that single choice was
+   * the entire latency problem: a Slack permalink is ~28 tokens, it tokenizes
+   * badly, and output tokens are decoded autoregressively. Echoing an index
+   * instead cuts roughly a third of the output tokens, and it removes a real
+   * failure mode — a model that mistyped one character of a URL had its item
+   * silently dropped on the way back (`byLink.get()` → undefined).
+   */
+  id: z.number().int().min(0),
+  /** Fallback only, for a model that volunteers the permalink anyway. */
+  permalink: z.string().optional(),
   category: z.enum(["ACT", "BLOCKER", "FYI", "NOISE"]),
   urgency: z.number().min(0).max(100),
   reason: z.string(),
@@ -62,7 +85,7 @@ export function buildPrompt(messages: RtsMessage[]): string {
     (m, i) =>
       `[${i}] permalink=${m.permalink} channel=#${m.channelName ?? "?"} (${m.channelType}) from=${m.authorRealName ?? m.authorName ?? m.authorId}${m.mentionsMe ? " (mentions me)" : ""}\n    "${m.text}"`,
   );
-  return `Classify these ${messages.length} messages. Return an entry for every permalink.\n\n${lines.join("\n")}`;
+  return `Classify these ${messages.length} messages. Return exactly one entry per message, setting "id" to the number in its square brackets. Do not repeat the permalink — the id is enough.\n\n${lines.join("\n")}`;
 }
 
 export function truncate(s: string, n: number): string {
@@ -71,7 +94,7 @@ export function truncate(s: string, n: number): string {
 
 // ── Deterministic mock classifier (mirrors the seeded narrative) ─────────────
 
-export function mockClassify(m: RtsMessage): z.infer<typeof ItemSchema> {
+export function mockClassify(m: RtsMessage, i: number): z.infer<typeof ItemSchema> {
   const t = m.text.toLowerCase();
   const dm = m.channelType === "im";
   const base = (
@@ -79,7 +102,7 @@ export function mockClassify(m: RtsMessage): z.infer<typeof ItemSchema> {
     urgency: number,
     reason: string,
     suggestedAction: string,
-  ) => ({ permalink: m.permalink, category, urgency, reason, suggestedAction });
+  ) => ({ id: i, permalink: m.permalink, category, urgency, reason, suggestedAction });
 
   // Most-specific patterns first.
   if (t.includes("no rush") || t.includes("whenever you get a chance")) {

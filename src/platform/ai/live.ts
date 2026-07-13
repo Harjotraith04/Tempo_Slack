@@ -40,6 +40,16 @@ function model() {
   return openai(config.ai.model, { structuredOutputs: false });
 }
 
+/**
+ * Bound every call in wall-clock terms. The AI SDK defaults to `maxRetries: 2`
+ * (three attempts, with backoff and no overall deadline), so a transient 429
+ * could silently turn one slow call into a minutes-long one — and Slack has
+ * already been acked, so nothing would ever time it out. One retry is enough
+ * for a blip; the abort signal is the hard stop.
+ */
+const CALL_TIMEOUT_MS = 35_000;
+const MAX_RETRIES = 1;
+
 export class LiveLlm implements LlmPort {
   async structured<T>(opts: StructuredOpts<T>): Promise<T> {
     const { object } = await generateObject({
@@ -48,6 +58,8 @@ export class LiveLlm implements LlmPort {
       system: opts.system,
       prompt: opts.prompt,
       temperature: opts.temperature ?? 0.2,
+      abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+      maxRetries: MAX_RETRIES,
     });
     return object;
   }
@@ -58,6 +70,8 @@ export class LiveLlm implements LlmPort {
       system: opts.system,
       prompt: opts.prompt,
       temperature: opts.temperature ?? 0.4,
+      abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+      maxRetries: MAX_RETRIES,
     });
     return out;
   }
