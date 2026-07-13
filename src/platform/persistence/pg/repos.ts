@@ -46,6 +46,10 @@ const optStr = (v: unknown): string | undefined =>
   v === null || v === undefined ? undefined : String(v);
 const optBool = (v: unknown): boolean | undefined =>
   v === null || v === undefined ? undefined : Boolean(v);
+/** `text[]` comes back as a JS array. An empty array means the same as NULL here
+ * (no allowlist / nobody muted), so normalise both to undefined. */
+const optArr = (v: unknown): string[] | undefined =>
+  Array.isArray(v) && v.length ? v.map(String) : undefined;
 
 // ── Row mappers ───────────────────────────────────────────────────────────────
 
@@ -58,6 +62,8 @@ function mapPrefs(r: Row): UserPrefs {
     maxItems: optNum(r.max_items),
     focusDefaultMins: optNum(r.focus_default_mins),
     dndDefaultMins: optNum(r.dnd_default_mins),
+    watchedChannels: optArr(r.watched_channels),
+    mutedUsers: optArr(r.muted_users),
     lastActiveTs: optNum(r.last_active_ts),
     onboardedAt: optNum(r.onboarded_at),
     updatedAt: num(r.updated_at),
@@ -168,12 +174,13 @@ export function buildPgPrefsRepo(db: Db): PrefsRepo {
       await db.query(
         `INSERT INTO tempo_prefs
            (user_id, verbosity, reading_level, read_aloud, max_items,
-            focus_default_mins, dnd_default_mins, last_active_ts, onboarded_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            focus_default_mins, dnd_default_mins, watched_channels, muted_users,
+            last_active_ts, onboarded_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
          ON CONFLICT (user_id) DO UPDATE SET
            verbosity = $2, reading_level = $3, read_aloud = $4, max_items = $5,
-           focus_default_mins = $6, dnd_default_mins = $7, last_active_ts = $8,
-           onboarded_at = $9, updated_at = $10`,
+           focus_default_mins = $6, dnd_default_mins = $7, watched_channels = $8,
+           muted_users = $9, last_active_ts = $10, onboarded_at = $11, updated_at = $12`,
         [
           userId,
           next.verbosity ?? null,
@@ -182,6 +189,8 @@ export function buildPgPrefsRepo(db: Db): PrefsRepo {
           next.maxItems ?? null,
           next.focusDefaultMins ?? null,
           next.dndDefaultMins ?? null,
+          next.watchedChannels ?? null,
+          next.mutedUsers ?? null,
           next.lastActiveTs ?? null,
           next.onboardedAt ?? null,
           next.updatedAt,

@@ -486,6 +486,8 @@ export interface SettingsModalPrefs {
   readAloud: boolean;
   maxItems: number;
   focusDefaultMins?: number;
+  watchedChannels?: string[];
+  mutedUsers?: string[];
 }
 
 /** Modal view for `views.open`. Submission lands in `app.view("settings_modal", ...)`. */
@@ -552,6 +554,48 @@ export function settingsModalView(prefs: SettingsModalPrefs): any {
           action_id: "value",
           options: [READ_ALOUD_OPTION],
           initial_options: prefs.readAloud ? [READ_ALOUD_OPTION] : [],
+        },
+      },
+
+      // ── Consent scope ───────────────────────────────────────────────────
+      // Slack renders both pickers itself (multi_channels_select /
+      // multi_users_select), so there's no conversations.list call and no extra
+      // scope to request. Left empty, Tempo watches everywhere — which is what
+      // it did before these existed.
+      { type: "divider" },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: "*Where Tempo may look.* It already only reads what _you_ can see. This narrows it further \u2014 leave blank to watch everywhere.",
+          },
+        ],
+      },
+      {
+        type: "input",
+        block_id: "watched_channels",
+        optional: true,
+        label: { type: "plain_text", text: "Only watch these channels" },
+        hint: { type: "plain_text", text: "Blank = every channel you can see." },
+        element: {
+          type: "multi_channels_select",
+          action_id: "value",
+          initial_channels: prefs.watchedChannels?.length ? prefs.watchedChannels : undefined,
+          placeholder: { type: "plain_text", text: "Everywhere I can see" },
+        },
+      },
+      {
+        type: "input",
+        block_id: "muted_users",
+        optional: true,
+        label: { type: "plain_text", text: "Never track these people" },
+        hint: { type: "plain_text", text: "Tempo will ignore them wherever they post." },
+        element: {
+          type: "multi_users_select",
+          action_id: "value",
+          initial_users: prefs.mutedUsers?.length ? prefs.mutedUsers : undefined,
+          placeholder: { type: "plain_text", text: "Nobody muted" },
         },
       },
     ],

@@ -10,6 +10,7 @@
 import { config } from "../config.js";
 import type { RtsClient } from "../platform/slack/rts/index.js";
 import { CachingRtsClient } from "../platform/slack/rts/caching.js";
+import { ScopedRtsClient, isUnscoped, type RtsScope } from "../platform/slack/rts/scoped.js";
 import { MultiSourceRtsClient, getExtraSources } from "../platform/sources/index.js";
 import type { LlmPort } from "../ports/ai.js";
 import type { Store } from "../ports/store.js";
@@ -44,6 +45,9 @@ export interface BuildContextOpts {
   llm?: LlmPort;
   /** Override the composition container (tests inject mock adapters). */
   container?: Container;
+  /** The user's consent scope — which channels Tempo may read, who it must
+   * ignore. Absent/empty = everywhere, i.e. the behaviour before this existed. */
+  scope?: RtsScope;
 }
 
 export function buildContext(opts: BuildContextOpts = {}): TempoContext {
@@ -57,7 +61,11 @@ export function buildContext(opts: BuildContextOpts = {}): TempoContext {
   // source (identical to every prior version).
   const primary = container.rts({ userToken: opts.userToken, subjectUserId: opts.subjectUserId });
   const extras = getExtraSources();
-  const grounded = extras.length ? new MultiSourceRtsClient(primary, extras) : primary;
+  const multi = extras.length ? new MultiSourceRtsClient(primary, extras) : primary;
+  // Consent scope wraps the grounded source, so EVERY module (triage, ledger,
+  // decoder, re-entry) inherits it without knowing it exists. Skipped entirely
+  // when the user hasn't narrowed anything — no wrapper, no behaviour change.
+  const grounded = isUnscoped(opts.scope) ? multi : new ScopedRtsClient(multi, opts.scope!);
   return {
     // Wrap the resolved client in a per-request cache: a single turn often
     // searches RTS for the same thing more than once (module + decode/draft

@@ -159,11 +159,14 @@ async function resolveUserToken(slackUserId: string): Promise<string | undefined
 const container = createContainer();
 
 async function contextFor(client: any, slackUserId: string) {
+  const prefs = await getStore().prefs.get(slackUserId);
   return buildContext({
     subjectUserId: slackUserId,
     subjectName: await resolveDisplayName(client, slackUserId),
     userToken: await resolveUserToken(slackUserId),
     container,
+    // The user's consent scope. Absent/empty = watch everywhere.
+    scope: { watchedChannels: prefs?.watchedChannels, mutedUsers: prefs?.mutedUsers },
   });
 }
 
@@ -319,7 +322,12 @@ export function registerHandlers(app: BoltApp) {
     if (!triggerId) return;
     const stored = await getStore().prefs.get(userId);
     const a11y = resolveA11yPrefs(stored);
-    const view = settingsModalView({ ...a11y, focusDefaultMins: stored?.focusDefaultMins });
+    const view = settingsModalView({
+      ...a11y,
+      focusDefaultMins: stored?.focusDefaultMins,
+      watchedChannels: stored?.watchedChannels,
+      mutedUsers: stored?.mutedUsers,
+    });
     await client.views.open({ trigger_id: triggerId, view });
   });
 
@@ -649,12 +657,21 @@ function parseSettingsSubmission(view: any): Partial<SettingsModalPrefs> {
   const focusMinsRaw = values.focus_default_mins?.value?.value;
   const readAloud = (values.read_aloud?.value?.selected_options ?? []).length > 0;
 
+  // Consent scope. An empty selection is MEANINGFUL — it means "clear the
+  // narrowing, watch everywhere again" — so these are always written, never
+  // conditionally spread like the fields above. Otherwise a user could never
+  // undo a channel filter once set.
+  const watchedChannels: string[] = values.watched_channels?.value?.selected_channels ?? [];
+  const mutedUsers: string[] = values.muted_users?.value?.selected_users ?? [];
+
   return {
     ...(verbosity ? { verbosity } : {}),
     ...(readingLevel ? { readingLevel } : {}),
     ...(maxItemsRaw ? { maxItems: Number(maxItemsRaw) } : {}),
     focusDefaultMins: focusMinsRaw ? Number(focusMinsRaw) : undefined,
     readAloud,
+    watchedChannels,
+    mutedUsers,
   };
 }
 

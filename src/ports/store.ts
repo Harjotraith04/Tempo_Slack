@@ -28,6 +28,14 @@ export interface UserPrefs {
   dndDefaultMins?: number;
   /** BCP-47-ish locale ("en", "es", "es-MX") — drives multilingual surfaces. */
   locale?: string;
+  /**
+   * Consent scope: the channel ids Tempo may ground in. Empty/absent = every
+   * channel the user can already see (the pre-existing behaviour — an allowlist
+   * that defaulted to *closed* would hand every current user an empty triage).
+   */
+  watchedChannels?: string[];
+  /** Author ids Tempo must ignore wherever they post. */
+  mutedUsers?: string[];
   lastActiveTs?: number;
   /** Set once the user has completed (or dismissed) first-run onboarding. */
   onboardedAt?: number;

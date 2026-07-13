@@ -78,4 +78,17 @@ export const MIGRATIONS: string[] = [
      updated_at bigint NOT NULL,
      PRIMARY KEY (user_id, author_id)
    )`,
+
+  // ── Additive column migrations ────────────────────────────────────────────
+  // `CREATE TABLE IF NOT EXISTS` is a no-op on an existing table, so columns
+  // added after a table first shipped need their own statement. ADD COLUMN IF
+  // NOT EXISTS is idempotent, which matters because MIGRATIONS runs on EVERY
+  // cold start (connect.ts) — a non-idempotent statement here would 500 the
+  // whole app on the second boot.
+  //
+  // Consent scope (v4.3): which channels Tempo may ground in, and who it must
+  // ignore. Both nullable — NULL/empty means "everywhere", the behaviour that
+  // predates this column.
+  `ALTER TABLE tempo_prefs ADD COLUMN IF NOT EXISTS watched_channels text[]`,
+  `ALTER TABLE tempo_prefs ADD COLUMN IF NOT EXISTS muted_users text[]`,
 ];
