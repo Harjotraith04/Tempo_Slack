@@ -124,7 +124,37 @@ what needs me today?
 
 > **"And it skipped the production incident — scary words, but engineering already closed it. That's the discrimination a keyword matcher can't do."**
 
-## 4d. Focus Guardian — 🌙 THE MONEY SHOT
+## 4d. The Translator — read their tone, then check your own
+
+*(This is the accessibility core. Two directions, back to back — their words, then mine.)*
+
+### ▶️ TYPE IN SLACK:
+
+```
+decode: "No rush 🙂 whenever you get a chance I guess. Not like the handoff is waiting on it."
+```
+
+**EXPECT:** literal meaning vs. **probably means**, the tone, the *real* urgency, what they expect back — and a confidence score with a caveat.
+
+> **"Literally: no rush. Actually: they're frustrated, the handoff is waiting, and this is due today. That gap — between what the words say and what they mean — is invisible to Slack, and it's exhausting to compute all day if implicit subtext doesn't come free to you.**
+>
+> **And look at the last line: seventy-two percent, and it *says* it can be wrong. It doesn't pretend to read minds."**
+
+👉 **Now the other direction — my own words:**
+
+### ▶️ TYPE IN SLACK:
+
+```
+draft: "No."
+```
+
+**EXPECT:** *"Likely to feel curt or dismissive"* + the risks + a warmer rewrite + a plain-language version.
+
+> **"Same module, pointed the other way. Before I send, I get to see how I'll land — and the rewrite is a suggestion I accept or reject. Tempo never sends anything for me.**
+>
+> **That's the whole thesis in two messages: understand what *they* meant, and control what *I* mean."**
+
+## 4e. Focus Guardian — 🌙 THE MONEY SHOT
 
 ⚠️ **Make sure your avatar / member list is visible in frame before you type.**
 
@@ -146,7 +176,7 @@ block 2 hours
 
 *(This costs you nothing and it's the difference between a judge trusting the rest of the demo and not.)*
 
-## 4e. Consent
+## 4f. Consent
 
 *(Click **App Home** → ⚙️ **Settings**.)*
 
@@ -227,6 +257,14 @@ I'm completely overwhelmed this week
 
 ```
 what needs me today?
+```
+
+```
+decode: "No rush 🙂 whenever you get a chance I guess. Not like the handoff is waiting on it."
+```
+
+```
+draft: "No."
 ```
 
 ```

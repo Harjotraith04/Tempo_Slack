@@ -10,7 +10,7 @@
 import type { KnownBlock } from "@slack/types";
 import { afterTsOf, type TempoContext } from "./context.js";
 import { liveTriage, liveCommitments } from "./read-models.js";
-import { decodeMessage } from "../modules/decoder.js";
+import { decodeMessage, checkDraft } from "../modules/decoder.js";
 import { runReentry } from "../modules/reentry.js";
 import { converse, CRISIS_SPEECH } from "../modules/converse.js";
 import { planFocusBlock } from "../modules/focus.js";
@@ -22,6 +22,7 @@ import {
   triageBlocks,
   ledgerBlocks,
   decodeBlocks,
+  draftCheckBlocks,
   reentryBlocks,
   focusBlocks,
   helpBlocks,
@@ -37,7 +38,16 @@ import { config, flags } from "../config.js";
 import { toSpeech, condense, applyReadingLevel, resolveA11yPrefs, resolveLocale } from "../accessibility/index.js";
 import { CORPUS_QUERY } from "../ports/rts.js";
 
-export type Intent = "triage" | "commitments" | "decode" | "catchup" | "focus" | "team" | "help" | "chat";
+export type Intent =
+  | "triage"
+  | "commitments"
+  | "decode"
+  | "draft"
+  | "catchup"
+  | "focus"
+  | "team"
+  | "help"
+  | "chat";
 
 export interface TempoResponse {
   intent: Intent;
@@ -59,6 +69,11 @@ export function routeIntent(input: string): Intent {
   // deliberately does NOT match "blocked" (as in "we're blocked on the spec"),
   // which is triage input, not a focus request.
   if (/\bblock\b.*\b(\d+\s*(h|hrs?|hours?|m|mins?|minutes?)\b|time|calendar)/.test(t)) return "focus";
+  // Checked before "decode": the two directions share vocabulary ("tone"), and
+  // the distinguishing signal is whose words they are — mine (draft) or theirs
+  // (decode).
+  if (/\b(draft|rewrite|how (does|will) (this|it) (sound|land|come across)|too (harsh|blunt|curt|rude))/.test(t))
+    return "draft";
   if (/\b(decode|what does this mean|really mean|tone|subtext|passive)/.test(t)) return "decode";
   if (/\b(team|manager mode|workload)\b/.test(t)) return "team";
   // Explicit menu request still gets the menu.
@@ -194,8 +209,22 @@ async function respondCore(
       if (record) await ctx.store.metrics.record(ctx.subjectUserId, { focusMinutesProtected: mins });
       return { intent, text: p.summary, blocks: focusBlocks(p) };
     }
+    case "draft": {
+      // The other direction of the decoder: not "what did they mean", but "how
+      // will *I* land". Same module, the user's own words.
+      const text = extractTarget(input, /draft|rewrite/i);
+      if (!text) {
+        return {
+          intent: "help",
+          text: 'Paste your draft and I\'ll tell you how it lands — e.g. `draft: "No."`',
+          blocks: helpBlocks(),
+        };
+      }
+      const c = await checkDraft(text, ctx.llm);
+      return { intent, text: `How it lands: ${c.howItLands}`, blocks: draftCheckBlocks(c) };
+    }
     case "decode": {
-      const pasted = extractDecodeTarget(input);
+      const pasted = extractTarget(input, /decode/i);
       const candidate = pasted ? undefined : await latestAmbiguousMessage(ctx);
       const text = pasted ?? candidate?.text;
       if (!text) {
@@ -246,9 +275,9 @@ async function respondCore(
   }
 }
 
-function extractDecodeTarget(input: string): string | undefined {
-  // "decode: <text>" or quoted text after the trigger word.
-  const afterColon = input.split(/decode\s*:?/i)[1]?.trim();
+function extractTarget(input: string, trigger: RegExp): string | undefined {
+  // "<trigger>: <text>" or quoted text after the trigger word.
+  const afterColon = input.split(new RegExp(`${trigger.source}\\s*:?`, "i"))[1]?.trim();
   if (afterColon && afterColon.length > 3) return stripQuotes(afterColon);
   const quoted = input.match(/["“](.+?)["”]/)?.[1];
   return quoted;

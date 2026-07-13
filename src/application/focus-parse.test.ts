@@ -57,3 +57,19 @@ describe("routeIntent — focus phrasings", () => {
     expect(routeIntent("we're blocked on the Atlas spec")).not.toBe("focus");
   });
 });
+
+/** The two directions of the decoder share vocabulary; only the ownership of the
+ * words differs. Their words → decode. My words → draft check. */
+describe("routeIntent — decode vs draft", () => {
+  it("routes their words to decode", () => {
+    for (const s of ['decode: "no rush 🙂"', "what does this really mean?", "what's the tone here"]) {
+      expect(routeIntent(s), s).toBe("decode");
+    }
+  });
+
+  it("routes my words to the draft check", () => {
+    for (const s of ['draft: "No."', "how will this land?", "is this too blunt", "rewrite this for me"]) {
+      expect(routeIntent(s), s).toBe("draft");
+    }
+  });
+});

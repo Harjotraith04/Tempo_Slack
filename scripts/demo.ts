@@ -13,7 +13,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildContext, afterTsOf, type TempoContext } from "../src/application/context.js";
 import { respond } from "../src/application/orchestrator.js";
-import { checkDraft } from "../src/modules/decoder.js";
 import { runTriage } from "../src/modules/triage.js";
 import { runLedger } from "../src/modules/ledger.js";
 import { draftReply, draftNudge, draftRenegotiation } from "../src/modules/draft.js";
@@ -87,8 +86,7 @@ function renderBlocks(blocks: any[]) {
 /**
  * The action-handler layer (src/app.ts) only fires from real Slack button
  * clicks, so it isn't reachable through the free-text orchestrator path above
- * — this exercises the same store + draft calls directly, the way Scene 3
- * bypasses respond() to call checkDraft() directly.
+ * — this exercises the same store + draft calls directly.
  */
 async function demoButtonLayer(ctx: TempoContext) {
   const triage = await runTriage(ctx.rts, ctx.llm, { name: "Sam", afterTs: afterTsOf(ctx) });
@@ -193,9 +191,7 @@ async function main() {
   );
 
   rule('3. "How will my reply land?" — Draft check');
-  renderBlocks(
-    (await import("../src/platform/slack/blockkit/index.js")).draftCheckBlocks(await checkDraft("No.", ctx.llm)),
-  );
+  renderBlocks((await respond(ctx, 'draft: "No."')).blocks);
 
   rule('4. "What did I promise?" — Commitment Ledger');
   renderBlocks((await respond(ctx, "show my commitments")).blocks);
