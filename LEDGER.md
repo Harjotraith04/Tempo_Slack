@@ -1,6 +1,12 @@
 # Tempo — Build Ledger
 
-**Current version:** v4.1.1 &nbsp;·&nbsp; **Updated:** 2026-07-06 &nbsp;·&nbsp; **Modes:** RTS=mock, AI=mock, SLACK_ACTIONS=mock, MCP=mock, TTS=mock, STORE=file, MCP_SERVER=off, PROACTIVE=off, TEAM=off, LOCALE=en, ATTENTION_OS=off
+**Current version:** v4.2.0 &nbsp;·&nbsp; **Updated:** 2026-07-13 &nbsp;·&nbsp; **Deployed:** https://tempo-slack.vercel.app
+
+**Production modes:** RTS=**live**, AI=**live** (OpenAI), STORE=**postgres** (Neon), SLACK_ACTIONS=live*, MCP_SERVER=on*, MCP(outbound)=mock, TTS=live, PROACTIVE=off, TEAM=off, ATTENTION_OS=off, LOCALE=en
+<br><sub>*set during the final bring-up — see [`SUBMIT.md`](SUBMIT.md) P1.</sub>
+
+> ⚠️ **Submission day.** [`SUBMIT.md`](SUBMIT.md) is the only current tracker. This file, `docs/STATUS.md`, and
+> `GO_LIVE.md` describe a pre-deployment world and are kept for history only.
 
 **How to use:** read this, then open [`MASTER_PLAN.md`](MASTER_PLAN.md) → Part V, find this version's phase, and build the next unchecked items (honoring the invariants in Part VI). Keep `npm run demo` + `npm test` green. Then append a `History` entry below, bump `version` in `package.json`, and **commit + push automatically** — short title-only commit message, no description, no AI co-author/attribution trailer.
 

@@ -2,9 +2,9 @@
 
 **Version:** v4.1.1 · **Updated:** 2026-07-07 · **Deadline:** Mon Jul 13 2026, 5 PM PDT (submit Jul 12)
 
-> One-line status: **100% built, ready to go live.** The 3-year roadmap (v0.1→v4.0, 284 tests) is complete and
-> green, every credential-free readiness task is done, and the only work left is the owner's live bring-up +
-> submission — the single ordered checklist in [`GO_LIVE.md`](../GO_LIVE.md).
+ ⚠️ **SUPERSEDED — this file is history.** Since it was written, Tempo was deployed
+> (https://tempo-slack.vercel.app), RTS/AI/Postgres went live, and a submission-day audit found the real
+> remaining gaps. **The only current tracker is [`SUBMIT.md`](../SUBMIT.md).** Read that instead.
 
 ---
 

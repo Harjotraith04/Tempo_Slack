@@ -1,5 +1,8 @@
 # GO LIVE — Tempo's credential-only final mile
 
+> ⚠️ **SUPERSEDED.** The deploy happened; this runbook describes the pre-deployment world. The only
+> current tracker is [`SUBMIT.md`](SUBMIT.md).
+
 Everything in the repo is built and green. This is the **one ordered checklist** that turns it live and
 submitted. It's the only work left, and it's all owner actions (accounts, keys, a recording) — no more features.
 Distilled from `MASTER_PLAN.md` Part VII §7.2 (W2/W3). Deadline **Mon Jul 13, 5 PM PDT — submit Sun Jul 12**,

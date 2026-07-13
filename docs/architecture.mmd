@@ -1,5 +1,5 @@
 %% Tempo — architecture diagram (Devpost submission asset)
-%% Render: npx -y @mermaid-js/mermaid-cli -i docs/architecture.mmd -o docs/architecture.svg -b transparent
+%% Render: npx -y @mermaid-js/mermaid-cli -i docs/architecture.mmd -o docs/architecture.png -c docs/mermaid.json -b '#0d1117' -w 2200 -s 2
 %% The three required technologies are the highlighted nodes: RTS API, MCP (both directions), Slack AI surfaces.
 flowchart TB
     subgraph SLACK["Slack (the user's workspace)"]
@@ -59,7 +59,7 @@ flowchart TB
     ORCH -->|SlackActions port| WEBAPI
     ORCH --> TTS
     ORCH --> DB
-    WEBAPI --> CANVAS
+    WEBAPI -.-> CANVAS
 
     classDef tech fill:#4A154B,stroke:#4A154B,color:#fff,stroke-width:2px
     classDef privacy fill:#1a7f37,stroke:#1a7f37,color:#fff

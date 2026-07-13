@@ -8,15 +8,23 @@
       name="description"
       content="Tempo triages the firehose, remembers your commitments, decodes tone, and protects your attention — grounded in real Slack context via the Real-Time Search API."
     />
+    <meta property="og:title" content="Tempo — an executive-function co-pilot for Slack" />
+    <meta
+      property="og:description"
+      content="Assistive technology for the Slack firehose. Built on the Real-Time Search API, MCP, and Slack AI."
+    />
     <style>
       :root {
         color-scheme: light dark;
         --bg: #ffffff;
         --fg: #1d1c1d;
-        --muted: #616061;
-        --line: #e5e5e5;
+        --muted: #5c5a58;
+        --line: #e6e3e0;
         --accent: #4a154b;
-        --card: #fafafa;
+        --accent-fg: #ffffff;
+        --card: #faf9f8;
+        --good: #1a7f37;
+        --radius: 12px;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -25,81 +33,278 @@
           --muted: #a8a29e;
           --line: #2a2725;
           --accent: #d6b8ff;
+          --accent-fg: #12100f;
           --card: #1a1817;
+          --good: #4ade80;
         }
       }
       * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
       body {
         margin: 0;
-        padding: 4rem 1.5rem;
+        padding: 0 1.5rem 5rem;
         background: var(--bg);
         color: var(--fg);
-        font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        display: flex;
-        justify-content: center;
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
-      main { width: 100%; max-width: 640px; }
-      h1 { font-size: 2.25rem; line-height: 1.15; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
-      .tag { color: var(--muted); font-size: 1.05rem; margin: 0 0 2rem; }
+      main { max-width: 900px; margin: 0 auto; }
+
+      /* ── Hero ─────────────────────────────────────────────────────────── */
+      header { padding: 5rem 0 3rem; border-bottom: 1px solid var(--line); }
+      .eyebrow {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.3rem 0.8rem;
+        margin-bottom: 1.5rem;
+      }
+      h1 {
+        font-size: clamp(2.5rem, 6vw, 3.75rem);
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        margin: 0 0 1rem;
+      }
+      .tag { font-size: clamp(1.1rem, 2.4vw, 1.35rem); color: var(--muted); margin: 0 0 2rem; max-width: 42ch; }
+      .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
       .cta {
         display: inline-block;
         background: var(--accent);
-        color: #fff;
+        color: var(--accent-fg);
         text-decoration: none;
         font-weight: 600;
-        padding: 0.8rem 1.5rem;
+        padding: 0.85rem 1.6rem;
         border-radius: 8px;
+        transition: opacity 0.15s;
       }
-      @media (prefers-color-scheme: dark) { .cta { color: #12100f; } }
-      .cta:hover { opacity: 0.9; }
-      ul { padding-left: 1.1rem; }
-      li { margin-bottom: 0.6rem; }
+      .cta:hover { opacity: 0.88; }
+      .cta.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+
+      /* ── Sections ─────────────────────────────────────────────────────── */
+      section { padding: 3.5rem 0; border-bottom: 1px solid var(--line); }
+      section:last-of-type { border-bottom: 0; }
+      h2 {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin: 0 0 1.5rem;
+        font-weight: 600;
+      }
+      h3 { font-size: 1.05rem; margin: 0 0 0.35rem; letter-spacing: -0.01em; }
+      .lede { font-size: 1.2rem; line-height: 1.6; margin: 0 0 1rem; max-width: 60ch; }
+      .lede strong { font-weight: 600; }
+
+      /* ── Module grid ──────────────────────────────────────────────────── */
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
       .card {
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 1.25rem 1.5rem;
-        margin-top: 2.5rem;
+        border-radius: var(--radius);
+        padding: 1.25rem 1.4rem;
       }
-      h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 0.75rem; }
-      code { background: var(--line); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.9em; }
-      footer { margin-top: 3rem; color: var(--muted); font-size: 0.875rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
+      .card p { margin: 0; color: var(--muted); font-size: 0.94rem; }
+
+      /* ── Media ────────────────────────────────────────────────────────── */
+      figure { margin: 0; }
+      .frame {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--card);
+      }
+      .frame img, .frame svg { display: block; width: 100%; height: auto; }
+      .ratio { position: relative; padding-top: 56.25%; }
+      .ratio > iframe {
+        position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+      }
+      figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.7rem; }
+      .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+
+      /* ── Tech ─────────────────────────────────────────────────────────── */
+      .tech { display: grid; gap: 1rem; }
+      .tech .card { display: flex; gap: 1rem; align-items: flex-start; }
+      .num {
+        flex: 0 0 auto;
+        width: 1.6rem; height: 1.6rem;
+        display: grid; place-items: center;
+        border-radius: 6px;
+        background: var(--accent); color: var(--accent-fg);
+        font-size: 0.78rem; font-weight: 700;
+      }
+      code {
+        background: var(--line);
+        padding: 0.12rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.88em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .privacy { border-color: var(--good); }
+      .privacy h3 { color: var(--good); }
+
+      footer {
+        padding-top: 2.5rem;
+        color: var(--muted);
+        font-size: 0.875rem;
+        border-top: 1px solid var(--line);
+      }
+      footer a { color: var(--muted); }
+      footer nav { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 1rem; }
     </style>
   </head>
   <body>
     <main>
-      <h1>Tempo</h1>
-      <p class="tag">
-        An executive-function co-pilot for Slack. It triages the firehose, remembers what you promised,
-        decodes what people actually meant, and protects your attention.
-      </p>
-
-      <a class="cta" href="/api/oauth/start">Add to Slack</a>
-
-      <div class="card">
-        <h2>What it does</h2>
-        <ul>
-          <li><strong>Triage</strong> — sorts a week away into Act / Blocker / FYI / Noise, grounded in real messages.</li>
-          <li><strong>Commitment Ledger</strong> — surfaces promises you made and promises made to you, with due dates.</li>
-          <li><strong>Tone Decoder</strong> — reads subtext and real urgency, then drafts a reply.</li>
-          <li><strong>Focus Guardian</strong> — flips DND and status, and books the block.</li>
-          <li><strong>Re-entry</strong> — the brief you need after time off.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <h2>Built on</h2>
-        <p style="margin: 0">
-          Slack <strong>Real-Time Search API</strong> (<code>assistant.search.context</code>, permission-aware,
-          user-token) · <strong>MCP</strong> in both directions — Tempo is itself an MCP server at
-          <code>/api/mcp/server</code> · <strong>Slack AI &amp; agent surfaces</strong> (<code>agent_view</code>,
-          App Home, Block Kit, Canvas, Lists).
+      <header>
+        <span class="eyebrow">Slack Agent Builder Challenge · Agent for Good</span>
+        <h1>Your working memory for Slack.</h1>
+        <p class="tag">
+          Tempo triages the firehose, remembers what you promised, decodes what people actually meant,
+          and protects your attention.
         </p>
-      </div>
+        <div class="actions">
+          <a class="cta" href="/api/oauth/start">Add to Slack</a>
+          <a class="cta secondary" href="#demo">Watch the 3-min demo</a>
+        </div>
+      </header>
+
+      <section id="why">
+        <h2>Why it exists</h2>
+        <p class="lede">
+          Slack has no memory of <em>you</em>. It remembers every message, and nothing about which ones were
+          load-bearing. So the work of deciding what matters — the executive function — is silently pushed onto
+          the person least able to spare it.
+        </p>
+        <p class="lede">
+          <strong>Tempo is assistive technology for that.</strong> It is built for the ~15–20% of knowledge
+          workers who are neurodivergent, for people working in a second language, for anyone coming back from
+          leave to 400 unreads — and, honestly, for everyone else too.
+        </p>
+      </section>
+
+      <section id="demo">
+        <h2>See it work</h2>
+        <figure>
+          <div class="frame ratio">
+            <!-- OWNER: replace VIDEO_ID with the YouTube id once the demo is uploaded. -->
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/VIDEO_ID"
+              title="Tempo — 3-minute demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </div>
+          <figcaption>Sam returns from a week away. Tempo turns 400 unreads into the four things that need them.</figcaption>
+        </figure>
+      </section>
+
+      <section id="what">
+        <h2>Five modules, one working memory</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Triage</h3>
+            <p>Sorts everything since you were last active into Act / Blocker / FYI / Noise — including the
+              blocker nobody @-mentioned you on.</p>
+          </div>
+          <div class="card">
+            <h3>Commitment Ledger</h3>
+            <p>Every promise you made and every promise made to you, with due dates, drift, and a draft to
+              nudge or renegotiate.</p>
+          </div>
+          <div class="card">
+            <h3>Tone Decoder</h3>
+            <p>Separates what a message literally says from what it means. Names the real urgency, and the
+              social expectation.</p>
+          </div>
+          <div class="card">
+            <h3>Focus Guardian</h3>
+            <p>Books the block: real Do-Not-Disturb, a status your team can see, and calendar time via MCP.</p>
+          </div>
+          <div class="card">
+            <h3>Re-entry</h3>
+            <p>The calm brief you need after time off — decisions made, what changed, who is waiting.</p>
+          </div>
+          <div class="card privacy">
+            <h3>Never auto-sends</h3>
+            <p>Tempo drafts; you send. Nothing leaves your account without your tap — the guarantee that makes
+              it safe to trust.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>How it's built</h2>
+        <figure>
+          <div class="frame">
+            <img src="/architecture.svg" alt="Tempo architecture: Slack surfaces feed Vercel entrypoints, which drive a hexagonal application core. The core grounds in the Slack Real-Time Search API and OpenAI, acts through the Slack Web API and outbound MCP clients, and persists only encrypted tokens and facts in Neon Postgres. Tempo also exposes itself as an inbound MCP server for external agents." />
+          </div>
+          <figcaption>Ports and adapters throughout — the domain modules import no SDKs, so every seam has a mock and a live implementation.</figcaption>
+        </figure>
+      </section>
+
+      <section id="tech">
+        <h2>All three hackathon technologies</h2>
+        <div class="tech">
+          <div class="card">
+            <span class="num">1</span>
+            <div>
+              <h3>Real-Time Search API</h3>
+              <p>
+                <code>assistant.search.context</code> with the user's <em>own</em> token — so Tempo sees exactly
+                what you can see, and nothing else. It's the only way to ground on the messages that never
+                mentioned you, which is precisely where the blockers hide. What it reads is never stored.
+              </p>
+            </div>
+          </div>
+          <div class="card">
+            <span class="num">2</span>
+            <div>
+              <h3>MCP — in both directions</h3>
+              <p>
+                Tempo <em>calls</em> MCP servers to book calendar time, and Tempo <em>is</em> an MCP server at
+                <code>/api/mcp/server</code> — exposing <code>tempo_triage</code>, <code>tempo_commitments</code>,
+                <code>tempo_decode</code>, and <code>tempo_focus</code> to Agentforce, Claude, or Cursor, behind
+                signed per-user tokens and a default-deny gate.
+              </p>
+            </div>
+          </div>
+          <div class="card">
+            <span class="num">3</span>
+            <div>
+              <h3>Slack AI &amp; agent surfaces</h3>
+              <p>
+                The Agent pane (<code>agent_view</code>) with suggested prompts, a live App Home dashboard,
+                Block Kit actions and an accessibility settings modal, four Workflow Builder steps, Tempo Canvas,
+                and Slack Lists.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy">
+        <h2>The privacy posture</h2>
+        <p class="lede">
+          Tempo acts as <em>you</em>, on data you already have permission to see. It stores your encrypted token,
+          your preferences, the facts of your commitments, and counts-only metrics.
+          <strong>It never persists a single message it reads</strong> — that's enforced at the schema level and
+          guarded by tests, not just promised here. You can see everything it holds, export it, and delete it,
+          from the web dashboard.
+        </p>
+      </section>
 
       <footer>
-        Assistive technology for people with ADHD, executive-function differences, and anyone returning from
-        leave. Tempo reads only what you can already see, and never stores message content.
+        Assistive technology for the Slack firehose — built for people with ADHD and executive-function
+        differences, for non-native speakers, and for anyone drowning in unreads.
+        <nav>
+          <a href="/api/oauth/start">Add to Slack</a>
+          <a href="https://github.com/Harjotraith04/Tempo_Slack">Source</a>
+          <a href="https://github.com/Harjotraith04/Tempo_Slack/blob/main/PRIVACY.md">Privacy</a>
+        </nav>
       </footer>
     </main>
   </body>
