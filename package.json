@@ -22,9 +22,7 @@
     "verify:rts": "tsx scripts/verify-live-rts.ts",
     "verify:mcp": "tsx scripts/verify-live-mcp.ts",
     "verify:postgres": "tsx scripts/verify-live-postgres.ts",
-    "verify:mcp-server": "tsx scripts/verify-mcp-server.ts",
-    "web:dev": "npm --prefix web run dev",
-    "web:build": "npm --prefix web run build"
+    "verify:mcp-server": "tsx scripts/verify-mcp-server.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.24",

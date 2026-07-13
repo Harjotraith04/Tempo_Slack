@@ -11,10 +11,6 @@ export default defineConfig({
     // temp dir. The suite runs in well under a second, so trading file
     // parallelism for that guarantee is free.
     fileParallelism: false,
-    // The web companion (web/) is a separate Next.js app with its own React
-    // deps and its own test runner. Keep it out of the root suite so the
-    // zero-credential contract (npm test with no react/next) stays intact.
-    exclude: [...configDefaults.exclude, "web/**"],
     // The zero-credential contract, ENFORCED rather than assumed.
     //
     // src/config/env.ts does `import "dotenv/config"`, so a developer's real

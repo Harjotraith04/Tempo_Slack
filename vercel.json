@@ -15,11 +15,8 @@
     }
   ],
   "rewrites": [
-    { "source": "/privacy", "destination": "https://tempo-slack-web.vercel.app/privacy" },
-    { "source": "/privacy-policy", "destination": "https://tempo-slack-web.vercel.app/privacy-policy" },
-    { "source": "/settings", "destination": "https://tempo-slack-web.vercel.app/settings" },
-    { "source": "/api/settings", "destination": "https://tempo-slack-web.vercel.app/api/settings" },
-    { "source": "/api/data/:path*", "destination": "https://tempo-slack-web.vercel.app/api/data/:path*" },
-    { "source": "/_next/:path*", "destination": "https://tempo-slack-web.vercel.app/_next/:path*" }
+    { "source": "/privacy", "destination": "/api/web/privacy" },
+    { "source": "/settings", "destination": "/api/web/settings" },
+    { "source": "/privacy-policy", "destination": "/api/web/privacy-policy" }
   ]
 }

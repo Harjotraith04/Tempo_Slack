@@ -26,7 +26,6 @@ const STEPS: [label: string, cmd: string][] = [
   ["tests", "npm test"],
   ["build", "npm run build"],
   ["demo (zero-credential E2E)", "npm run demo"],
-  ["web build", "npm run web:build"],
   ["verify:ai (skip-safe)", "npm run verify:ai"],
   ["verify:postgres (skip-safe)", "npm run verify:postgres"],
   ["verify:rts (skip-safe)", "npm run verify:rts"],
