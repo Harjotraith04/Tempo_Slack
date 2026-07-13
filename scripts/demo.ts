@@ -91,7 +91,7 @@ function renderBlocks(blocks: any[]) {
  * bypasses respond() to call checkDraft() directly.
  */
 async function demoButtonLayer(ctx: TempoContext) {
-  const triage = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
+  const triage = await runTriage(ctx.rts, ctx.llm, { name: "Sam", afterTs: afterTsOf(ctx) });
   const [first, second] = triage.needsYou;
 
   if (first) {
@@ -103,20 +103,20 @@ async function demoButtonLayer(ctx: TempoContext) {
     console.log(`  [Done]   "${second.excerpt.slice(0, 50)}…" → suppressed now: ${await store.snoozes.isSuppressed(ctx.subjectUserId, second.permalink, ctx.nowTs)}`);
   }
 
-  const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
+  const fresh = await runLedger(ctx.rts, ctx.llm, { name: "Sam", nowTs: ctx.nowTs });
   const commitments = await store.commitments.sync(ctx.subjectUserId, fresh);
   const owedToMe = commitments.find((c) => c.direction === "owed_to_me");
   const iOwe = commitments.find((c) => c.direction === "i_owe");
 
   if (owedToMe) {
-    const nudge = await draftNudge(owedToMe, ctx.llm);
+    const nudge = await draftNudge(owedToMe, ctx.llm, "Sam");
     console.log(`  [Nudge] draft to ${owedToMe.counterparty}: "${nudge}"`);
   }
   if (iOwe) {
     await store.commitments.markRenegotiating(ctx.subjectUserId, iOwe.permalink);
-    const draft = await draftRenegotiation(iOwe, ctx.llm);
+    const draft = await draftRenegotiation(iOwe, ctx.llm, "Sam");
     console.log(`  [Renegotiate] draft to ${iOwe.counterparty}: "${draft}"`);
-    const resynced = await store.commitments.sync(ctx.subjectUserId, await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs }));
+    const resynced = await store.commitments.sync(ctx.subjectUserId, await runLedger(ctx.rts, ctx.llm, { name: "Sam", nowTs: ctx.nowTs }));
     const stillRenegotiating = resynced.find((c) => c.permalink === iOwe.permalink)?.status === "renegotiating";
     console.log(`  Status after renegotiate persists across a re-sync: ${stillRenegotiating}`);
   }
@@ -290,7 +290,7 @@ async function main() {
     // directly (the function_executed trigger only fires from real Slack).
     const missed = await respond(ctx, "catch me up on what I missed", { record: false });
     console.log(`  [Summarize what I missed] → "${missed.text.slice(0, 88)}…"`);
-    const draft = await draftReply("No rush 🙂 whenever you get a chance. Not like the handoff is waiting.", ctx.llm);
+    const draft = await draftReply("No rush 🙂 whenever you get a chance. Not like the handoff is waiting.", ctx.llm, "Sam");
     console.log(`  [Draft a reply]           → "${draft.slice(0, 88)}…"`);
     const focus = await respond(ctx, "block 60 min of focus time", { record: false });
     console.log(`  [Block focus time]        → "${focus.text.slice(0, 88)}…"`);
@@ -341,7 +341,7 @@ async function main() {
     const p = await pg.prefs.get("U_PG_DEMO");
     console.log(`  prefs round-trip via the Postgres adapter → verbosity=${p?.verbosity} maxItems=${p?.maxItems} readAloud=${p?.readAloud}`);
 
-    const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
+    const fresh = await runLedger(ctx.rts, ctx.llm, { name: "Sam", nowTs: ctx.nowTs });
     const synced = await pg.commitments.sync("U_PG_DEMO", fresh);
     const pinned = await pg.commitments.getByPermalink("U_PG_DEMO", fresh[0]!.permalink);
     console.log(`  commitments.sync via Postgres → ${synced.length} rows; re-read one: "${pinned?.what}" (status ${pinned?.status}).`);
@@ -358,7 +358,7 @@ async function main() {
     // shows install METADATA only, never the secret.
     await store.tokens.save(u, "T_DEMO", "xoxp-demo-secret-never-exported");
     await store.prefs.save(u, { verbosity: "brief", maxItems: 2 });
-    await store.commitments.sync(u, await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs }));
+    await store.commitments.sync(u, await runLedger(ctx.rts, ctx.llm, { name: "Sam", nowTs: ctx.nowTs }));
 
     // A signed, expiring session ties a browser to this user (HMAC over userId,
     // keyed off the same secret the token store uses). No RTS content involved.
@@ -397,7 +397,7 @@ async function main() {
       );
     };
 
-    const before = await runTriage(ctx.rts, ctx.llm, { afterTs: afterTsOf(ctx) });
+    const before = await runTriage(ctx.rts, ctx.llm, { name: "Sam", afterTs: afterTsOf(ctx) });
     show("Before learning:", before.needsYou);
 
     // Simulate the user's own taps: keep engaging one sender, keep snoozing the
@@ -409,7 +409,7 @@ async function main() {
       await store.signals.record(u, topSender, "deprioritized");
     }
     const weights = buildWeightMap(await store.signals.forUser(u));
-    const after = await runTriage(ctx.rts, ctx.llm, {
+    const after = await runTriage(ctx.rts, ctx.llm, { name: "Sam",
       afterTs: afterTsOf(ctx),
       senderAdjust: (id) => (id ? weights.get(id) ?? 0 : 0),
     });
@@ -569,7 +569,7 @@ async function main() {
       { name: "email", client: new MockEmailSource() },
       { name: "calendar", client: new MockCalendarSource() },
     ]);
-    const r = await runTriage(multi, ctx.llm, { afterTs: afterTsOf(ctx) });
+    const r = await runTriage(multi, ctx.llm, { name: "Sam", afterTs: afterTsOf(ctx) });
     const bySource = new Map<string, number>();
     for (const i of r.needsYou) bySource.set(i.source ?? "slack", (bySource.get(i.source ?? "slack") ?? 0) + 1);
     console.log(`  Triaged across sources → ${[...bySource].map(([s, n]) => `${n} from ${s}`).join(", ")}:`);

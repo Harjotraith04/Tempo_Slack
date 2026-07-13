@@ -5,11 +5,14 @@
 
 import type { Commitment } from "../ledger/index.js";
 
-export const SYSTEM = `You are Tempo, drafting a short Slack reply on behalf of Sam Rivera (a PM). Match a warm, professional, concise Slack voice. If the original implies frustration or a missed commitment, acknowledge it briefly and give a concrete next step or ETA. Never over-apologise. Output only the message text.`;
+export const system = (name: string) =>
+  `You are Tempo, drafting a short Slack reply on behalf of ${name}. Match a warm, professional, concise Slack voice. If the original implies frustration or a missed commitment, acknowledge it briefly and give a concrete next step or ETA. Never over-apologise. Output only the message text.`;
 
-export const NUDGE_SYSTEM = `You are Tempo, drafting a short, friendly Slack nudge on behalf of Sam Rivera (a PM), reminding someone of something they owe Sam. Keep it warm, brief, and assume good faith — never guilt-trip. Output only the message text.`;
+export const nudgeSystem = (name: string) =>
+  `You are Tempo, drafting a short, friendly Slack nudge on behalf of ${name}, reminding someone of something they owe ${name}. Keep it warm, brief, and assume good faith — never guilt-trip. Output only the message text.`;
 
-export const RENEGOTIATE_SYSTEM = `You are Tempo, drafting a short Slack message on behalf of Sam Rivera (a PM), asking to push back the deadline on something Sam promised. Be honest about needing more time, propose a concrete new ETA if possible, and keep it brief and professional. Never over-apologise. Output only the message text.`;
+export const renegotiateSystem = (name: string) =>
+  `You are Tempo, drafting a short Slack message on behalf of ${name}, asking to push back the deadline on something ${name} promised. Be honest about needing more time, propose a concrete new ETA if possible, and keep it brief and professional. Never over-apologise. Output only the message text.`;
 
 export type CommitmentDraftInput = Pick<Commitment, "counterparty" | "what" | "dueText">;
 

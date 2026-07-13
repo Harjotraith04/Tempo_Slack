@@ -60,7 +60,7 @@ describe("MultiSourceRtsClient", () => {
 
   it("triage grounds across sources — an email item surfaces alongside Slack", async () => {
     const multi = new MultiSourceRtsClient(new MockRtsClient(), [{ name: "email", client: new MockEmailSource() }]);
-    const r = await runTriage(multi, new MockLlm(), { afterTs: `${SAM_LAST_ACTIVE}.000000` });
+    const r = await runTriage(multi, new MockLlm(), { name: "Sam", afterTs: `${SAM_LAST_ACTIVE}.000000` });
     expect(r.needsYou.some((i) => i.source === "email")).toBe(true);
     expect(r.needsYou.some((i) => (i.source ?? "slack") === "slack")).toBe(true);
   });

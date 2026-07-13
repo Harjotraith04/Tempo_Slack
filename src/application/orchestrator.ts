@@ -150,7 +150,7 @@ async function respondCore(
       };
     }
     case "catchup": {
-      const b = await runReentry(ctx.rts, ctx.llm, { afterTs: after, awayDays: ctx.awayDays });
+      const b = await runReentry(ctx.rts, ctx.llm, { afterTs: after, awayDays: ctx.awayDays, name: ctx.subjectName });
       return b.topThree.length
         ? { intent, text: "The 3 that matter most: " + b.topThree.join("; "), blocks: reentryBlocks(b) }
         : { intent, text: "Nothing major to catch up on.", blocks: emptyStateBlocks("catchup") };

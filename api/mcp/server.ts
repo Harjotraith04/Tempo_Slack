@@ -15,6 +15,8 @@ import { buildContext } from "../../src/application/context.js";
 import { getStore } from "../../src/platform/persistence/index.js";
 import { handleMcpHttp } from "../../src/platform/mcp/server/index.js";
 import { resolveMcpCaller } from "../../src/platform/mcp/server/auth.js";
+import { resolveDisplayName } from "../../src/platform/slack/webapi/displayName.js";
+import { WebClient } from "@slack/web-api";
 
 async function readJson(req: IncomingMessage): Promise<unknown> {
   const pre = (req as unknown as { body?: unknown }).body;
@@ -49,7 +51,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
     const body = await readJson(req);
     await handleMcpHttp(req, res, body, {
-      buildContext: () => buildContext({ subjectUserId: caller.userId, userToken }),
+      buildContext: async () =>
+        buildContext({
+          subjectUserId: caller.userId,
+          subjectName: await resolveDisplayName(new WebClient(config.slack.botToken), caller.userId),
+          userToken,
+        }),
       version: "4.1.0",
     });
   } catch (err) {

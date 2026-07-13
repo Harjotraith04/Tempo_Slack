@@ -20,7 +20,7 @@ const afterTs = `${SAM_LAST_ACTIVE}.000000`;
 
 describe("ledger", () => {
   it("finds the overdue promise Sam made and the one owed to him", async () => {
-    const c = await runLedger(rts, llm, { nowTs: DEMO_NOW });
+    const c = await runLedger(rts, llm, { name: "Sam", nowTs: DEMO_NOW });
     const mine = c.find((x) => x.direction === "i_owe" && x.what.includes("Atlas API spec"));
     const theirs = c.find((x) => x.direction === "owed_to_me" && x.what.includes("pricing"));
     expect(mine).toBeTruthy();
@@ -75,7 +75,7 @@ describe("decoder", () => {
 
 describe("reentry", () => {
   it("builds a plain-language brief with the key decision and obligations", async () => {
-    const b = await runReentry(rts, llm, { afterTs, awayDays: 7 });
+    const b = await runReentry(rts, llm, { name: "Sam", afterTs, awayDays: 7 });
     expect(b.topThree.length).toBeGreaterThan(0);
     expect(b.decisions.join(" ")).toMatch(/Aug 15/);
     expect(b.nowExpectedOfYou.join(" ").toLowerCase()).toContain("spec");
@@ -91,7 +91,7 @@ describe("focus", () => {
   });
 
   it("only lets true blockers break through the interrupt budget", async () => {
-    const { needsYou } = await runTriage(rts, llm, { afterTs });
+    const { needsYou } = await runTriage(rts, llm, { name: "Sam", afterTs });
     const breaking = whatBreaksThrough(needsYou);
     expect(breaking.every((i) => i.urgency >= 85)).toBe(true);
   });

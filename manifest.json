@@ -176,6 +176,7 @@
         "app_mentions:read",
         "files:write",
         "bookmarks:write",
+        "users:read",
         "channels:manage",
         "channels:read",
         "chat:write.customize",
@@ -190,7 +191,9 @@
         "message.im",
         "app_mention",
         "app_home_opened",
-        "function_executed"
+        "function_executed",
+        "assistant_thread_started",
+        "assistant_thread_context_changed"
       ]
     },
     "interactivity": {

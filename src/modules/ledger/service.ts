@@ -17,7 +17,7 @@ import { CORPUS_QUERY } from "./ports.js";
 import {
   CANDIDATE_LIMIT,
   ExtractSchema,
-  SYSTEM,
+  system,
   buildPrompt,
   hash,
   matchFulfillments,
@@ -31,7 +31,7 @@ import {
 export async function runLedger(
   rts: RtsClient,
   llm: LlmPort,
-  opts: { nowTs: number; afterTs?: string },
+  opts: { nowTs: number; afterTs?: string; name: string },
 ): Promise<Commitment[]> {
   // Corpus, not keywords: commitment language is endlessly varied ("on me",
   // "leave it with me", "consider it done") and an AND-scoped lexical query
@@ -41,7 +41,7 @@ export async function runLedger(
   const byLink = new Map(candidates.map((m) => [m.permalink, m]));
 
   const { items } = await llm.structured({
-    system: SYSTEM,
+    system: system(opts.name),
     prompt: buildPrompt(candidates),
     schema: ExtractSchema,
     temperature: 0.1,

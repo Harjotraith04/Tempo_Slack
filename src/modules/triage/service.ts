@@ -15,7 +15,7 @@ import { CORPUS_QUERY } from "./ports.js";
 import {
   CANDIDATE_LIMIT,
   ClassificationSchema,
-  SYSTEM,
+  system,
   buildPrompt,
   mockClassify,
   rank,
@@ -48,6 +48,9 @@ export async function runTriage(
   llm: LlmPort,
   opts: {
     afterTs: string;
+    /** The subject user's own display name — every prompt is written for them,
+     * not a fixed persona. */
+    name: string;
     /** Learned per-sender ranking adjustment (from the intelligence layer). */
     senderAdjust?: (authorId?: string) => number;
   },
@@ -57,7 +60,7 @@ export async function runTriage(
   const byLink = new Map(candidates.map((m) => [m.permalink, m]));
 
   const { items } = await llm.structured({
-    system: SYSTEM,
+    system: system(opts.name),
     prompt: buildPrompt(candidates),
     schema: ClassificationSchema,
     temperature: 0.1,

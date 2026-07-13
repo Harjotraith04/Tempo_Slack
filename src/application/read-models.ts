@@ -20,6 +20,7 @@ export async function liveTriage(ctx: TempoContext): Promise<TriageResult> {
   const weights = buildWeightMap(sigs);
   const raw = await runTriage(ctx.rts, ctx.llm, {
     afterTs: afterTsOf(ctx),
+    name: ctx.subjectName,
     senderAdjust: (id) => (id ? weights.get(id) ?? 0 : 0),
   });
   const suppressed = new Set(active.map((s) => s.permalink));
@@ -35,7 +36,7 @@ export async function liveCommitments(ctx: TempoContext): Promise<Commitment[]> 
   // open promises (verified: it deleted "Send the finalized Atlas API spec"
   // from the demo). The scan is bounded by CANDIDATE_LIMIT instead, which is
   // what actually costs time — one RTS page, not the width of the window.
-  const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs });
+  const fresh = await runLedger(ctx.rts, ctx.llm, { nowTs: ctx.nowTs, name: ctx.subjectName });
   for (const pl of await detectFulfilledCommitments(ctx.rts, fresh, { afterTs: afterTsOf(ctx) })) {
     await ctx.store.commitments.markDone(ctx.subjectUserId, pl);
   }

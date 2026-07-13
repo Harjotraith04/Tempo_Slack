@@ -24,7 +24,8 @@ export const Schema = z.object({
   nowExpectedOfYou: z.array(z.string()),
 });
 
-export const SYSTEM = `You are Tempo, welcoming Sam Rivera (a PM) back after time away. From the Slack activity he missed, write a calm, skimmable re-entry brief in plain language. Group into: the 3 things that matter most (topThree), decisions made while away, changes to his projects, people waiting on him, and what's now expected of him. Be concrete, short, and reassuring — no jargon, no firehose. Prefer 2-5 bullet items per section.`;
+export const system = (name: string) =>
+  `You are Tempo, welcoming ${name} back after time away. From the Slack activity they missed, write a calm, skimmable re-entry brief in plain language. Group into: the 3 things that matter most (topThree), decisions made while away, changes to their projects, people waiting on them, and what's now expected of them. Be concrete, short, and reassuring — no jargon, no firehose. Prefer 2-5 bullet items per section.`;
 
 export function buildPrompt(messages: RtsMessage[]): string {
   return messages

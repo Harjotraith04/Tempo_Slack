@@ -1,0 +1,911 @@
+The next era of productivity is agentic—and it lives in Slack.
+We’re calling on all builders—from seasoned Slack veterans to "vibe coders" picking up the Slack CLI for the first time—to join the Slack Agent Builder Challenge. This is your opportunity to redefine the workplace by building intelligent agents that automate workflows, surface real-time insights, and connect systems in ways we haven’t imagined yet.
+
+Whether you’re building a specialized agent for your organization, a tool for social good, or the next viral Slack Marketplace app, we want to see your creativity in action. Leverage the Slack Agent Builder, MCP integrations, and the Real-Time Search (RTS) API to show the world why Slack is the ultimate surface for AI.
+
+Why Join?
+
+Whether you're a "vibe coder" or a seasoned pro, the on-ramp is designed for speed—use the slack create agent command and ready-made templates for HR, IT, and Sales to go from an idea to a running agent in a single afternoon.
+
+For those building for organizations, the hackathon serves as a guided path to the Slack Marketplace, giving you a structured deadline to ship your app and gain direct distribution to Slack’s massive enterprise customer base.
+
+Compete for a share of the $42,000 cash USD prize pool, a chance to go to Dreamforce 2026, some Slack swag, an invite to an exclusive Slack community gathering and to be featured in the Slack newsletter and social media
+
+Requirements
+What to Create: an application that uses at least 1 of these technologies and fits into at least 1 of the tracks below 
+
+Slack AI capabilities
+
+MCP server integration
+
+Real-Time Search API 
+
+New Slack Agent
+
+Build a new Slack agent using one of the above three technologies to automate workflows, connect systems, or surface intelligent insights inside Slack
+Slack Agent for Good
+
+Build a new Slack agent using one of the above three technologies and address a real-world social impact problem. Use Slack’s agentic capabilities to make a meaningful difference in areas such as accessibility, education, economic opportunity, environmental sustainability, public health, or nonprofit operations.
+Slack Agent for Organizations
+
+New Agent. Build a new Slack agent using one of the above three technologies to automate workflows, connect systems, or surface intelligent insights inside Slack and submit it to the Slack Marketplace before the hackathon deadline; or 
+
+Existing Agent. Significantly and demonstrably update an existing Slack Marketplace application using one of the above three technologies and submit it to the Slack Marketplace before the hackathon deadline. 
+
+Apps submitted to this track must follow all Slack Marketplace guidelines and requirements, including being installed in 5 active workspaces.
+Apps submitted to the Slack Marketplace must be deployed in a production workspace, not a developer sandbox. Your developer sandbox is for testing and judging only.
+If you don't have a production workspace, create a free Slack workspace to build and deploy your app, then use your developer sandbox for testing.
+  
+
+What to Submit
+Project Track
+
+Text description: summarize project’s features, functionality
+
+“Slack Agent for Good Track” - be sure to explain the impact your Project has!
+
+~3-minute Demo video 
+
+include footage that shows your working Project 
+
+Architecture diagram
+
+URL to your Slack developer sandbox. 
+
+Make sure you give access to slackhack@salesforce.com and testing@devpost.com. 
+
+“Slack Agents for Organizations Track” 
+
+Slack App ID to prove you submitted or resubmitted to the Slack Marketplace during the hackathon submission period.
+
+If significantly updating an existing app, describe updates made during the hackathon submission period. 
+Prizes
+$42,000 in prizes
+First Place | New Slack Agent
+$8,000 in cash
+1 winner
+• USD $8,000 USD in cash
+• A voucher for the Slack Developer Certification (1 per team member up to 4 members)
+• A voucher to Dreamforce 2026 (ticket only, 1 per team member up to 4 members)
+• A voucher for Slack community swag (1 per team member up to 4 members)
+• Invitation to an exclusive Slack community gathering and social media interview at Dreamforce 2026* (*subject to winners attendance at Dreamforce)
+• Features in/on Slack Developer program website, the Slack developer platform newsletter & Slack social media handles
+
+Second Place | New Slack Agent
+$4,000 in cash
+1 winner
+• $4,000 USD in cash
+• Features in/on Slack developer newsletter and Slack social media handles
+
+First Place | Slack Agent for Good
+$8,000 in cash
+1 winner
+• USD $8,000 USD in cash
+• A voucher for the Slack Developer Certification (1 per team member up to 4 members)
+• A voucher to Dreamforce 2026 (ticket only, 1 per team member up to 4 members)
+• A voucher for Slack community swag (1 per team member up to 4 members)
+• Invitation to an exclusive Slack community gathering and social media interview at Dreamforce 2026* (*subject to winners attendance at Dreamforce)
+• Features in/on Slack Developer program website, the Slack developer platform newsletter & Slack social media handles
+
+Second Place | Slack Agent for Good
+$4,000 in cash
+1 winner
+• $4,000 USD in cash
+• Features in/on Slack developer newsletter and Slack social media handles
+
+First Place | Slack Agent for Organizations
+$8,000 in cash
+1 winner
+• $8,000 USD in cash
+• A voucher for the Slack Developer Certification (1 per team member up to 4 members)
+• A voucher to Dreamforce 2026 (ticket only, 1 per team member up to 4 members)
+• A voucher for Slack community swag (1 per team member up to 4 members)
+• Invitation to an exclusive Slack community gathering and social media interview at Dreamforce 2026* (*subject to winners attendance at Dreamforce)
+• Features in/on Slack Developer program website & newsletter & Slack social media handles
+• 30 minute virtual conversation with a Slack product executive
+• Winning app featured in/on Stack Overflow podcast
+
+Second Place | Slack Agent for Organizations
+$4,000 in cash
+1 winner
+• $4,000 USD in cash
+• Features in/on Slack developer newsletter and Slack social media handles
+
+Best UX
+$2,000 in cash
+1 winner
+• $2,000 USD in cash
+• Features in/on the Slack developer platform newsletter and Slack social media handles
+
+Most Innovative Slack Agent
+$2,000 in cash
+1 winner
+• $2,000 USD in cash
+• Features in/on the Slack developer platform newsletter and Slack social media handles
+
+Best Technological Implementation
+$2,000 in cash
+1 winner
+• $2,000 USD in cash
+• Features in/on the Slack developer platform newsletter and Slack social media handles
+
+Devpost Achievements
+Submitting to this hackathon could earn you:
+
+
+First online hackathon
+
+X Hackathons
+ level 1
+
+Hackathon Winner
+ level 1
+
+Generalist
+Judges
+Anitah Cantele
+Anitah Cantele
+
+Gregg Rybicki
+Gregg Rybicki
+
+Haile Shavers
+Haile Shavers
+
+Josh Milas
+Josh Milas
+
+Kamari Akers
+Kamari Akers
+
+Kathleen Stone
+Kathleen Stone
+
+Kristen Piña Flores
+Kristen Piña Flores
+
+Niromal Perera
+Niromal Perera
+
+Matt Justice
+Matt Justice
+
+Gillian Bruce
+Gillian Bruce
+
+Kathy Lee
+Kathy Lee
+
+Judging Criteria
+Technological Implementation
+Does the project demonstrate quality software development? Does the project leverage at least one of these three technologies: Slack AI capabilities, MCP server integration, or real-time search API?
+Design
+Is the user experience and design of the project well thought out? Is there a balanced blend of frontend and backend in the software?
+Potential Impact
+How big of an impact could the project have on the Slack community? How big of an impact could it have beyond the target community?
+Quality of the Idea
+How creative and unique is the project? Does the concept exist already? If so, how much does the project improve on it?
+
+
+Everything you need to design, build, and ship a Slack agent- whether you've been building on Slack for years or this is your very first Slack create agent command. Start with the Slack Developer Program to unlock your free sandbox, then dive into the docs, templates, and SDKs below. 
+
+ 
+Start Here (Required for All Participants)
+Slack Developer Program: Required to participate. Joining unlocks your free Slack developer sandbox where you'll build and demo your agent.
+
+Slack Developer Sandboxes: Provision your test workspace and learn how sandboxes work.
+
+Slack Platform Docs: The home base for everything Slack platform.
+
+ 
+🧩 The Three Hackathon Technologies
+Your project must use at least one of the following. Pick the one that fits your idea or combine them.
+
+Slack AI capabilities & Agent Builder: Use built-in AI to assemble agents quickly. Browse Agent Builder starter templates for HR, IT, Sales, and Support to skip past the boilerplate.
+
+MCP (Model Context Protocol) server integration: Connect external tools, data sources, and reasoning systems to Slack agents through the open MCP standard.
+
+Real-Time Search (RTS) API:  Surface fresh, in-workspace context to your agent the moment it's needed.
+
+ 
+🛠 SDKs & CLI
+Bolt SDK: Available in JavaScript, Python, and Java. Pick whichever language you're most comfortable with.
+
+Slack CLI: Spin up a new agent project in seconds with slack create agent.
+
+Block Kit for richer agent experiences: Design an interactive, well-structured UI for your agent's responses.
+
+ 
+🎨 New to Slack? Start Here
+If this is your first time building on Slack, including if you're a "vibe coder" who lives in AI-assisted IDEs, these are your fast tracks:
+
+Run slack create agent from the Slack CLI to scaffold a working project from a template.
+
+Pick an Agent Builder template (HR, IT, Sales, Support) and remix it into something new.
+
+Skim the Slack Platform Quickstart "Getting Started" path before diving into APIs.
+
+Join the #slack-agent-builder-challenge in the Slack Community
+
+ 
+🧠 Going Deeper (For Experienced Slack Devs)
+If you've shipped on Slack before, here's where to push:
+
+Combine MCP + RTS to build agents that reason over live workspace context.
+
+Architect for the Slack Marketplace from day one, especially if you're targeting the Slack Agent for Organizations track, which requires Marketplace submission before the hackathon deadline; here's the Slack Marketplace Core Guidelines.
+
+ 
+🖥️ Slack Dev Huddles
+Slack Dev Huddles Ep05 — Slack MCP & RTS API → Watch Now 
+Covers two of the three core technologies for this hackathon: MCP server integration and the Real-Time Search API. If you're wiring external tools and data into your agent, or surfacing live workspace context, this is the one to catch.
+ 
+
+Slack Dev Huddles Ep06 — Slack Marketplace → June 23 at 11am PT → Attend
+Walks through getting an app onto the Slack Marketplace — essential viewing if you're in the Slack Agent for Organizations track, where Marketplace submission before the deadline is part of the requirement. 
+ 
+💬 Community & Support
+Hackathon Slack Channel — Your direct line to the Devpost team and Slack team. This is where to ask questions, find teammates (Up to 4 per team), and share progress.
+
+Slack Community — The broader developer community.
+
+ 
+INSPIRATION:
+Need a spark? The best submissions tend to:
+
+Solve a real, specific workflow problem inside Slack rather than wrap a generic chatbot in a Slack UI.
+
+Use one of the three required technologies in a way that wouldn't be possible without it.
+
+Show clear impact — for Slack Agent for Good, that means a measurable social benefit; for Slack Agent for Organizations, that means real adoption potential.
+
+Have a polished demo video. Judges spend ~5–7 minutes per project, so make the first 60 seconds count.
+
+Slack Agent Builder Challenge (the “Hackathon”) Official Rules
+NO PURCHASE OR PAYMENT NECESSARY TO ENTER OR WIN. A PURCHASE OR PAYMENT WILL NOT INCREASE YOUR CHANCES OF WINNING. 
+
+SUBMISSION OF ANY ENTRY CONSTITUTES AGREEMENT TO THESE OFFICIAL RULES AS A CONTRACT BETWEEN ENTRANT (AND EACH INDIVIDUAL MEMBER OF ENTRANT) AND THE HACKATHON SPONSOR.
+
+ 
+
+1. Dates and Timing (Sponsor’s clock will be the official timekeeping device for the Hackathon).
+Hackathon Submission Period: Wednesday, May 20th, 2026 (10:00 am Pacific Time) – Monday, July 13th, 2026 (5:00 pm Pacific Time) (“Submission Period”).
+
+Hackathon Judging Period: Thursday, July 14th, 2026 (11:00 am Pacific Time) – Thursday, August 6, 2026 (11:00 am Pacific Time) (“Judging Period”).
+
+Winners Announced: On or around Tuesday, August 11th, 2026 (2:00 pm Pacific Time).
+
+ 
+
+2. Sponsor & Administrator. 
+Sponsor and Administrator: The Hackathon is sponsored by Salesforce, Inc., Salesforce Tower 415 Mission Street, 3rd Floor, San Francisco, CA 94105. Administrator: Devpost, Inc. (“Devpost”), 250 Broadway, 24FL, New York, NY 10007. In these Official Rules, “we,” “us,” or “our” refer to Sponsor and/or the Hackathon Entities, and the terms “you” refer to you, the Entrant, both as an individual,as part of your team or your organization. 
+
+ 
+
+3. Eligibility.
+The Hackathon IS open to the following (collectively “Entrants”): 
+
+individuals who (i) are 18 years of age or older (20+ in Japan) or who have reached the age of majority in their jurisdiction of residence as of the date of entry, and (ii) are legal residents of the following countries:  Argentina, Australia, Belgium, Canada (excluding Quebec), France, Germany, India, Ireland, Japan, Luxembourg, Netherlands, New Zealand, South Africa, Spain, United Kingdom, United States of America (incl. District of Columbia (“Eligibility Area” and collectively “Eligible Individuals”).
+
+Teams comprised of up to four (4) Eligible Individuals (“Eligible Teams”); and
+
+Organizations (including corporations, not-for-profit corporations and other nonprofit organizations, limited liability companies, partnerships, and other legal entities) that exist and have been organized or incorporated at the time of entry (“Eligible Organizations”).
+
+An Eligible Individual may join more than one Team or Organization and an Eligible Individual who is part of a Team or Organization may also enter the Hackathon on an individual basis. If a Team or Organization is entering the Hackathon, they must appoint and authorize one individual (the “Representative”) to represent, act, and enter a Submission, on their behalf. By entering a Submission on behalf of a Team or Organization you represent and warrant that you are the Representative authorized to act on behalf of your Team or Organization.
+
+The Hackathon IS NOT open to: 
+
+individuals who are, or at any point since two (2) years prior to the Hackathon start date have been, employees, contractors, consultants, officers, directors and agents of Sponsor, its parent, divisions, subsidiaries, agents, promotional partners, advertising/promotion agencies, and prize suppliers (“Hackathon Entities”), 
+
+individuals who are the immediate family (spouse, parents, siblings, and children) or household members of any of those current or former employees described above;  
+
+individuals who are current employees of an entity in which Sponsor has invested and holds an ownership interest;  
+
+individuals who are current employees of a third-party sponsor of the Hackathon.   
+
+Any Judge (defined below), or company or individual that employs a Judge
+
+Any other individual or organization whose participation in the Hackathon would create, in the sole discretion of the Sponsor, a real or apparent conflict of interest 
+
+Employees or officials of any government entity are not eligible to participate or win a prize. 
+
+Failure to meet the eligibility requirements will result in an entry being invalid and forfeiture of any prize. Companies and individuals outside of the Eligibility Area are not eligible to participate or win a prize. Sponsor reserves the right to disqualify any entrant that Sponsor determines could potentially reflect negatively on Sponsor’s image. VOID OUTSIDE OF THE ELIGIBILITY AREA AND WHERE PROHIBITED OR RESTRICTED BY LAW. Contest is subject to applicable laws.
+
+ 
+
+4. How To Enter.
+Entrants may enter by visiting slackhack.devpost.com (“Hackathon Website”) and following the below steps:
+
+All Eligible Individuals must register for the Hackathon on the Hackathon Website by clicking the “Join Hackathon” button. To complete registration, sign up to create a free Devpost account, or log in with an existing Devpost account. This will enable you to receive important updates and to create your Submission.
+
+Entrants will obtain access to the required environments and tools through provisioned environments (via the Sign Up form below) and complete a Project described below in Project Requirements. Use of the developer tools will be subject to the license agreement related thereto. Entry in the Hackathon constitutes consent for the Sponsor to collect and maintain an Entrant’s personal information for the purpose of operating and publicizing the Hackathon.
+
+Join the Slack Developer Program to gain access to the Slack developer sandbox environment.
+
+Create a video that includes footage explaining your Project’s features and functionality through a comprehensive demonstration in accordance with the Submission Requirements below.
+
+Complete and enter all of the required fields on the “Enter a Submission” page of the Hackathon Website (each a “Submission”) during the Submission Period and follow the requirements below.
+
+Project Requirements:
+
+What to Create: Entrants must develop an application that uses at least one (1) of these technologies: Slack AI capabilities, MCP server integration, or real-time search API, and fits into one (1) of the tracks below (each a “Project”): 
+
+New Slack Agent
+
+Build a new Slack agent using one of the above three technologies to automate workflows, connect systems, or surface intelligent insights inside Slack
+Slack Agent for Good
+
+Build a new Slack agent using one of the above three technologies and address a real-world social impact problem. Use Slack’s agentic capabilities to make a meaningful difference in areas such as accessibility, education, economic opportunity, environmental sustainability, public health, or nonprofit operations.
+Slack Agent for Organizations
+
+New Agent. Build a new Slack agent using one of the above three technologies to automate workflows, connect systems, or surface intelligent insights inside Slack and submit it to the Slack Marketplace before the hackathon deadline; or 
+
+Existing Agent. Significantly and demonstrably update an existing Slack Marketplace application using one of the above three technologies and submit it to the Slack Marketplace before the hackathon deadline.  
+
+Functionality: The Project must be capable of being successfully installed and running consistently on the platform for which it is intended and must function as depicted in the video and/or expressed in the text description.
+
+Platforms: A submitted Project must run on the platform for which it is intended and which is specified in the Submission Requirements.
+
+New & Existing:
+
+Projects entering “New Slack Agent Track” and “Slack Agents for Good Track” must be newly created by the Entrant.
+
+Projects entering “Slack Agents for Organizations”, which allows either a new or existing application, must in the case of an existing application, be significantly and demonstrably updated after the start of the Hackathon Submission Period, as determined by Sponsor and/or Administrator in their sole discretion. The Sponsor and/or the Administrator reserve the right to request evidence of work completed during the Submission Period; failure to provide such evidence or to meet the significantly updated threshold may result in disqualification.
+
+Third Party Integrations: If a Project integrates any third-party SDK, APIs and/or data, Entrant must be authorized to use them.
+
+ 
+
+Submission Requirements: 
+
+Submissions to the Hackathon must meet the following requirements:
+
+Include a Project built with the required developer environments and tools through provisioned environments that meets the above Project Requirements. 
+
+Identify which track you are submitting to.
+
+Include a text description that should explain the features and functionality of your Project.
+
+For the Agent for Good track: describe the impact of the project in the submission form. 
+
+Include a demonstration video of your Project. The video portion of the submission:
+
+should be less than three (3) minutes (Note judges are not required to watch beyond 3 minutes)
+
+should include footage that shows the Project functioning on the device for which it was built
+
+must be uploaded to and made publicly visible on YouTube, Vimeo, Facebook Video, or Youku, and a link to the video must be provided on the submission form on the Hackathon Website
+
+must not include third-party trademarks, or copyrighted music or other third-party material unless the Entrant has permission to use such material
+
+Must not include confidential, proprietary or other sensitive information
+
+Include an Architecture diagram.
+
+Include a URL to the Entrants' Slack developer sandbox. Entrants must provide test access to their Slack developer sandbox to slackhack@salesforce.com and testing@devpost.com. 
+
+Be the original work of the Entrants, be solely owned by the Entrants, and not violate the Intellectual Property rights of any other person or entity.
+
+For Submissions entered into the “Slack Agents for Organizations Track” which is a new app: provide your Slack App ID.
+
+For submissions entered into the “Slack Agents for Organizations Track” which updated an existing app: 
+
+Describe updates made during the Hackathon Submission Period. 
+
+Provide your Slack App ID
+
+
+Multiple Submissions: An Entrant may submit more than one Submission, however, each Submission must be unique and substantially different from each of the Entrant’s other Submissions, as determined by the Sponsor and Devpost in their sole discretion.
+
+Language Requirements: All Submission materials must be in English or, if not in English, the Entrant must provide an English translation of the demonstration video, text description, and testing instructions as well as all other materials submitted. 
+
+Team Representation: If a team or organization is entering the Hackathon, they must appoint and authorize one individual (the “Representative”) to represent, act, and enter a Submission, on their behalf. The Representative must meet the eligibility requirements above. By entering a Submission on the Hackathon Website on behalf of a team or organization you represent and warrant that you are the Representative authorized to act on behalf of your team or organization and you may make all decisions relating to prize(s) distribution.
+
+Intellectual Property: Your Submission must: (a) be your (or your team, or organization’s) original work product; (b) be solely owned by you, your Team, your Organization with no other person or entity having any right or interest in it; and (c) not violate the intellectual property rights or other rights including but not limited to copyright, trademark, patent, contract, and/or privacy rights, of any other person or entity. An Entrant may contract with a third party for technical assistance to create the Submission provided the Submission components are solely the Entrant’s work product and the result of the Entrant’s ideas and creativity, and the Entrant owns all rights to them. An Entrant may submit a Submission that includes the use of open source software or hardware, provided the Entrant complies with applicable open source licenses and, as part of the Submission, creates software that enhances and builds upon the features and functionality included in the underlying open source product. By entering the Hackathon, you represent, warrant, and agree that your Submission meets these requirements.
+
+Financial or Preferential Support: A Project must not have been developed, or derived from a Project developed, with financial or preferential support from the Sponsor. Such Projects include, but are not limited to, those that received funding or investment for their development, were developed under contract, or received a commercial license, from the Sponsor any time prior to the end of Hackathon Submission Period. The Sponsor, at their sole discretion, may disqualify a Project, if awarding a prize to the Project would create a real or apparent conflict of interest.
+
+Representations and Warranties: Entrants represent and warrant the following with respect to Submissions:
+
+It does not contain confidential, proprietary or other sensitive information, including but not limited to any third-party personal information or any third party’s intellectual property.
+
+It is not copyrighted, protected by trade secret or otherwise subject to third party intellectual property rights or other proprietary rights, including privacy and publicity rights, unless entrant is the owner of such rights or has permission from their rightful owner to post the content
+
+It does not contain or describe any harmful or illegal activity or content or in any way violate any federal, state, or local laws, rules or regulations.
+
+It does not portray Sponsor or its services in a negative light. 
+
+It does not contain any content that is inappropriate or indecent, as determined by Sponsor or Administrator, in its sole discretion. 
+
+It does not include any malware, spyware, viruses or similar harmful code or content.
+
+It does not contain source code, sample code, libraries, SDKs, and APIs that are not publicly discoverable or available for public use in developing applications.
+
+It does not contain any viruses, Trojan horses, worms, spyware or other disabling devices or harmful or malicious code;
+
+At any time, and at its sole discretion, the Sponsor will have the ability to disqualify a Submission for not sufficiently fitting the Submission Requirements or these Representations and Warranties as set forth in these Official Rules. Entrants further represent and warrant their Participation and acceptance of any prize complies with Entrants’ employer policies (as applicable).
+
+ 
+
+5. Submission Modifications.
+Draft Submissions: Prior to the end of the Submission Period, you may save draft versions of your submission on Devpost to your portfolio before submitting the submission materials to the Hackathon for evaluation. Once the Submission Period has ended, you may not make any changes or alterations to your Submission, but you may continue to update the Project in your Devpost portfolio.
+
+Modifications: After the Submission Period. The Sponsor may permit you to modify part of your Submission after the Submission Period for the purpose of adding, removing or replacing material that potentially infringes a third party mark or right, discloses personally identifiable information, or is otherwise inappropriate. The modified submission must remain substantively the same as the original submission with the only modification being what the Sponsor permits. 
+
+ 
+
+6. Judges & Criteria.
+Sponsor and Administrator reserve the sole right to determine the eligibility and judging methodologies for all submissions. This process may utilize expert panels, peer review, automated AI-driven analysis, or any combination thereof to ensure efficient, fair, and objective evaluation. Please note that any AI-driven analysis uses generative AI and may not be 100% accurate. Final results are subject to human review. Eligible Submissions will be evaluated by a panel of judges selected by the Sponsor (the “Judges”). Judges may be employees of the Sponsor (at least one judge will not be a Sponsor employee) or third parties, may or may not be listed individually on the Hackathon Website, and may change before or during the Judging Period. Judging may take place in one or more rounds with one or more panels of Judges, at the discretion of the Sponsor. 
+
+Stage One) The first stage will determine via pass/fail whether the ideas meet a baseline level of viability, in that the project reasonably fits Submission Requirements featured in the Hackathon.
+
+Stage Two) All submissions that pass Stage One will be evaluated in Stage Two for each Prize Category based on the following equally weighted criteria (the “Judging Criteria”):
+
+Entries will be judged on the following equally-weighted criteria, and according to the sole and absolute discretion of the judges:
+
+Technological Implementation - Does the project demonstrate quality software development? Does the project leverage at least one of these three technologies: Slack AI capabilities, MCP server integration, or real-time search API? 
+Design - Is the user experience and design of the project well thought out? Is there a balanced blend of frontend and backend in the software?
+Potential Impact - How big of an impact could the project have on the Slack community? How big of an impact could it have beyond the target community?
+Quality of the Idea - How creative and unique is the project? Does the concept exist already? If so, how much does the project improve on it?
+The scores from the Judges will determine the potential winners for each Prize Category. The Entrant(s) that are eligible for a Prize, and whose Submissions earn the highest overall scores for each Prize Category based on the applicable Judging Criteria, will become potential winners of that Prize Category.
+
+Tie Breaking. For each Prize Category listed below, if two or more Submissions are tied, the tied Submission with the highest score in the first applicable criterion listed above will be considered the higher scoring Submission. In the event any ties remain, this process will be repeated, as needed, by comparing the tied Submissions’ scores on the next applicable criterion. If two or more Submissions are tied on all applicable criteria, the panel of Judges will vote on the tied Submissions.
+
+ 
+
+7. Intellectual Property Rights.
+All submissions remain the intellectual property of the individuals or organizations that developed them. By submitting an entry, Entrants agree that the Sponsor will have an irrevocable, royalty-free, worldwide right and license to: (a) use, review, assess, test, and otherwise analyze the Submission and all its content in connection with the Hackathon; and (b) feature the Submission and all its content for promotional purposes (including, but not limited to, in advertisements, press releases, presentations, and trade shows) in all media, now known or later developed. Entrants also agree to sign any necessary documentation that may be required for Sponsor, and their designees to make use of the rights you granted. You acknowledge that we, other entrants or others may have developed or commissioned materials similar or identical to your Submission, or may develop something similar in the future, and you waive any claims you may have resulting from any similarities to your Submission.
+
+Entrants understand that Sponsor cannot control the information you disclose to us or our representatives in the course of participating in the Hackathon, or what we or our representatives will remember about your Submission. Entrants also understand that Sponsor will not restrict work assignments of representatives who have had access to your Submission. By participating in the Hackathon, Entrants agree that we may use any information in our representatives’ unaided memories in the development or deployment of our products or services without liability or compensation to Entrants. Entrants understand that they will not receive any compensation or credit from us for use of the Submission in connection with this Hackathon. We are not responsible for any unauthorized use of the Submission by those accessing or viewing the Submission. 
+
+Please note that after the Hackathon, Entrants and/or the Submission may be publicized in advertisements related to the Hackathon. These advertisements may be distributed online and posted on our site, social media handles, or third-party websites. 
+
+While Sponsor reserves the rights set forth above, we are not obligated to use the Submission for any purpose, even if it has been selected as a winning submission.
+
+If Entrants do not want to grant us these rights to the Submission, please do not enter this Hackathon.
+
+Nothing in these Official Rules shall be interpreted as granting Entrants permission to use or display any of the Sponsor trademarks (including any logo or brand) or rights in any Salesforce, Inc. technologies or Intellectual Property. Entrants agree to contact us prior to promoting or publicizing your participation in and, if applicable, you winning the Hackathon.
+
+ 
+
+8. Prizes.
+There will be nine (9) total Submission winner(s) (up to 36 Eligible Individuals in the event of 4 Eligible Individuals per Eligible Team) as determined by Final Judging. Total ARV of all prizes is up to USD $74,400. All currency listed in these Official Rules is in USD. 
+
+New Slack Agent Track. 
+One (1) First Prize winner will receive: 
+
+USD $8,000 USD in cash
+
+One (1) Slack Developer Certification voucher per Eligible Individual (ARV $200/each) 
+
+One (1) Dreamforce 2026 full conference pass per Eligible Individual  (ARV $2,299/each)
+
+One (1) Slack community swag voucher per Eligible Individual (ARV $200/each)
+
+Invitation to an exclusive Slack community gathering and social media interview at Dreamforce 2026* (*subject to winners attendance at Dreamforce)
+
+Features in/on Slack Developer program website & newsletter & Slack social media handles 
+
+ 
+
+One (1) Second Prize winner will receive $4,000 and features in/on Slack developer newsletter and Slack social media handles. 
+
+ 
+
+Slack Agent for Good. 
+One (1) First Prize winner will receive: 
+
+USD $8,000 USD in cash
+
+One (1) Slack Developer Certification voucher per Eligible Individual (ARV $200/each) 
+
+One (1) Dreamforce 2026 full conference pass per Eligible Individual (ARV $2,299 each
+
+One (1) Slack community swag voucher per Eligible Individual (ARV $200/each)
+
+Invitation to an exclusive Slack community gathering and social media interview at Dreamforce 2026* (*subject to winners attendance at Dreamforce)
+
+Features in/on Slack Developer program website & newsletter & Slack social media handles 
+
+ 
+
+One (1) Second Prize winner will receive $4,000 and features in/on Slack developer newsletter and Slack social media handles. 
+
+ 
+
+Slack Agent for Organizations. 
+One (1) First Prize winner will receive: 
+
+USD $8,000 USD in cash
+
+One (1) Slack Developer Certification voucher per Eligible Individual (ARV $200/each) 
+
+One (1) Dreamforce 2026 full conference pass per Eligible Individual (ARV $2,299/each)
+
+One (1) Slack community swag voucher per Eligible Individual (ARV $200/each)
+
+Invitation to an exclusive Slack community gathering and social media interview at Dreamforce 2026* (*subject to winners attendance at Dreamforce)
+
+Features in/on Slack Developer program website & newsletter & Slack social media handles
+
+One (1) 30 minute virtual conversation with a Slack product executive 
+
+Winning app featured in/on Stack Overflow podcast
+
+ 
+
+One (1) Second Prize winner will receive $4,000 and features in/on Slack developer newsletter and Slack social media handles. 
+
+ 
+
+Achievement Prizes
+Three (3) Achievement Prize Winners will receive $2,000 USD in cash and features in/on Slack developer newsletter and Slack social media handles for Achievement Prizes: Best UX, Best Technological Implementation and Most Innovative Slack Agent. 
+
+
+
+
+9. Prize Details and Conditions.
+Any prize details not specified herein will be determined by Sponsor in its sole discretion. Prizes are not transferable, assignable or refundable and cannot be substituted for cash. Prizes must be accepted as awarded. Sponsor reserves the right to substitute prizes of equal or greater monetary value to the prizes if for any reason any prize cannot be awarded as contemplated in these Official Rules. A winning Eligible Submission may only win one (1) Prize. For the avoidance of doubt, the First Prize and Second Prize winners are not eligible to receive an Achievement prize. 
+
+All expenses not listed are the sole responsibility of the winners. The First Place Prizes do not include travel or accommodations. You are responsible for any other expenses including cost to obtain a passport or visa and any other incidental travel cost not expressly stated above, including but not limited to, ground transportation, passenger tariffs or duties, surcharges, airport fees, service charges or facility charges, personal charges at lodging, security fees, taxes or other expenses are the responsibility solely of the winner. You must register for Dreamforce 2026. 
+
+Sponsor is not responsible for lost or stolen prize elements. Prizes may be reported as income to a winner and the winner will be responsible for all taxes associated with the receipt of any prize. 
+
+ 
+
+IMPORTANT NOTES ON MULTIPLE PRIZE ELIGIBILITY:
+
+Substitutions & Changes: Prizes are non-transferable by the winner. Sponsor in its sole discretion has the right to make a prize substitution of equivalent or greater value. Sponsor will not award a prize if there are no eligible submissions entered in the Hackathon, or if there are no eligible Entrants or Submissions for a specific prize.
+
+Verification Requirement: THE AWARD OF A PRIZE TO A POTENTIAL WINNER IS SUBJECT TO VERIFICATION OF THE IDENTITY, QUALIFICATIONS AND ROLE OF THE POTENTIAL WINNER IN THE CREATION OF THE SUBMISSION. No Submission or Entrant shall be deemed a winning Submission or winner until their post-competition prize affidavits have been completed and verified, even if prospective winners have been announced verbally or on the competition website. The final decision to designate a winner shall be made by the Sponsor.
+
+Prize Delivery: Prizes will be payable by the Administrator to the Entrant, if an individual; to the Entrant’s Representative, if a Team; or to the Organization, if the Entrant is an Organization. It will be the responsibility of the winning Entrant’s Representative to allocate the Prize among their Team or Organization’s participating members, as the Representative deems appropriate. A monetary Prize will be mailed to the winning Entrant’s address (if an individual) or the Representative’s address (if a Team or Organization), or sent electronically to the Entrant, Entrant’s Representative, or Organization’s bank account, only after receipt of the completed winner affidavit and other required forms (collectively the “Required Forms”), if applicable. Failure to provide correct information on the Required Forms, or other correct information required for the delivery of a Prize, may result in delayed Prize delivery, disqualification or the Entrant, or forfeiture of a Prize. Prizes will be delivered within 60 days of the Sponsor receipt of the completed Required Forms.
+
+Fees & Taxes: Winners (and in the case of Team or Organization, all participating members) are responsible for any fees associated with receiving or using a prize, including but not limited to, wiring fees or currency exchange fees. Winners (and in the case of Team or Organization, all participating members) are responsible for reporting and paying all applicable taxes in their jurisdiction of residence (federal, state/provincial/territorial and local). Winners may be required to provide certain information to facilitate receipt of the award, including completing and submitting any tax or other forms necessary for compliance with applicable withholding and reporting requirements. United States residents may be required to provide a completed form W-9 and residents of other countries may be required to provide a completed W-8BEN form. Winners are also responsible for complying with foreign exchange and banking regulations in their respective jurisdictions and reporting the receipt of the Prize to relevant government departments/agencies, if necessary. The Sponsor and/or Prize provider reserves the right to withhold a portion of the prize amount to comply with the tax laws of the United States or other sponsor jurisdiction, or those of a winner’s jurisdiction.
+
+ 
+
+10. Entry Conditions and Release.
+By entering the Hackathon, you (and, if you are entering on behalf of a Team, Organization each participating members) agree(s) to the following:
+
+The relationship between you, the Entrant, and the Sponsor, is not a confidential, fiduciary, or other special relationship.
+
+You will be bound by and comply with these Official Rules and the decisions of the Sponsor and/or the Hackathon Judges which are binding and final in all matters relating to the Hackathon.
+
+You release, indemnify, defend and hold harmless the Promotion Entities, and their respective parent, subsidiary, and affiliated companies, the Prize suppliers and any other organizations responsible for sponsoring, fulfilling, administering, advertising or promoting the Hackathon, and all of their respective past and present officers, directors, employees, agents and representatives (hereafter the “Released Parties”) from and against any and all claims, expenses, and liabilities (including reasonable attorneys’ fees), including but not limited to negligence and damages of any kind to persons and property, defamation, slander, libel, violation of right of publicity, infringement of trademark, copyright or other intellectual property rights, property damage, or death or personal injury arising out of or relating to a Entrant’s entry, creation of Submission or entry of a Submission, participation in the Hackathon, acceptance or use or misuse of the Prize (including any travel or activity related thereto) and/or the broadcast, transmission, performance, exploitation or use of the Submission as authorized or licensed by these Official Rules. 
+
+Without limiting the foregoing, the Released Parties shall have no liability in connection with: 
+
+Any incorrect or inaccurate information, whether caused by the Sponsor’s electronic or printing error, or by any of the equipment or programming associated with or utilized in the Hackathon; 
+
+Technical failures of any kind, including, but not limited to malfunctions, interruptions, or disconnections in phone lines, internet connectivity or electronic transmission errors, or network hardware or software or failure of the Hackathon Website;
+
+Unauthorized human intervention in any part of the entry process or the Hackathon; 
+
+Technical or human error which may occur in the administration of the Hackathon or the processing of Submissions; or 
+
+Any injury or damage to persons or property which may be caused, directly or indirectly, in whole or in part, from the Entrant’s participation in the Hackathon or receipt or use or misuse of any Prize.
+
+The Released Parties are not responsible for incomplete, late, misdirected, damaged, lost, illegible, or incomprehensible Submissions or for address or email address changes of the Entrants. Proof of sending or submitting the aforementioned will not be deemed to be proof of receipt by the Sponsor. If for any reason any Entrant’s Submission is determined to have not been received or been erroneously deleted, lost, or otherwise destroyed or corrupted, the Entrant’s sole remedy is to request the opportunity to resubmit its Submission. Such a request must be made promptly after the Entrant knows or should have known there was a problem and will be determined at the sole discretion of the Sponsor.
+
+ 
+
+11. Publicity.
+By participating in the Hackathon, Entrant consents to the promotion and display of the Entrant’s Submission, and to the use of personal information about themselves for promotional purposes, by the Sponsor and third parties acting on their behalf. Such personal information includes, but is not limited to, your name, likeness, photograph, voice, opinions, comments and hometown and country of residence. It may be used in any existing or newly created media, worldwide without further payment or consideration or right of review, unless prohibited by law. Authorized use includes but is not limited to advertising and promotional purposes. 
+
+ 
+12. General Conditions. 
+Sponsor reserves the right, in its sole discretion, to cancel, suspend and/or modify the Hackathon, or any part of it, in the event of a technical failure, fraud, or any other factor or event that was not anticipated or is not within its control.
+
+Sponsor reserve the right in its sole discretion to disqualify any individual or Entrant if it finds to be actually or presenting the appearance of tampering with the entry process or the operation of the Hackathon or to be acting in violation of these Official Rules or in a manner that is inappropriate, unsportsmanlike, not in the best interests of this Hackathon, or a violation of any applicable law or regulation.
+
+Any attempt by any person to undermine the proper conduct of the Hackathon may be a violation of criminal and civil law. Should the Sponsor suspect that such an attempt has been made or is threatened, it reserves the right to take appropriate action including but not limited to requiring an Entrant to cooperate with an investigation and referral to criminal and civil law enforcement authorities.
+
+If there is any discrepancy or inconsistency between the terms and conditions of the Official Rules and disclosures or other statements contained in any Hackathon materials, including but not limited to the Hackathon Submission form, Hackathon Website, or advertising, the terms and conditions of the Official Rules shall prevail.
+
+The terms and conditions of the Official Rules are subject to change at any time, including the rights or obligations of the Entrant and the Sponsor. The Sponsor will post the terms and conditions of the amended Official Rules on the Hackathon Website. To the fullest extent permitted by law, any amendment will become effective at the time specified in the posting of the amended Official Rules or, if no time is specified, the time of posting.
+
+If at any time prior to the deadline, an Entrant or prospective Entrant believes that any term in the Official Rules is or may be ambiguous, they must submit a written request for clarification. 
+
+The Sponsor’s failure to enforce any term of these Official Rules shall not constitute a waiver of that provision. Should any provision of these Official Rules be or become illegal or unenforceable in any jurisdiction whose laws or regulations may apply to an Entrant, such illegality or unenforceability shall leave the remainder of these Official Rules, including the Rule affected, to the fullest extent permitted by law, unaffected and valid. The illegal or unenforceable provision shall be replaced by a valid and enforceable provision that comes closest and best reflects the sponsor’s intention in a legal and enforceable manner with respect to the invalid or unenforceable provision.
+
+Excluding Submissions, all intellectual property related to this Hackathon, including but not limited to copyrighted material, trademarks, trade-names, logos, designs, promotional materials, web pages, source codes, drawings, illustrations, slogans and representations are owned or used under license by the Sponsor. All rights are reserved. Unauthorized copying or use of any copyrighted material or intellectual property without the express written consent of its owners is strictly prohibited. Any use in a Submission of Sponsor’s intellectual property shall be solely to the extent provided for in these Official Rules.
+
+Any suspected security issues found in the course of the hackathon should be reported to security@salesforce.com. It is not permitted to disclose them to any other parties including in public blogs or to Salesforce customers if they are suspected to be real and unaddressed issues - Salesforce needs to evaluate them individually and determine whether they are security bugs or otherwise. https://help.salesforce.com/s/articleView?id=000384043&type=1
+
+ 
+
+13. Limitations of Liability.
+By entering, all Entrants (including, in the case of a Team or Organization, all participating members) agree to release, indemnify and hold harmless the Released Parties from any and all claims in connection with the Prizes or Entrant’s participation in the Hackathon. Entrants agree that in any cause of action, the Released Parties liability will be limited to the cost of entering and/or participating in the Hackathon.
+
+ 
+
+14. Disputes.
+Except where prohibited by law, as a condition of participating in this Hackathon, Entrant agrees that:
+
+Any and all disputes and causes of action arising out of or connected with this Hackathon, or any Prizes awarded, shall be resolved individually, without resort to any form of class action lawsuit, and exclusively by final and binding arbitration under the rules of the American Arbitration Association and held at the AAA regional office nearest the contestant;
+
+The Federal Arbitration Act shall govern the interpretation, enforcement and all proceedings at such arbitration; and
+
+Judgment upon such arbitration award may be entered in any court having jurisdiction.
+
+Under no circumstances will Entrant be permitted to obtain awards for, and Entrant hereby waives all rights to claim, punitive, incidental or consequential damages, or any other damages, including attorneys’ fees, other than contestant’s actual out-of-pocket expenses (i.e., costs associated with entering this Hackathon), and Entrant further waives all rights to have damages multiplied or increased.
+
+All issues and questions concerning the construction, validity, interpretation and enforceability of these Official Rules, or the rights and obligations of the Entrant and Sponsor in connection with this Hackathon, shall be governed by, and construed in accordance with, the substantive laws of the State of California, USA without regard to California choice of law rules.
+
+SOME JURISDICTIONS DO NOT ALLOW THE LIMITATIONS OR EXCLUSION OF LIABILITY FOR INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THE ABOVE LIMITATIONS OF LIABILITY MAY NOT APPLY TO YOU.
+
+ 
+
+15. Additional Terms.
+Please review the Devpost Terms of Service at https://info.devpost.com/terms for additional rules that apply to your participation in the Hackathon and more generally your use of the Hackathon Website. Such Terms of Service are incorporated by reference into these Official Rules, including that the term "Poster" in the Terms of Service shall mean the same as "Sponsor" in these Official rules." If there is a conflict between the Terms of Service and these Official Rules, these Official Rules shall control with respect to this Hackathon only. Your use of any third party materials or platforms as part of the Hackathon must be in accordance with these Official Rules and may be subject to the terms and conditions of such third parties (such as terms of service or privacy policies) (“Third Party Policies”). If there is a conflict between any Third Party Policies and these Official Rules, these Official Rules shall control with respect to this Hackathon only. 
+
+ 
+
+16. Entrant’s Personal Information.
+Any information Entrants submit as part of the Hackathon will be used for purposes of this Hackathon and treated in accordance with Sponsor’s Privacy Statement, which is available at https://www.salesforce.com/company/privacy/. 
+
+Information collected from Entrants is subject to Devpost’s Privacy Policy, which is available at https://info.devpost.com/privacy.
+
+For questions, please send an email to support@devpost.com
+
+
+
+3 days ago
+
+Last call. ⏰ Submissions close July 13, 2026 at 5:00 PM PT.
+
+
+This is it. The Slack Agent Builder Challenge closes on July 13, 2026 at 5:00 PM PT. Here's your full pre-submission checklist — go through every item before you hit Submit.
+
+✅ Your Submission Checklist
+🔧 Your Project
+
+Your app uses at least one required technology: Slack AI capabilities, MCP server integration, or the Real-Time Search (RTS) API
+
+Your app is installed and working in your Slack Developer Sandbox
+
+You've given Member access (not Guest) to slackhack@salesforce.com and testing@devpost.com in your sandbox workspace
+
+Your sandbox URL is included on your submission form
+
+ 
+
+🗂️ Your Track
+
+You've selected your…
+
+Read more
+
+4 days ago
+
+🚨 Orgs Track Builders: Here's Exactly How to Deploy & Submit to the Slack Marketplace (4 Days Left!)
+
+
+Hey builders! 👋 If you're working on the Slack Agents for Organizations track, this is for you.
+
+A quick but important reminder: this track requires your app to be deployed to production and submitted to the Slack Marketplace — not just running in your sandbox. That's a few extra steps beyond a typical build, so we put together the exact path to get you from sandbox → production → Marketplace, below. Please read through this before you get too close to the deadline!
+
+With only 4 days left, now's the time to deploy, test, and submit (remember:…
+
+Read more
+
+7 days ago
+
+One week left. Here's what separates good submissions from winning ones 🏅
+
+
+The deadline is July 13, 2026 at 5:00 PM PT. One week. If your project isn't done, that's okay — you still have time to make it something judges remember. Here's some advice:
+
+🔨 Build Tips: What Makes a Slack App Actually Good
+Do one thing really well. The best Slack agents aren't Swiss Army knives. They solve one specific problem so cleanly that you immediately understand the value. Scope down if you haven't already.
+Make it feel native to Slack. Use Block Kit to build structured, interactive UI inside Slack — not just walls of text. An agent…
+Read more
+
+14 days ago
+
+Ship It Right: Marketplace Requirements for the Organizations Track
+
+
+So you want to ship to the Slack Marketplace. We love that for you — and we want to make sure your hard work actually qualifies. Here's what you need to know.
+
+The Slack Agent for Organizations track is built for apps that live on the Slack Marketplace — the place where thousands of orgs go to find tools they can actually trust. Every app in the Slack Marketplace is reviewed and tested to ensure that the apps published are ones that our review team determine to be high-quality, reliable, and useful.
+
+The Slack Marketplace has specific submission requirements that…
+
+Read more
+
+27 days ago
+
+Two new resources + how to actually win over the judges 🛠️
+
+
+Hey builders,
+
+We have two new resources to add to your list, plus some straight-talk on what judges are scoring and how to make your submission land.
+
+📚 Two new Slack Dev Huddles
+The Slack Developers team is running two live huddles that line up directly with what you're building:
+
+Slack Dev Huddles Ep05 — Slack MCP & RTS API → Watch
+Covers two of the three core technologies for this hackathon: MCP server integration and the Real-Time Search API. If you're wiring external tools and data into your agent, or surfacing live workspace context, this is the one to…
+Read more
+
+about 1 month ago
+
+$42,000 in prizes — plus a trip to Dreamforce. Here's the full breakdown 🎯
+
+
+In case you needed a reminder of what's on the line — here's the full prize breakdown for the Slack Agent Builder Challenge.
+
+🥇 Track Prizes
+⚡ New Slack Agent
+
+1st Place: $8,000 cash + Slack Developer Certification voucher (1 per team member, up to 4) + Dreamforce 2026 full conference pass (1 per team member, up to 4) + Slack community swag voucher (1 per team member, up to 4) + Invitation to an exclusive Slack community gathering & social media interview at Dreamforce 2026* + Features on Slack socials, the Slack developer newsletter, and the Slack Developer Program…
+
+Read more
+
+about 2 months ago
+
+8 weeks | Here's how to actually use them ⏱️
+Eight weeks sounds like a lot. It isn't. The builders who submit something they're proud of are the ones who had a plan. Here's a rough framework to get you from idea to submission without the last-minute panic.
+
+🗓️ The Slack Agent Builder Challenge Timeline
+🌱 Weeks 1–2: Idea → Foundation (May 20 – June 1)
+
+Pick your track: New Slack Agent, Agent for Good, or Agent for Organizations
+Identify the real problem you're solving — the narrower and more specific, the better
+Decide which technology you're leading with: Agent Builder, MCP, or RTS API
+Set up your developer sandbox…
+
+
+Do I need a Slack developer sandbox to participate?
+Yes — a provisioned Slack developer sandbox is required for submission. Judges will use the sandbox URL you provide to access and test your project, so it needs to be live and accessible before the deadline.
+To provision a sandbox, please use the event code SABC-7X2K-M9PL-4QFN (case-sensitive). Once you've added it, you should be able to provision your sandbox through the Slack Developer Program.
+
+ 
+
+My sandbox is set up but invites aren't going through / teammates never get the email.
+A developer sandbox isn't a regular Slack workspace — it's a mini Enterprise org. That's why the usual "remove from workspace" option won't fix this. In a normal workspace, you manage members from Workspace settings. In a sandbox, user management lives one level up, in Organization settings — that's specifically where this needs to happen.
+
+If your sandbox was set up with the default template, it came pre-loaded with 7 placeholder/demo users. Sandboxes cap out at 8 total users, so those placeholders fill the room before you can invite anyone else — including us.
+
+Fix it in 6 steps:
+Click your organization name in the top-left sidebar (not the workspace name — one level up).
+Hover Tools & settings → click Organization settings (opens the admin dashboard in a new tab).
+Click People → Members.
+Find the placeholder/demo accounts (auto-generated fake users, not your team).
+Check the box next to each one → click Deactivate above the list. This frees up the slots you need.
+Invite our judges with their role set to Member (not Guest):
+slackhack@salesforce.com
+testing@devpost.com
+Confirm both show up in your member list before you submit — that's your proof it worked.
+
+ 
+
+⚠️ This must be done at the organization level. Removing someone from just the workspace won't free up the cap — their user record still exists at the org level underneath it.
+
+ 
+
+Do I need to be a Slack expert to compete?
+No. The hackathon is built for both seasoned Slack developers and developers who are new to the platform. The Slack CLI, Agent Builder templates, and starter docs are designed to get you to a working agent quickly.
+
+ 
+
+How do I get a Slack sandbox?
+Join the Slack Developer Program — it's free, and it unlocks your developer sandbox. You'll receive sandbox access shortly after registering.
+
+ 
+
+What do I have to build?
+A NEW Slack application that uses at least one of: Slack AI capabilities, MCP server integration, or the Real-Time Search API. Your project must fit into one of the three tracks: New Slack Agent, Slack Agent for Good, or Slack Agent for Organizations (New or Existing).
+
+ 
+
+Do I have to use all three technologies?
+No — at least one is required. You're welcome to combine them, and creative combinations may stand out to judges.
+
+ 
+
+Can my team submit to more than one track?
+No. Per the official rules, "...develop an application that uses at least one (1) of these technologies: Slack AI capabilities, MCP server integration, or real-time search API, and fits into one (1) of the tracks..."
+
+ 
+
+Can my team submit to more than one Project?
+Per the official rules, "An Entrant may submit more than one Submission, however, each Submission must be unique and substantially different from each of the Entrant's other Submissions, as determined by the Sponsor and Devpost in their sole discretion." Each submission enters one track of your choosing — when you submit, you'll need to "Identify which track you are submitting to." Keep in mind that "Each Project is eligible for one (1) Prize," so the same project cannot win in multiple categories.
+
+ 
+
+Can I submit an existing app?
+Only in the Slack Agent for Organizations track, which is for new or existing commercially distributed apps that have been significantly and demonstrably updated during the submission period and submitted to the Slack Marketplace before the deadline. The other two tracks require new projects.
+
+ 
+
+Can I work in a team?
+Yes. Teams of up to four (4) eligible individuals are welcome.  
+
+ 
+
+What language or framework should I use?
+Whatever you're comfortable with. The Bolt SDK is available in JavaScript, Python, and Java. The Slack CLI works across platforms.
+
+ 
+
+Is it okay to use AI coding assistants?
+Yes — "vibe coding" with AI assistants is welcome. Judges care about the final project, not how you wrote it. Judges will be scored based on the Judging Criteria: Technological Implementation, Design, Potential Impact and Quality of the Idea.
+
+ 
+
+What should my architecture diagram look like?
+Your architecture diagram should be a visual map of how your project is built — the components, where they live, and how they connect. Think of it as the thing a developer would hand a teammate to explain the system at a glance.
+
+A good architecture diagram shows:
+
+The Slack surface — how users interact with your agent (a channel, a slash command, a DM, etc.)
+Your agent or app logic — the core of your project, whether that's a Bolt app, Slack Agent Builder, or custom server
+At least one required technology — how you're integrating Slack AI capabilities, an MCP server, and/or the RTS API
+Any external systems or data sources your agent calls out to (APIs, databases, third-party tools, etc.)
+The flow between them — arrows or connectors showing how data and events move through the system
+What it should NOT be:
+A screenshot of AI-generated text describing your project
+A bulleted list of tools and technologies
+A text block explaining your architecture in paragraph form
+ 
+
+Standard tools for creating architecture diagrams include Lucidchart, Miro, Excalidraw, Draw.io, Google Slides, and Figma — though any tool that produces an actual visual diagram is fine. Export it as an image and upload it using the Devpost file upload field on your submission form.
+
+ 
+
+How long should my demo video be?
+Around three minutes. Judges aren't required to watch beyond three minutes, so put your strongest material at the start.
+
+ 
+
+Where do I ask questions during the hackathon?
+The official hackathon Slack channel is the fastest way to reach the Devpost team and Slack team.
+
+ 
+
+How do I find my Slack App ID? 
+Your App ID is generated when you create your Slack app and is the same identifier used when your app is submitted to the Slack Marketplace. To find it, sign in at api.slack.com/apps, click on your app, and look on the Basic Information page — your App ID is listed in the App Credentials section. It's an alphanumeric string that starts with "A" (for example, A01AB2CDE3F). If you've submitted to the Slack Marketplace, that same App ID is what you'll paste into the Slack App ID field on your Devpost submission.
+
+ 
+
+How do I share my Slack developer sandbox with slackhack@salesforce.com and testing@devpost? 
+You'll need to invite both email addresses to the sandbox workspace where your agent is installed so judges can test your project end-to-end. To do this:
+
+Open your Slack developer sandbox in the Slack desktop or web app.
+
+Click your workspace name in the top-left corner and select Invite people to [Workspace Name].
+
+Enter both email addresses — slackhack@salesforce.com and testing@devpost.com.
+
+Set the role to Member (rather than Single-Channel or Multi-Channel Guest) so testers have full access to the channels and features your agent depends on.
+
+Send the invitations and confirm both accounts appear in your workspace's member list before you submit.
+
+Also include the workspace URL (e.g., https://your-sandbox.slack.com) on the Devpost submission form, and double-check that your agent is installed and authorized in that same sandbox. Without active access to a working sandbox, judges may not be able to evaluate your project. For more on managing your sandbox, see the Slack Developer Sandboxes docs.
+
+ 
+
+If I’m submitting to the Slack Agent for Organizations Track, how do I submit to the Slack Marketplace? 
+There are core requirements which must be met in order to submit.
+
+Submit here 
+
+Don’t forget to get your App ID and input in on your submission form
+
+Be sure to submit to the Slack Marketplace before the hackathon deadline!
+
+ 
+
+Can I submit my app to the Slack Marketplace from a developer sandbox?
+No. Apps submitted to the Slack Agent for Organizations track must be built in a production workspace — developer sandboxes are for testing and judging only and cannot be used to distribute an app to the Slack Marketplace. If you don't have a production workspace, create a free Slack workspace to build and deploy your app, then use your developer sandbox for testing.
+
+ 
+
+How do I find my App ID? 
+Find your Slack app's ID in the app settings under Basic Information. 
+
+ 

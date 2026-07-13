@@ -44,6 +44,7 @@ export const SCOPES: ScopeSpec[] = [
   { scope: "app_mentions:read", token: "bot", why: "Respond when @-mentioned.", usedBy: "event: app_mention" },
   { scope: "files:write", token: "bot", why: "DM the read-aloud audio file to users who enable it.", usedBy: "files.uploadV2" },
   { scope: "bookmarks:write", token: "bot", why: "Pin a channel bookmark to the user's Tempo Canvas.", usedBy: "bookmarks.add" },
+  { scope: "users:read", token: "bot", why: "Read the asking user's own display name, so every prompt is written for them by name rather than a hardcoded persona.", usedBy: "users.info (webapi/displayName.ts)" },
   // ── Demo seeding only (bot token) ─────────────────────────────────────────
   // Used exclusively by scripts/seed-workspace.ts to build the reviewable demo
   // workspace. The product itself never creates channels or spoofs a persona;

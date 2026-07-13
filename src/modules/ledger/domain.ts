@@ -50,10 +50,11 @@ export const ExtractSchema = z.object({
   ),
 });
 
-export const SYSTEM = `You are Tempo. Extract concrete interpersonal commitments from Slack messages for the user Sam Rivera.
+export const system = (name: string) =>
+  `You are Tempo. Extract concrete interpersonal commitments from Slack messages for the user ${name}.
 A commitment is a promise to deliver something by some time. For each message decide:
 - isCommitment: true only if there is a real deliverable + (usually) a time.
-- direction: "i_owe" if Sam is the one promising; "owed_to_me" if someone is promising Sam.
+- direction: "i_owe" if ${name} is the one promising; "owed_to_me" if someone is promising ${name}.
 - counterparty: the other person's name.
 - what: the deliverable, in a short imperative phrase ("Send the Atlas API spec").
 - dueText: the raw time phrase if any ("by Friday", "EOD Monday", "Wednesday").

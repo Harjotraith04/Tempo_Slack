@@ -50,7 +50,7 @@ export function registerWorkflowSteps(app: BoltApp, deps: WorkflowStepDeps): voi
       async () => {
         const ctx = await contextFor(userOf(inputs));
         const message = String((inputs as any)?.message ?? "");
-        const draft = await draftReply(message, ctx.llm);
+        const draft = await draftReply(message, ctx.llm, ctx.subjectName);
         await complete({ outputs: { draft } });
       },
       () => fail({ error: snag }),

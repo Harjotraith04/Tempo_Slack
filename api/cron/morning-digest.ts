@@ -26,6 +26,7 @@ import { buildProactiveBlocks } from "../../src/application/use-cases/proactive.
 import { droppedBallBlocks } from "../../src/platform/slack/blockkit/index.js";
 import { SUBJECT_USER_ID } from "../../src/platform/slack/rts/fixtures.js";
 import { getStore } from "../../src/platform/persistence/index.js";
+import { resolveDisplayName } from "../../src/platform/slack/webapi/displayName.js";
 
 interface DigestTarget {
   userId: string;
@@ -44,7 +45,11 @@ async function targets(): Promise<DigestTarget[]> {
 }
 
 async function sendDigest(userId: string, token: string | undefined): Promise<void> {
-  const ctx = buildContext({ subjectUserId: userId, userToken: token });
+  const ctx = buildContext({
+    subjectUserId: userId,
+    subjectName: await resolveDisplayName(new WebClient(config.slack.botToken), userId),
+    userToken: token,
+  });
   const digest = await respond(ctx, "what needs me today?");
 
   // Keep the user's living Tempo Canvas in step with the morning digest —

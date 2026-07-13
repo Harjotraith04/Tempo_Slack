@@ -28,6 +28,7 @@ import { resolveA11yPrefs } from "../accessibility/index.js";
 import { getTtsClient } from "../accessibility/tts/index.js";
 import { isFirstRun, welcomeMessage } from "../modules/onboarding.js";
 import { CORPUS_QUERY } from "../ports/rts.js";
+import { resolveDisplayName } from "../platform/slack/webapi/displayName.js";
 
 type BoltApp = InstanceType<typeof App>;
 
@@ -157,9 +158,10 @@ async function resolveUserToken(slackUserId: string): Promise<string | undefined
  * handler; each per-user context reuses it (see contextFor). */
 const container = createContainer();
 
-async function contextFor(slackUserId: string) {
+async function contextFor(client: any, slackUserId: string) {
   return buildContext({
     subjectUserId: slackUserId,
+    subjectName: await resolveDisplayName(client, slackUserId),
     userToken: await resolveUserToken(slackUserId),
     container,
   });
@@ -173,7 +175,7 @@ async function contextFor(slackUserId: string) {
  * opening a tab must never act on the user's behalf. */
 async function publishHome(client: any, userId: string, opts: { showOnboarding?: boolean } = {}) {
   try {
-    const ctx = await contextFor(userId);
+    const ctx = await contextFor(client, userId);
     // Passive refresh on tab open — don't count it toward the user's KPIs.
     const [triage, commitments, metrics] = await Promise.all([
       tempoRespond(ctx, "what needs me today?", { record: false }),
@@ -219,7 +221,7 @@ export function registerHandlers(app: BoltApp) {
       const userId = (message as any).user ?? "U_SAM";
       await setStatus("is thinking…");
       try {
-        const res = await tempoRespond(await contextFor(userId), text);
+        const res = await tempoRespond(await contextFor(client, userId), text);
         await say({ text: res.text, blocks: res.blocks as any });
         await maybeSendReadAloud(client, userId, res.speech);
       } catch (err) {
@@ -245,7 +247,7 @@ export function registerHandlers(app: BoltApp) {
       async () => {
         const res = await replyWithPlaceholder(client, say, async () =>
           withTimeout(
-            tempoRespond(await contextFor(userId), m.text),
+            tempoRespond(await contextFor(client, userId), m.text),
             RESPOND_TIMEOUT_MS,
             "tempoRespond(agent_dm)",
           ),
@@ -262,7 +264,7 @@ export function registerHandlers(app: BoltApp) {
       "/tempo",
       async () => {
         const text = command.text?.trim() || "triage";
-        const res = await tempoRespond(await contextFor(command.user_id), text);
+        const res = await tempoRespond(await contextFor(client, command.user_id), text);
         await respond({ response_type: "ephemeral", text: res.text, blocks: res.blocks as any });
         await maybeSendReadAloud(client, command.user_id, res.speech);
       },
@@ -281,7 +283,7 @@ export function registerHandlers(app: BoltApp) {
           say,
           async () =>
             withTimeout(
-              tempoRespond(await contextFor(userId), (event as any).text ?? "triage"),
+              tempoRespond(await contextFor(client, userId), (event as any).text ?? "triage"),
               RESPOND_TIMEOUT_MS,
               "tempoRespond(app_mention)",
             ),
@@ -333,7 +335,7 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "show_rest",
       async () => {
-        const res = await triageAll(await contextFor(userId));
+        const res = await triageAll(await contextFor(client, userId));
         await ephemeral(client, body, res.text, res.blocks as any);
         await maybeSendReadAloud(client, userId, res.speech);
       },
@@ -388,7 +390,7 @@ export function registerHandlers(app: BoltApp) {
         return;
       }
       await getStore().commitments.markNudged(userId, permalink);
-      const draft = await draftNudge(c, container.llm());
+      const draft = await draftNudge(c, container.llm(), await resolveDisplayName(client, userId));
       await postComposedDraft(client, body, draft);
     }, () => replyError(client, body));
   });
@@ -403,7 +405,7 @@ export function registerHandlers(app: BoltApp) {
         return;
       }
       await getStore().commitments.markRenegotiating(userId, permalink);
-      const draft = await draftRenegotiation(c, container.llm());
+      const draft = await draftRenegotiation(c, container.llm(), await resolveDisplayName(client, userId));
       await postComposedDraft(client, body, draft);
     }, () => replyError(client, body));
   });
@@ -425,7 +427,7 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "refresh_canvas",
       async () => {
-        const res = await updateCanvas(await contextFor(userId));
+        const res = await updateCanvas(await contextFor(client, userId));
         await ephemeral(
           client,
           body,
@@ -444,7 +446,7 @@ export function registerHandlers(app: BoltApp) {
     await safely(
       "sync_ledger_list",
       async () => {
-        const res = await syncCommitmentsToList(await contextFor(userId));
+        const res = await syncCommitmentsToList(await contextFor(client, userId));
         await ephemeral(
           client,
           body,
@@ -459,7 +461,11 @@ export function registerHandlers(app: BoltApp) {
 
   // Workflow Builder custom steps — Summarize what I missed / Draft a reply /
   // Block focus time / Add a commitment. Same receiver, same container.
-  registerWorkflowSteps(app, { contextFor, safely, snag: SNAG });
+  registerWorkflowSteps(app, {
+    contextFor: (userId: string) => contextFor(app.client, userId),
+    safely,
+    snag: SNAG,
+  });
 
   app.action("remind_commitment", async ({ ack, body, client }) => {
     await ack();
@@ -476,7 +482,7 @@ export function registerHandlers(app: BoltApp) {
         // ahead; otherwise a gentle default of 3 hours from now.
         const now = Math.floor(Date.now() / 1000);
         const time = c.dueTs && c.dueTs - 3600 > now ? c.dueTs - 3600 : now + 3 * 3600;
-        const res = await remindAboutCommitment(await contextFor(userId), {
+        const res = await remindAboutCommitment(await contextFor(client, userId), {
           what: c.what,
           counterparty: c.counterparty,
           direction: c.direction,
@@ -560,9 +566,9 @@ function actionTarget(body: any): { permalink: string; userId: string; authorId?
 
 async function postDraft(client: any, body: any) {
   const { permalink, userId, authorId } = actionTarget(body);
-  const ctx = await contextFor(userId);
+  const ctx = await contextFor(client, userId);
   const source = await sourceTextFor(ctx, permalink);
-  const draft = await draftReply(source ?? "", ctx.llm);
+  const draft = await draftReply(source ?? "", ctx.llm, ctx.subjectName);
   // Learn: drafting a reply to this sender is positive engagement (triage
   // buttons carry the sender id; ledger "draft it now" buttons don't).
   if (authorId) await getStore().signals.record(userId, authorId, "engaged");
