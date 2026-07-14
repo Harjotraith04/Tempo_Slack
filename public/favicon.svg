@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tempo">
+  <rect width="64" height="64" rx="15" fill="#4a154b"/>
+  <!-- Three beats, ranked: the firehose reduced to what matters. Also a metronome. -->
+  <g fill="#fff">
+    <rect x="15" y="34" width="7" height="15" rx="3.5" opacity="0.45"/>
+    <rect x="28.5" y="26" width="7" height="23" rx="3.5" opacity="0.72"/>
+    <rect x="42" y="15" width="7" height="34" rx="3.5"/>
+  </g>
+</svg>

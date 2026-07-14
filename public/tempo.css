@@ -1,0 +1,238 @@
+/*
+ * Tempo — the shared design vocabulary.
+ *
+ * Linked by BOTH the landing page (public/index.html) and every server-rendered
+ * dashboard page (src/platform/web/render.ts). It used to be two copies of the
+ * same token block that drifted apart; now there is one.
+ *
+ * This file holds tokens, the reset, typography, buttons, focus, and the motion
+ * policy. It deliberately does NOT hold page layout — the landing page's sections
+ * and the dashboard's forms each keep their own local <style>. One vocabulary,
+ * two dialects.
+ *
+ * MOTION POLICY: every animation on this site is defined inside
+ * `@media (prefers-reduced-motion: no-preference)`. Motion is opt-in, not
+ * opt-out. A user with Reduce Motion set gets a completely static page rather
+ * than a half-animated one — which for an assistive-technology product is not a
+ * nicety, it's the entire premise.
+ */
+
+/* Lexend is designed for reading proficiency, which is the whole thesis here.
+   Self-hosted (not Google Fonts) so a page that promises "we don't leak your
+   data" doesn't phone a third party to render its own headline. */
+@font-face {
+  font-family: "Lexend";
+  src: url("/fonts/lexend-latin.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --bg: #ffffff;
+  --bg-2: #faf9f8;
+  --fg: #1d1c1d;
+  --muted: #5c5a58;
+  --line: #e6e3e0;
+  --card: #faf9f8;
+
+  /* Brand — Slack aubergine, kept deliberately. This is a Slack app. */
+  --accent: #4a154b;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(74, 21, 75, 0.08);
+
+  /* Slack's own secondaries, used for the triage categories */
+  --brand-plum: #611f69;
+  --brand-rose: #e01e5a;
+  --brand-sky: #36c5f0;
+  --brand-green: #2eb67d;
+  --brand-gold: #ecb22e;
+
+  /* Semantic */
+  --good: #1a7f37;
+  --danger: #b91c1c;
+  --focus: #4a154b;
+
+  /* Triage categories. Never signalled by colour alone — every one of these is
+     paired with a text label in the markup. */
+  --cat-act: #4a154b;
+  --cat-blocker: #b3164a;
+  --cat-fyi: #0b6e8c;
+  --cat-noise: #7c7975;
+
+  /* Glass. In light mode this must be MOSTLY OPAQUE or it turns into unreadable
+     grey soup — the classic glassmorphism failure. */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-line: rgba(29, 28, 29, 0.09);
+  --shadow: 0 1px 2px rgba(29, 28, 29, 0.04), 0 8px 24px -12px rgba(29, 28, 29, 0.12);
+  --shadow-lg: 0 2px 4px rgba(29, 28, 29, 0.04), 0 24px 48px -16px rgba(29, 28, 29, 0.18);
+
+  --radius: 14px;
+  --radius-lg: 22px;
+  --font-sans: "Lexend", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #100e12;
+    --bg-2: #171419;
+    --fg: #f5f4f2;
+    --muted: #a8a29e;
+    --line: #2a2528;
+    --card: #17141a;
+
+    --accent: #d6b8ff;
+    --accent-fg: #100e12;
+    --accent-soft: rgba(214, 184, 255, 0.12);
+
+    --good: #4ade80;
+    --danger: #f87171;
+    --focus: #d6b8ff;
+
+    --cat-act: #d6b8ff;
+    --cat-blocker: #ff6b9d;
+    --cat-fyi: #6dd3f5;
+    --cat-noise: #8b8683;
+
+    --glass: rgba(255, 255, 255, 0.045);
+    --glass-line: rgba(255, 255, 255, 0.1);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.4), 0 24px 48px -16px rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html { scroll-behavior: auto; }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img, svg, video { max-width: 100%; }
+a { color: var(--accent); }
+
+h1, h2, h3, h4 {
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+p { text-wrap: pretty; }
+
+code, pre {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+/* ── Focus — visible on every interactive element, in both themes ────────── */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip link. First thing in the DOM, invisible until focused. */
+.skip {
+  position: absolute;
+  left: 0.75rem;
+  top: -100px;
+  z-index: 100;
+  background: var(--accent);
+  color: var(--accent-fg);
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 0 10px 10px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip:focus { top: 0; }
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+/* One button object. The landing page used to call it .cta and the dashboard
+   called it .btn; they were the same thing. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px; /* touch target */
+  padding: 0.7rem 1.4rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease,
+    border-color 0.18s ease, opacity 0.18s ease;
+}
+.btn:hover { box-shadow: var(--shadow); opacity: 0.92; }
+.btn:active { transform: translateY(1px); }
+
+.btn.secondary {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--line);
+}
+.btn.secondary:hover { border-color: var(--accent); background: var(--accent-soft); opacity: 1; }
+.btn.danger { background: var(--danger); color: #fff; }
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.4rem;
+}
+
+.muted { color: var(--muted); }
+
+/* ── Motion policy ──────────────────────────────────────────────────────── */
+/* Elements marked [data-reveal] start hidden and are revealed by an
+   IntersectionObserver.
+ *
+ * The `.js` guard is load-bearing, not decoration. Only JavaScript ever removes
+ * the `opacity: 0`, so if this rule applied unconditionally, a visitor with JS
+ * disabled (or a script that failed to load) would get a page whose content is
+ * permanently invisible. The `.js` class is set by an inline script in <head>,
+ * before first paint — so no-JS means the hidden state is never applied at all,
+ * and the page is simply static and complete. Content must never depend on a
+ * script to become visible. */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s cubic-bezier(0.2, 0.6, 0.2, 1),
+      transform 0.6s cubic-bezier(0.2, 0.6, 0.2, 1);
+    transition-delay: var(--d, 0s); /* stagger, set per-element */
+  }
+  .js [data-reveal].in {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

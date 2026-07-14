@@ -47,11 +47,14 @@ describe("page", () => {
     );
   });
 
-  it("is a complete, self-contained document", () => {
+  it("is a complete document that shares the landing page's stylesheet", () => {
     const out = page("Your data", "<h2>Hello</h2>");
     expect(out.startsWith("<!doctype html>")).toBe(true);
     expect(out).toContain("<h2>Hello</h2>");
-    expect(out).toContain("prefers-color-scheme"); // light + dark
+    // The tokens (and light/dark) live in public/tempo.css, which the landing
+    // page loads too. Two copies drift; one does not.
+    expect(out).toContain('href="/tempo.css"');
+    expect(out).toContain('href="#main"'); // skip link
   });
 });
 

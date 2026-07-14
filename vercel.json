@@ -18,5 +18,13 @@
     { "source": "/privacy", "destination": "/api/web/privacy" },
     { "source": "/settings", "destination": "/api/web/settings" },
     { "source": "/privacy-policy", "destination": "/api/web/privacy-policy" }
+  ],
+  "headers": [
+    {
+      "source": "/fonts/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
   ]
 }

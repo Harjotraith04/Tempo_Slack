@@ -6,330 +6,1275 @@
     <title>Tempo — an executive-function co-pilot for Slack</title>
     <meta
       name="description"
-      content="Tempo triages the firehose, remembers your commitments, decodes tone, and protects your attention — grounded in real Slack context via the Real-Time Search API."
+      content="Tempo triages the firehose, remembers your commitments, decodes tone, and protects your attention — grounded in real Slack context via the Real-Time Search API. It never stores what it reads."
     />
-    <meta property="og:title" content="Tempo — an executive-function co-pilot for Slack" />
+    <link rel="canonical" href="https://tempo-slack.vercel.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tempo-slack.vercel.app/" />
+    <meta property="og:title" content="Tempo — your working memory for Slack" />
     <meta
       property="og:description"
-      content="Assistive technology for the Slack firehose. Built on the Real-Time Search API, MCP, and Slack AI."
+      content="Assistive technology for the Slack firehose. Triage, commitments, tone, focus, re-entry — grounded in the Real-Time Search API, and Tempo is itself an MCP server."
     />
-    <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #ffffff;
-        --fg: #1d1c1d;
-        --muted: #5c5a58;
-        --line: #e6e3e0;
-        --accent: #4a154b;
-        --accent-fg: #ffffff;
-        --card: #faf9f8;
-        --good: #1a7f37;
-        --radius: 12px;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #12100f;
-          --fg: #f5f4f2;
-          --muted: #a8a29e;
-          --line: #2a2725;
-          --accent: #d6b8ff;
-          --accent-fg: #12100f;
-          --card: #1a1817;
-          --good: #4ade80;
-        }
-      }
-      * { box-sizing: border-box; }
-      html { scroll-behavior: smooth; }
-      body {
-        margin: 0;
-        padding: 0 1.5rem 5rem;
-        background: var(--bg);
-        color: var(--fg);
-        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        -webkit-font-smoothing: antialiased;
-      }
-      main { max-width: 900px; margin: 0 auto; }
+    <!-- The demo video's own poster frame. A real frame of the real product, and
+         the only 1200×630-shaped asset that exists — unfurlers do not rasterize SVG. -->
+    <meta property="og:image" content="https://i.ytimg.com/vi/EgGNoTsOWAY/maxresdefault.jpg" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Tempo — your working memory for Slack" />
+    <meta
+      name="twitter:description"
+      content="Assistive technology for the Slack firehose. It never stores what it reads."
+    />
+    <meta name="twitter:image" content="https://i.ytimg.com/vi/EgGNoTsOWAY/maxresdefault.jpg" />
 
-      /* ── Hero ─────────────────────────────────────────────────────────── */
-      header { padding: 5rem 0 3rem; border-bottom: 1px solid var(--line); }
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#4a154b" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#100e12" media="(prefers-color-scheme: dark)" />
+
+    <link rel="preload" href="/fonts/lexend-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/tempo.css" />
+
+    <!-- Marks that JS is alive, before first paint. Everything that hides content
+         in order to animate it in is gated behind this class, so a visitor without
+         JS gets the whole page rather than a stack of invisible sections. -->
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
+
+    <style>
+      /* Landing-page layout only. The shared vocabulary lives in /tempo.css. */
+
+      body { overflow-x: hidden; }
+      .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+      .narrow { max-width: 780px; }
+
+      section { padding: 5.5rem 0; }
       .eyebrow {
         display: inline-block;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         color: var(--accent);
-        border: 1px solid var(--line);
+        background: var(--accent-soft);
         border-radius: 999px;
-        padding: 0.3rem 0.8rem;
-        margin-bottom: 1.5rem;
+        padding: 0.35rem 0.9rem;
+        margin: 0 0 1.25rem;
       }
-      h1 {
-        font-size: clamp(2.5rem, 6vw, 3.75rem);
-        line-height: 1.05;
-        letter-spacing: -0.03em;
-        margin: 0 0 1rem;
-      }
-      .tag { font-size: clamp(1.1rem, 2.4vw, 1.35rem); color: var(--muted); margin: 0 0 2rem; max-width: 42ch; }
-      .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-      .cta {
-        display: inline-block;
-        background: var(--accent);
-        color: var(--accent-fg);
-        text-decoration: none;
-        font-weight: 600;
-        padding: 0.85rem 1.6rem;
-        border-radius: 8px;
-        transition: opacity 0.15s;
-      }
-      .cta:hover { opacity: 0.88; }
-      .cta.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+      .h2 { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 1rem; }
+      .lede { font-size: 1.15rem; line-height: 1.7; color: var(--muted); max-width: 62ch; margin: 0 0 1rem; }
+      .lede strong { color: var(--fg); font-weight: 600; }
 
-      /* ── Sections ─────────────────────────────────────────────────────── */
-      section { padding: 3.5rem 0; border-bottom: 1px solid var(--line); }
-      section:last-of-type { border-bottom: 0; }
-      h2 {
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: var(--muted);
-        margin: 0 0 1.5rem;
-        font-weight: 600;
+      /* ── Nav ───────────────────────────────────────────────────────────── */
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        backdrop-filter: saturate(1.6) blur(14px);
+        -webkit-backdrop-filter: saturate(1.6) blur(14px);
+        border-bottom: 1px solid transparent;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
       }
-      h3 { font-size: 1.05rem; margin: 0 0 0.35rem; letter-spacing: -0.01em; }
-      .lede { font-size: 1.2rem; line-height: 1.6; margin: 0 0 1rem; max-width: 60ch; }
-      .lede strong { font-weight: 600; }
+      .nav.stuck { border-bottom-color: var(--line); box-shadow: var(--shadow); }
+      .nav .wrap { display: flex; align-items: center; gap: 1rem; height: 64px; }
+      .brand {
+        display: flex; align-items: center; gap: 0.6rem;
+        font-weight: 700; letter-spacing: -0.02em; font-size: 1.05rem;
+        color: var(--fg); text-decoration: none;
+      }
+      .brand svg { width: 26px; height: 26px; border-radius: 7px; }
+      .nav nav { margin-left: auto; display: flex; align-items: center; gap: 0.35rem; }
+      .nav nav a {
+        color: var(--muted); text-decoration: none; font-size: 0.92rem; font-weight: 500;
+        padding: 0.5rem 0.7rem; border-radius: 8px; transition: color 0.18s, background 0.18s;
+      }
+      .nav nav a:hover { color: var(--fg); background: var(--accent-soft); }
+      /* .nav nav a out-specifies .btn, which would drain the CTA's contrast to
+         muted-grey-on-aubergine. Win the specificity back. */
+      .nav nav a.btn { color: var(--accent-fg); padding: 0.5rem 1rem; min-height: 40px; }
+      .nav nav a.btn:hover { color: var(--accent-fg); background: var(--accent); }
+      @media (max-width: 780px) { .nav nav a.hide-sm { display: none; } }
 
-      /* ── Module grid ──────────────────────────────────────────────────── */
-      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
-      .card {
+      /* ── Hero ──────────────────────────────────────────────────────────── */
+      .hero { position: relative; padding: 5rem 0 4rem; isolation: isolate; }
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: -30% -20% auto -20%;
+        height: 780px;
+        z-index: -1;
+        background:
+          radial-gradient(38% 45% at 18% 30%, rgba(74, 21, 75, 0.20), transparent 70%),
+          radial-gradient(34% 40% at 78% 22%, rgba(224, 30, 90, 0.14), transparent 70%),
+          radial-gradient(40% 45% at 52% 68%, rgba(54, 197, 240, 0.12), transparent 70%);
+        filter: blur(28px);
+        pointer-events: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        .hero::before {
+          background:
+            radial-gradient(38% 45% at 18% 30%, rgba(214, 184, 255, 0.20), transparent 70%),
+            radial-gradient(34% 40% at 78% 22%, rgba(224, 30, 90, 0.18), transparent 70%),
+            radial-gradient(40% 45% at 52% 68%, rgba(54, 197, 240, 0.14), transparent 70%);
+        }
+      }
+      /* A slow drift, so the hero breathes rather than sits. Transform only, and
+         it never runs for anyone who asked for less motion. */
+      @media (prefers-reduced-motion: no-preference) {
+        .hero::before {
+          animation: drift 20s ease-in-out infinite alternate;
+          will-change: transform;
+        }
+        @keyframes drift {
+          to { transform: translate3d(0, -20px, 0) scale(1.06); }
+        }
+      }
+      .hero h1 {
+        font-size: clamp(2.6rem, 6.4vw, 4.4rem);
+        letter-spacing: -0.04em;
+        margin: 0 0 1.25rem;
+        max-width: 16ch;
+      }
+      .grad {
+        background: linear-gradient(100deg, var(--accent), var(--brand-rose) 55%, var(--brand-plum));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      @media (prefers-color-scheme: dark) {
+        .grad { background: linear-gradient(100deg, #d6b8ff, #ff6b9d 60%, #6dd3f5); -webkit-background-clip: text; background-clip: text; }
+      }
+      .hero .tag { font-size: clamp(1.1rem, 2.2vw, 1.35rem); color: var(--muted); max-width: 52ch; margin: 0 0 2rem; line-height: 1.6; }
+      .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+      .actions .note { font-size: 0.85rem; color: var(--muted); }
+
+      /* ── Hero visual: 400 unreads → 4 things ───────────────────────────── */
+      .reduce {
+        margin-top: 4rem;
+        display: grid;
+        grid-template-columns: 1fr auto 1.35fr;
+        gap: 1.5rem;
+        align-items: center;
+      }
+      @media (max-width: 900px) {
+        .reduce { grid-template-columns: 1fr; gap: 1rem; }
+        .reduce .arrow { transform: rotate(90deg); justify-self: center; }
+      }
+      .panel {
+        background: var(--glass);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-line);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem;
+        box-shadow: var(--shadow);
+      }
+      .panel-title {
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+        color: var(--muted); margin: 0 0 0.9rem;
+      }
+      /* The firehose, as it looks: a wall of messages, none of them ranked. */
+      .bars { display: grid; gap: 0.85rem; }
+      .bars .msg { display: flex; gap: 0.55rem; align-items: flex-start; }
+      .bars .av {
+        flex: 0 0 auto; width: 22px; height: 22px; border-radius: 7px;
+        background: var(--line);
+      }
+      .bars .ln { flex: 1; display: grid; gap: 5px; min-width: 0; }
+      .bars .ln i { display: block; height: 7px; border-radius: 999px; background: var(--line); }
+      .bars .ln i:first-child { width: 30%; height: 6px; opacity: 0.75; } /* the name */
+      .bars .msg:nth-child(3n) .ln i:last-child { width: 92%; }
+      .bars .msg:nth-child(3n + 1) .ln i:last-child { width: 74%; }
+      .bars .msg:nth-child(3n + 2) .ln i:last-child { width: 58%; }
+      .bars .msg:nth-child(5n) .ln i:last-child { width: 84%; }
+      .bars .msg:nth-child(4n) .ln i:first-child { width: 22%; }
+      .bars .msg:nth-child(5n) .ln i:first-child { width: 38%; }
+      .arrow { color: var(--muted); }
+      .arrow svg { width: 30px; height: 30px; display: block; }
+
+      .out { display: grid; gap: 0.6rem; }
+      .tcard {
+        display: flex; gap: 0.75rem; align-items: flex-start;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--c, var(--line));
+        border-radius: 10px;
+        padding: 0.7rem 0.85rem;
+      }
+      .tcard .cat {
+        flex: 0 0 auto;
+        font-size: 0.62rem; font-weight: 800; letter-spacing: 0.09em;
+        color: var(--c); text-transform: uppercase;
+        padding-top: 0.18rem;
+        min-width: 4.6rem;
+      }
+      .tcard p { margin: 0; font-size: 0.9rem; line-height: 1.45; }
+      .tcard .sub { color: var(--muted); font-size: 0.78rem; }
+      .act { --c: var(--cat-act); }
+      .blocker { --c: var(--cat-blocker); }
+      .fyi { --c: var(--cat-fyi); }
+      .noise-note { font-size: 0.8rem; color: var(--muted); margin: 0.3rem 0 0; }
+
+      /* The bars dim as the noise drops away; the four survivors rise in after
+         them. Both are driven by ONE observer target — the .reduce block itself.
+         Observing each card separately meant the lower two sat under the reveal
+         threshold and stayed invisible until you scrolled, which is a poor trade
+         for a hero. */
+      @media (prefers-reduced-motion: no-preference) {
+        .reduce.in .bars .msg {
+          animation: dim 0.55s ease both;
+          animation-delay: calc(var(--i, 0) * 45ms);
+        }
+        @keyframes dim { to { opacity: 0.28; } }
+
+        .js .reduce .tcard {
+          opacity: 0;
+          transform: translateY(12px);
+          transition: opacity 0.5s cubic-bezier(0.2, 0.7, 0.2, 1),
+            transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+          transition-delay: var(--d, 0s);
+        }
+        .js .reduce.in .tcard { opacity: 1; transform: none; }
+      }
+
+      /* ── Proof bar ─────────────────────────────────────────────────────── */
+      .proof {
+        border-block: 1px solid var(--line);
+        background: var(--bg-2);
+        padding: 2.25rem 0;
+      }
+      .proof ul {
+        list-style: none; margin: 0; padding: 0;
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem;
+        text-align: center;
+      }
+      .proof .n {
+        display: block;
+        font-size: clamp(1.8rem, 3.4vw, 2.4rem);
+        font-weight: 700; letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+        color: var(--fg);
+      }
+      .proof .l { font-size: 0.85rem; color: var(--muted); line-height: 1.4; display: block; }
+
+      /* ── Video ─────────────────────────────────────────────────────────── */
+      /* The poster is drawn here rather than pulled from i.ytimg.com. YouTube's
+         auto-picked frame is a screenshot of a JSON file, and a designed poster
+         also means the page makes no third-party request until you press play. */
+      .video {
+        position: relative;
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        border: 1px solid var(--line);
+        aspect-ratio: 16 / 9;
+        box-shadow: var(--shadow-lg);
+        background:
+          radial-gradient(60% 80% at 15% 20%, rgba(224, 30, 90, 0.30), transparent 65%),
+          radial-gradient(60% 90% at 85% 85%, rgba(54, 197, 240, 0.22), transparent 65%),
+          linear-gradient(140deg, #3a1040, #4a154b 45%, #23102b);
+      }
+      .video iframe { width: 100%; height: 100%; display: block; border: 0; }
+      .video .play {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        display: grid;
+        grid-template-rows: 1fr auto; /* disc centred in the space above the caption */
+        gap: 0.75rem;
+        padding: clamp(1.25rem, 3.5vw, 2.5rem);
+        background: transparent;
+        border: 0; cursor: pointer;
+        text-align: left; color: #fff;
+        font: inherit;
+      }
+      .video .vbot { display: grid; gap: 0.45rem; justify-items: start; }
+      .video .disc {
+        display: grid; place-items: center;
+        width: clamp(56px, 7vw, 76px); aspect-ratio: 1; border-radius: 50%;
+        background: #fff; color: var(--brand-plum);
+        box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+        place-self: center;
+      }
+      .video .play:hover .disc { box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55); }
+      @media (prefers-reduced-motion: no-preference) {
+        .video .play:hover .disc { transform: scale(1.07); }
+      }
+      .video .disc svg { width: 40%; height: 40%; margin-left: 8%; }
+      .video .vtitle {
+        font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+        font-weight: 600; letter-spacing: -0.02em; line-height: 1.25;
+        max-width: 24ch;
+      }
+      .video .vmeta {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+        font-size: 0.8rem; color: rgba(255, 255, 255, 0.72);
+      }
+      .video .pill {
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 999px; padding: 0.15rem 0.6rem;
+        font-weight: 600; letter-spacing: 0.02em;
+      }
+      .video-note { font-size: 0.85rem; color: var(--muted); margin-top: 0.8rem; }
+
+      /* ── Decoder widget ────────────────────────────────────────────────── */
+      .decoder { border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; background: var(--card); }
+      .decoder > fieldset { border: 0; margin: 0; padding: 1.25rem 1.25rem 0; }
+      .decoder legend { font-size: 0.85rem; color: var(--muted); padding: 0 0 0.7rem; }
+      .sr-only {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+      }
+      .chips { display: grid; gap: 0.5rem; }
+      .chips label {
+        display: block; cursor: pointer;
+        border: 1px solid var(--line); border-radius: 10px;
+        padding: 0.7rem 0.9rem; font-size: 0.92rem;
+        background: var(--bg); color: var(--muted);
+        transition: border-color 0.18s, color 0.18s, background 0.18s;
+      }
+      .chips label:hover { border-color: var(--accent); color: var(--fg); }
+      .panels { padding: 1.25rem; }
+      .dec { display: none; }
+      .rows { display: grid; gap: 0.85rem; margin: 0 0 1.25rem; }
+      .rows > div { display: grid; grid-template-columns: 8.5rem 1fr; gap: 0.75rem; align-items: start; }
+      @media (max-width: 620px) { .rows > div { grid-template-columns: 1fr; gap: 0.1rem; } }
+      .rows dt, .rows .k {
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--muted); padding-top: 0.25rem;
+      }
+      .rows .v { margin: 0; font-size: 0.98rem; line-height: 1.6; }
+      .conf { border-top: 1px solid var(--line); padding-top: 1rem; }
+      .conf-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85rem; margin-bottom: 0.5rem; }
+      .conf-head b { font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+      .track { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+      .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--brand-rose)); width: var(--w); }
+      .caveat { font-size: 0.85rem; color: var(--muted); margin: 0.7rem 0 0; font-style: italic; }
+
+      /* Zero-JS tab switching: the radio drives which panel shows. */
+      #d1:checked ~ .panels .dec1,
+      #d2:checked ~ .panels .dec2,
+      #d3:checked ~ .panels .dec3 { display: block; }
+      #d1:checked ~ fieldset .chips label[for="d1"],
+      #d2:checked ~ fieldset .chips label[for="d2"],
+      #d3:checked ~ fieldset .chips label[for="d3"] {
+        border-color: var(--accent); color: var(--fg); background: var(--accent-soft); font-weight: 500;
+      }
+      #d1:focus-visible ~ fieldset .chips label[for="d1"],
+      #d2:focus-visible ~ fieldset .chips label[for="d2"],
+      #d3:focus-visible ~ fieldset .chips label[for="d3"] {
+        outline: 3px solid var(--focus); outline-offset: 2px;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .dec { animation: fade 0.35s ease; }
+        .fill { animation: grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+        @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+        @keyframes grow { from { width: 0; } to { width: var(--w); } }
+      }
+
+      /* ── Module grid ───────────────────────────────────────────────────── */
+      .mods { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+      .mod {
+        background: var(--glass);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-line);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+      }
+      .mod:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); }
+      @media (prefers-reduced-motion: no-preference) { .mod:hover { transform: translateY(-3px); } }
+      .mod .ico {
+        width: 40px; height: 40px; border-radius: 10px;
+        display: grid; place-items: center;
+        background: var(--accent-soft); color: var(--accent);
+        margin-bottom: 1rem;
+      }
+      .mod .ico svg { width: 21px; height: 21px; }
+      .mod h3 { font-size: 1.05rem; margin: 0 0 0.15rem; }
+      .mod .nick {
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--accent); display: block; margin-bottom: 0.6rem;
+      }
+      .mod p { margin: 0; color: var(--muted); font-size: 0.93rem; line-height: 1.6; }
+
+      /* ── Highlight / callout ───────────────────────────────────────────── */
+      .callout {
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        border-radius: var(--radius);
+        background: var(--card);
+        padding: 1.5rem 1.75rem;
+      }
+      .callout.grave { border-left-color: var(--danger); }
+
+      pre {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+        overflow-x: auto;
+        line-height: 1.6;
+        margin: 1rem 0;
+      }
+      pre code { font-size: 0.82rem; }
+      .tok { color: var(--accent); font-weight: 600; }
+      .cmt { color: var(--muted); }
+      p code, li code { background: var(--accent-soft); color: var(--accent); padding: 0.12rem 0.4rem; border-radius: 5px; font-weight: 500; }
+
+      /* ── Tech list ─────────────────────────────────────────────────────── */
+      .tech { display: grid; gap: 1rem; }
+      .tech .card { display: flex; gap: 1.1rem; align-items: flex-start; }
+      /* A flex item defaults to min-width:auto, so the long `curl` line inside
+         refuses to shrink and drags the whole card past the viewport edge. This
+         is what lets the <pre> scroll instead of the page. */
+      .tech .card > div { min-width: 0; flex: 1; }
+      .num {
+        flex: 0 0 auto; width: 30px; height: 30px;
+        display: grid; place-items: center; border-radius: 9px;
+        background: var(--accent); color: var(--accent-fg);
+        font-size: 0.85rem; font-weight: 700;
+      }
+      .tech h3 { margin: 0.15rem 0 0.4rem; font-size: 1.05rem; }
+      .tech p { margin: 0 0 0.6rem; color: var(--muted); font-size: 0.95rem; }
+      .tech p:last-child { margin-bottom: 0; }
+      .tech strong { color: var(--fg); }
+
+      /* ── Architecture ──────────────────────────────────────────────────── */
+      .arch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+      @media (max-width: 820px) { .arch { grid-template-columns: 1fr; } }
+      .col { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.2rem; background: var(--card); }
+      .col.core { border-color: var(--accent); background: var(--accent-soft); }
+      .col h3 {
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+        color: var(--muted); margin: 0 0 0.8rem;
+      }
+      .col.core h3 { color: var(--accent); }
+      .col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; }
+      .col li { font-size: 0.88rem; line-height: 1.45; }
+      .col li b { font-weight: 600; }
+      .col li span { display: block; color: var(--muted); font-size: 0.78rem; }
+
+      /* ── Honesty table ─────────────────────────────────────────────────── */
+      .honest { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+      @media (max-width: 820px) { .honest { grid-template-columns: 1fr; } }
+      .honest .card h3 { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; margin: 0 0 0.75rem; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+      .dot.live { background: var(--good); }
+      .dot.mock { background: var(--brand-gold); }
+      .dot.off { background: var(--cat-noise); }
+      .honest ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; }
+      .honest li { font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
+      .honest li b { color: var(--fg); font-weight: 600; }
+
+      /* ── Bands ─────────────────────────────────────────────────────────── */
+      /* Because the palette is CSS custom properties, a band can simply redefine
+         the tokens for its own subtree — every card, button and rule inside
+         re-themes itself with no per-element overrides. */
+      .alt { background: var(--bg-2); border-block: 1px solid var(--line); }
+
+      .ink {
+        background: linear-gradient(165deg, #1b0a20, #2c1033 48%, #150714);
+        --fg: #f7f4f8;
+        --muted: #c0b0c7;
+        --line: rgba(255, 255, 255, 0.14);
+        --card: rgba(255, 255, 255, 0.05);
+        --accent: #d6b8ff;
+        --accent-fg: #1b0a20;
+        --accent-soft: rgba(214, 184, 255, 0.14);
+        --danger: #ff8095;
+        color: var(--fg);
+      }
+      .ink .card, .ink .callout { backdrop-filter: blur(8px); }
+
+      .brand-band {
+        background: linear-gradient(125deg, #4a154b, #7a1f6b 45%, #b3164a);
+        --fg: #ffffff;
+        --muted: rgba(255, 255, 255, 0.82);
+        --line: rgba(255, 255, 255, 0.28);
+        --accent: #ffffff;
+        --accent-fg: #4a154b;
+        --accent-soft: rgba(255, 255, 255, 0.16);
+        --focus: #ffffff;
+        color: var(--fg);
+      }
+      .brand-band .lede strong { color: #fff; }
+
+      /* ── It acts ───────────────────────────────────────────────────────── */
+      .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+      @media (max-width: 880px) { .acts { grid-template-columns: 1fr; gap: 1.75rem; } }
+      .fcard {
         background: var(--card);
         border: 1px solid var(--line);
         border-radius: var(--radius);
         padding: 1.25rem 1.4rem;
+        box-shadow: var(--shadow-lg);
       }
-      .card p { margin: 0; color: var(--muted); font-size: 0.94rem; }
+      .fcard .ftop { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
+      .fcard .ftop b { font-size: 1rem; font-weight: 600; }
+      .fcard .glyph { font-size: 1.15rem; line-height: 1; }
+      .frow {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+        padding: 0.55rem 0; border-top: 1px solid var(--line);
+        font-size: 0.9rem;
+      }
+      .frow span:first-child { color: var(--muted); }
+      .frow span:last-child { font-weight: 600; text-align: right; }
+      .frow .ok { color: var(--good); }
+      .frow .mock { color: var(--muted); font-weight: 500; font-style: italic; }
 
-      /* ── Media ────────────────────────────────────────────────────────── */
-      figure { margin: 0; }
-      .frame {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        overflow: hidden;
-        background: var(--card);
-      }
-      .frame img, .frame svg { display: block; width: 100%; height: auto; }
-      .ratio { position: relative; padding-top: 56.25%; }
-      .ratio > iframe {
-        position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
-      }
-      figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.7rem; }
-      .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+      /* ── Close + footer ────────────────────────────────────────────────── */
+      .close { text-align: center; }
+      .close .h2 { max-width: 22ch; margin-inline: auto; }
+      .close .lede { margin-inline: auto; }
+      .close .actions { justify-content: center; margin-top: 2rem; }
 
-      /* ── Tech ─────────────────────────────────────────────────────────── */
-      .tech { display: grid; gap: 1rem; }
-      .tech .card { display: flex; gap: 1rem; align-items: flex-start; }
-      .num {
-        flex: 0 0 auto;
-        width: 1.6rem; height: 1.6rem;
-        display: grid; place-items: center;
-        border-radius: 6px;
-        background: var(--accent); color: var(--accent-fg);
-        font-size: 0.78rem; font-weight: 700;
-      }
-      code {
-        background: var(--line);
-        padding: 0.12rem 0.4rem;
-        border-radius: 4px;
-        font-size: 0.88em;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-      .privacy { border-color: var(--good); }
-      .privacy h3 { color: var(--good); }
-
-      footer {
-        padding-top: 2.5rem;
-        color: var(--muted);
-        font-size: 0.875rem;
-        border-top: 1px solid var(--line);
-      }
-      footer a { color: var(--muted); }
-      footer nav { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 1rem; }
+      footer { border-top: 1px solid var(--line); padding: 3rem 0 4rem; color: var(--muted); font-size: 0.9rem; }
+      footer .cols { display: flex; flex-wrap: wrap; gap: 2.5rem; justify-content: space-between; }
+      footer p { max-width: 46ch; margin: 0.75rem 0 0; line-height: 1.6; }
+      footer nav { display: flex; flex-direction: column; gap: 0.5rem; }
+      footer nav a { color: var(--muted); text-decoration: none; }
+      footer nav a:hover { color: var(--fg); text-decoration: underline; }
+      footer .fine { margin-top: 2.5rem; font-size: 0.8rem; }
     </style>
   </head>
+
   <body>
-    <main>
-      <header>
-        <span class="eyebrow">Slack Agent Builder Challenge · Agent for Good</span>
-        <h1>Your working memory for Slack.</h1>
-        <p class="tag">
-          Tempo triages the firehose, remembers what you promised, decodes what people actually meant,
-          and protects your attention.
-        </p>
-        <div class="actions">
-          <a class="cta" href="/api/oauth/start">Add to Slack</a>
-          <a class="cta secondary" href="#demo">Watch the 3-min demo</a>
-        </div>
-      </header>
+    <a class="skip" href="#main">Skip to content</a>
 
-      <section id="why">
-        <h2>Why it exists</h2>
-        <p class="lede">
-          Slack has no memory of <em>you</em>. It remembers every message, and nothing about which ones were
-          load-bearing. So the work of deciding what matters — the executive function — is silently pushed onto
-          the person least able to spare it.
-        </p>
-        <p class="lede">
-          <strong>Tempo is assistive technology for that.</strong> It is built for the ~15–20% of knowledge
-          workers who are neurodivergent, for people working in a second language, for anyone coming back from
-          leave to 400 unreads — and, honestly, for everyone else too.
-        </p>
-      </section>
-
-      <section id="demo">
-        <h2>See it work</h2>
-        <!--
-          OWNER: when the demo is uploaded, replace this whole <figure> with the
-          iframe below and drop in the YouTube id:
-
-          <figure>
-            <div class="frame ratio">
-              <iframe src="https://www.youtube-nocookie.com/embed/YOUR_VIDEO_ID"
-                title="Tempo — 3-minute demo" allowfullscreen
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
-            </div>
-            <figcaption>Sam returns from a week away. Tempo turns 400 unreads into the four things that need them.</figcaption>
-          </figure>
-
-          Until then this card stands in — an iframe pointed at a placeholder id
-          renders as a dead grey YouTube error box, which is a worse first
-          impression than saying plainly that the video is coming.
-        -->
-        <figure>
-          <div class="card">
-            <h3>Sam returns from a week away.</h3>
-            <p style="color: var(--muted)">
-              400 unreads. One promise he made and forgot. One person quietly blocked on him who never
-              @-mentioned him. Tempo turns that into the four things that actually need him — and protects
-              the afternoon so he can do them.
-            </p>
-            <p style="margin: 0">
-              <a class="cta secondary" href="https://github.com/Harjotraith04/Tempo_Slack">Read the code</a>
-            </p>
-          </div>
-        </figure>
-      </section>
-
-      <section id="what">
-        <h2>Five modules, one working memory</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>Triage</h3>
-            <p>Sorts everything since you were last active into Act / Blocker / FYI / Noise — including the
-              blocker nobody @-mentioned you on.</p>
-          </div>
-          <div class="card">
-            <h3>Commitment Ledger</h3>
-            <p>Every promise you made and every promise made to you, with due dates, drift, and a draft to
-              nudge or renegotiate.</p>
-          </div>
-          <div class="card">
-            <h3>Tone Decoder</h3>
-            <p>Separates what a message literally says from what it means. Names the real urgency, and the
-              social expectation.</p>
-          </div>
-          <div class="card">
-            <h3>Focus Guardian</h3>
-            <p>Books the block: <strong>real</strong> Do-Not-Disturb and a status your team can see, plus a calendar
-              hold via outbound MCP (mock-backed in this submission).</p>
-          </div>
-          <div class="card">
-            <h3>Re-entry</h3>
-            <p>The calm brief you need after time off — decisions made, what changed, who is waiting.</p>
-          </div>
-          <div class="card privacy">
-            <h3>Never auto-sends</h3>
-            <p>Tempo drafts; you send. Nothing leaves your account without your tap — the guarantee that makes
-              it safe to trust.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="architecture">
-        <h2>How it's built</h2>
-        <figure>
-          <div class="frame">
-            <img src="/architecture.svg" alt="Tempo architecture: Slack surfaces feed Vercel entrypoints, which drive a hexagonal application core. The core grounds in the Slack Real-Time Search API and OpenAI, acts through the Slack Web API and outbound MCP clients, and persists only encrypted tokens and facts in Neon Postgres. Tempo also exposes itself as an inbound MCP server for external agents." />
-          </div>
-          <figcaption>Ports and adapters throughout — the domain modules import no SDKs, so every seam has a mock and a live implementation.</figcaption>
-        </figure>
-      </section>
-
-      <section id="tech">
-        <h2>All three hackathon technologies</h2>
-        <div class="tech">
-          <div class="card">
-            <span class="num">1</span>
-            <div>
-              <h3>Real-Time Search API</h3>
-              <p>
-                <code>assistant.search.context</code> with the user's <em>own</em> token — so Tempo sees exactly
-                what you can see, and nothing else. It's the only way to ground on the messages that never
-                mentioned you, which is precisely where the blockers hide. What it reads is never stored.
-              </p>
-            </div>
-          </div>
-          <div class="card">
-            <span class="num">2</span>
-            <div>
-              <h3>MCP — and Tempo <em>is</em> the server</h3>
-              <p>
-                Tempo isn't just an MCP client: it <strong>is</strong> a live MCP server at
-                <code>/api/mcp/server</code>, exposing <code>tempo_triage</code>, <code>tempo_commitments</code>,
-                <code>tempo_decode</code> and <code>tempo_focus</code> to Agentforce, Claude or Cursor behind
-                signed per-user tokens and a default-deny gate. Anyone can call an MCP server; few expose one.
-                <br /><br />
-                Outbound MCP clients (calendar, tasks) are built against the same SDK but ship
-                <strong>mock-backed</strong> here — we didn't stand up third-party OAuth we couldn't test
-                end to end, and we'd rather say so than pretend.
-              </p>
-            </div>
-          </div>
-          <div class="card">
-            <span class="num">3</span>
-            <div>
-              <h3>Slack AI &amp; agent surfaces</h3>
-              <p>
-                The Agent pane (<code>agent_view</code>) with suggested prompts, a live App Home dashboard,
-                Block Kit actions and an accessibility settings modal, four Workflow Builder steps, Tempo Canvas,
-                and Slack Lists.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="privacy">
-        <h2>The privacy posture</h2>
-        <p class="lede">
-          Tempo acts as <em>you</em>, on data you already have permission to see. It stores your encrypted token,
-          your preferences, the facts of your commitments, and counts-only metrics.
-          <strong>It never persists a single message it reads</strong> — that's enforced at the schema level and
-          guarded by tests, not just promised here. You can see everything it holds, export it, and delete it,
-          from the <a href="/privacy">web dashboard</a>.
-        </p>
-      </section>
-
-      <footer>
-        Assistive technology for the Slack firehose — built for people with ADHD and executive-function
-        differences, for non-native speakers, and for anyone drowning in unreads.
-        <nav>
-          <a href="/api/oauth/start">Add to Slack</a>
-          <a href="https://github.com/Harjotraith04/Tempo_Slack">Source</a>
-          <a href="/privacy-policy">Privacy</a>
-          <a href="/privacy">Your data</a>
+    <header class="nav" id="nav">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <rect width="64" height="64" rx="15" fill="#4a154b" />
+            <g fill="#fff">
+              <rect x="15" y="34" width="7" height="15" rx="3.5" opacity="0.45" />
+              <rect x="28.5" y="26" width="7" height="23" rx="3.5" opacity="0.72" />
+              <rect x="42" y="15" width="7" height="34" rx="3.5" />
+            </g>
+          </svg>
+          Tempo
+        </a>
+        <nav aria-label="Primary">
+          <a class="hide-sm" href="#demo">Demo</a>
+          <a class="hide-sm" href="#decoder">Decoder</a>
+          <a class="hide-sm" href="#modules">Modules</a>
+          <a class="hide-sm" href="#build">How it's built</a>
+          <a class="btn" href="/api/oauth/start">Add to Slack</a>
         </nav>
-      </footer>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ── Hero ──────────────────────────────────────────────────────── -->
+      <section class="hero">
+        <div class="wrap">
+          <span class="eyebrow">Slack Agent Builder Challenge · Agent for Good</span>
+          <h1>Your <span class="grad">working memory</span> for Slack.</h1>
+          <p class="tag">
+            Tempo triages the firehose, remembers what you promised, decodes what people actually
+            meant, and protects your attention. It never stores what it reads.
+          </p>
+          <div class="actions">
+            <a class="btn" href="/api/oauth/start">Add to Slack</a>
+            <a class="btn secondary" href="#demo">Watch the 3-min demo</a>
+            <span class="note">Free · never auto-sends · delete everything in one click</span>
+          </div>
+
+          <!-- The thesis, as a picture. Sam comes back from a week away. -->
+          <div class="reduce" id="reduce" data-reveal>
+            <div class="panel">
+              <p class="panel-title">400 unreads</p>
+              <div class="bars" aria-hidden="true">
+                <div class="msg" style="--i: 0"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 1"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 2"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 3"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 4"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 5"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 6"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 7"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 8"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+                <div class="msg" style="--i: 9"><span class="av"></span><span class="ln"><i></i><i></i></span></div>
+              </div>
+            </div>
+
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </div>
+
+            <div class="panel">
+              <p class="panel-title">4 things that actually need you</p>
+              <div class="out">
+                <div class="tcard blocker" style="--d: 0.35s">
+                  <span class="cat">Blocker</span>
+                  <div>
+                    <p>Priya has been blocked on you since Tuesday.</p>
+                    <p class="sub">#proj-atlas — she never @-mentioned you.</p>
+                  </div>
+                </div>
+                <div class="tcard act" style="--d: 0.47s">
+                  <span class="cat">Act</span>
+                  <div>
+                    <p>You promised feedback on the handoff doc. It's overdue.</p>
+                    <p class="sub">You said "by Monday" — 9 days ago.</p>
+                  </div>
+                </div>
+                <div class="tcard act" style="--d: 0.59s">
+                  <span class="cat">Act</span>
+                  <div>
+                    <p>Design review needs your sign-off by EOD.</p>
+                  </div>
+                </div>
+                <div class="tcard fyi" style="--d: 0.71s">
+                  <span class="cat">FYI</span>
+                  <div>
+                    <p>Production incident on Thursday — already resolved.</p>
+                    <p class="sub">Scary words. Engineering closed it. Not yours.</p>
+                  </div>
+                </div>
+              </div>
+              <p class="noise-note">The other 396 were noise, and Tempo said so.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Proof bar ─────────────────────────────────────────────────── -->
+      <div class="proof">
+        <div class="wrap">
+          <ul>
+            <li>
+              <span class="n" data-count="413">413</span>
+              <span class="l">tests, across 55 files</span>
+            </li>
+            <li>
+              <span class="n" data-count="0">0</span>
+              <span class="l">messages ever stored</span>
+            </li>
+            <li>
+              <span class="n" data-count="25">25</span>
+              <span class="l">scopes, each justified in CI</span>
+            </li>
+            <li>
+              <span class="n" data-count="3">3</span>
+              <span class="l">of 3 required technologies, live</span>
+            </li>
+            <li>
+              <span class="n" data-count="0">0</span>
+              <span class="l">credentials needed to run it</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ── Why ───────────────────────────────────────────────────────── -->
+      <section id="why">
+        <div class="wrap narrow">
+          <span class="eyebrow">Why it exists</span>
+          <h2 class="h2">The important part of Slack isn't in the messages. It's in between them.</h2>
+          <p class="lede">
+            The urgency the words don't state. The obligation nobody wrote down. The person waiting in
+            silence. Neurotypical native speakers reconstruct that layer automatically and for free.
+            <strong>Everyone else pays for it, in attention they don't get back.</strong>
+          </p>
+          <p class="lede">
+            Slack has no memory of <em>you</em>. It remembers every message, and nothing about which
+            ones were load-bearing — so the work of deciding what matters is silently pushed onto the
+            person least able to spare it.
+          </p>
+          <p class="lede">
+            <strong>Tempo is assistive technology for that.</strong> Built for the ~15–20% of knowledge
+            workers who are neurodivergent, for people working in a second language, for anyone coming
+            back from leave to 400 unreads — and, honestly, for everyone else on a bad week.
+          </p>
+        </div>
+      </section>
+
+      <!-- ── Demo ──────────────────────────────────────────────────────── -->
+      <section id="demo">
+        <div class="wrap">
+          <span class="eyebrow">See it work</span>
+          <h2 class="h2">Three minutes, end to end.</h2>
+          <p class="lede">
+            Triage, the tone decoder in both directions, a real Do-Not-Disturb flip on the user's own
+            token, and the MCP server answering a live <code>tools/list</code>.
+          </p>
+          <div class="video" id="video" data-id="EgGNoTsOWAY">
+            <button class="play" type="button" aria-label="Play the Tempo demo video (3 minutes)">
+              <span class="disc" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              </span>
+              <span class="vbot">
+                <span class="vtitle">Sam returns from a week away.</span>
+                <span class="vmeta">
+                  <span class="pill" aria-hidden="true">3:00</span>
+                  <span>Triage · Decoder · a real DND flip · the MCP server, live</span>
+                </span>
+              </span>
+            </button>
+          </div>
+          <p class="video-note">
+            Nothing loads from YouTube until you press play — no cookies, no tracking scripts on this
+            page. <a href="https://youtu.be/EgGNoTsOWAY">Open on YouTube instead.</a>
+          </p>
+        </div>
+      </section>
+
+      <!-- ── Decoder ───────────────────────────────────────────────────── -->
+      <section id="decoder">
+        <div class="wrap narrow">
+          <span class="eyebrow">The Translator</span>
+          <h2 class="h2">"No rush 🙂" is not a message about rushing.</h2>
+          <p class="lede">
+            The gap between what a message says and what it means is invisible to Slack — and
+            exhausting to compute all day if implicit subtext doesn't come to you for free. Pick a
+            message and see what Tempo actually returns.
+          </p>
+
+          <div class="decoder">
+            <input class="sr-only" type="radio" name="dec" id="d1" checked />
+            <input class="sr-only" type="radio" name="dec" id="d2" />
+            <input class="sr-only" type="radio" name="dec" id="d3" />
+
+            <fieldset>
+              <legend>Choose an incoming message to decode</legend>
+              <div class="chips">
+                <label for="d1">No rush 🙂 whenever you get a chance I guess. Not like the handoff is waiting on it.</label>
+                <label for="d2">Can you confirm the numbers by EOD? It's going in the board deck.</label>
+                <label for="d3">Thanks for putting the doc together, I'll take a look this week.</label>
+              </div>
+            </fieldset>
+
+            <div class="panels" aria-live="polite">
+              <!-- Verbatim from src/modules/decoder/domain.ts — these are the real outputs,
+                   including the confidence numbers. Especially the confidence numbers. -->
+              <div class="dec dec1">
+                <div class="rows">
+                  <div><span class="k">Literally</span><p class="v">They say there's no rush and you can get to it whenever.</p></div>
+                  <div><span class="k">Probably means</span><p class="v">They're actually frustrated. The "🙂" and "only been a week" are sarcastic — they expected this days ago and the handoff is waiting on you.</p></div>
+                  <div><span class="k">Tone</span><p class="v">Politely irritated / passive-aggressive.</p></div>
+                  <div><span class="k">Real urgency</span><p class="v">Higher than the words suggest — treat as "needed today".</p></div>
+                  <div><span class="k">They expect</span><p class="v">Reply soon with the feedback (or a firm ETA) and a brief acknowledgement of the delay.</p></div>
+                </div>
+                <div class="conf">
+                  <div class="conf-head"><span>Confidence</span><b>72%</b></div>
+                  <div class="track"><div class="fill" style="--w: 72%"></div></div>
+                  <p class="caveat">
+                    "Tone is hard to read over text and I can be wrong — if it matters, a quick 'sorry
+                    for the delay, you'll have it by X' covers you either way."
+                  </p>
+                </div>
+              </div>
+
+              <div class="dec dec2">
+                <div class="rows">
+                  <div><span class="k">Literally</span><p class="v">They need something confirmed by end of day.</p></div>
+                  <div><span class="k">Probably means</span><p class="v">This is a real, time-boxed ask tied to something visible (a board deck). It's not optional.</p></div>
+                  <div><span class="k">Tone</span><p class="v">Direct, businesslike, not unfriendly.</p></div>
+                  <div><span class="k">Real urgency</span><p class="v">Genuinely high — there's a hard deadline.</p></div>
+                  <div><span class="k">They expect</span><p class="v">Confirm today, clearly, even if the answer is "I'll have it by 4pm".</p></div>
+                </div>
+                <div class="conf">
+                  <div class="conf-head"><span>Confidence</span><b>85%</b></div>
+                  <div class="track"><div class="fill" style="--w: 85%"></div></div>
+                  <p class="caveat">"If you can't make the deadline, say so early rather than going quiet."</p>
+                </div>
+              </div>
+
+              <div class="dec dec3">
+                <div class="rows">
+                  <div><span class="k">Literally</span><p class="v">A straightforward message.</p></div>
+                  <div><span class="k">Probably means</span><p class="v">No strong hidden subtext detected.</p></div>
+                  <div><span class="k">Tone</span><p class="v">Neutral.</p></div>
+                  <div><span class="k">Real urgency</span><p class="v">Normal.</p></div>
+                  <div><span class="k">They expect</span><p class="v">Reply when convenient.</p></div>
+                </div>
+                <div class="conf">
+                  <div class="conf-head"><span>Confidence</span><b>60%</b></div>
+                  <div class="track"><div class="fill" style="--w: 60%"></div></div>
+                  <p class="caveat">"I can misread tone; trust your read if you know this person well."</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="lede" style="margin-top: 1.5rem">
+            <strong>Look at the third one.</strong> Nothing is hidden in it, and Tempo says so — at 60%,
+            with a caveat telling you to trust yourself over the model. A tool that confidently
+            misreads tone is worse than no tool at all, so Tempo never pretends to certainty it
+            doesn't have. Point it at your own draft and it works in reverse: how will <em>this</em>
+            land before you hit send.
+          </p>
+        </div>
+      </section>
+
+      <!-- ── Modules ───────────────────────────────────────────────────── -->
+      <section id="modules" class="alt">
+        <div class="wrap">
+          <span class="eyebrow">What's in it</span>
+          <h2 class="h2">Six modules, one working memory.</h2>
+          <div class="mods">
+            <div class="mod" data-reveal>
+              <div class="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4" /></svg>
+              </div>
+              <h3>Triage</h3>
+              <span class="nick">The Surface</span>
+              <p>
+                Sorts everything since you were last active into Act / Blocker / FYI / Noise —
+                including the blocker nobody @-mentioned you on, which Slack's unread badge
+                structurally cannot find.
+              </p>
+            </div>
+
+            <div class="mod" data-reveal>
+              <div class="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" /></svg>
+              </div>
+              <h3>Commitment Ledger</h3>
+              <span class="nick">The Memory</span>
+              <p>
+                Every promise you made and every promise made to you, with due dates, drift, and a
+                draft to nudge or renegotiate before it becomes a dropped ball.
+              </p>
+            </div>
+
+            <div class="mod" data-reveal>
+              <div class="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7v11H7l-3 3V5z" /><path d="M13 9h7v8h-3l-2 3v-3h-2V9z" /></svg>
+              </div>
+              <h3>Tone Decoder</h3>
+              <span class="nick">The Translator</span>
+              <p>
+                Separates what a message literally says from what it means. Names the real urgency and
+                the social expectation — with an honest confidence score and a caveat.
+              </p>
+            </div>
+
+            <div class="mod" data-reveal>
+              <div class="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6l7-3z" /></svg>
+              </div>
+              <h3>Focus Guardian</h3>
+              <span class="nick">The Shield</span>
+              <p>
+                Books the block: <strong>real</strong> Do-Not-Disturb and a status your team can see,
+                flipped on your own token — plus a calendar hold via outbound MCP (mock-backed here,
+                and it says so on the card).
+              </p>
+            </div>
+
+            <div class="mod" data-reveal>
+              <div class="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18" /><path d="M3 12a9 9 0 019-9M21 12a9 9 0 00-9-9M3 12a9 9 0 009 9M21 12a9 9 0 01-9 9" /></svg>
+              </div>
+              <h3>Re-entry</h3>
+              <span class="nick">The Bridge</span>
+              <p>
+                The calm brief you need after time off — what was decided, what changed, and who has
+                been waiting on you the whole time.
+              </p>
+            </div>
+
+            <div class="mod" data-reveal>
+              <div class="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" /></svg>
+              </div>
+              <h3>Conversation</h3>
+              <span class="nick">The Door</span>
+              <p>
+                Everything that isn't a command still gets a real answer — and always an offer of
+                something Tempo can actually do. Chat is a doorway into the product, not a dead end.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── It acts ───────────────────────────────────────────────────── -->
+      <section id="acts">
+        <div class="wrap">
+          <div class="acts">
+            <div>
+              <span class="eyebrow">It acts</span>
+              <h2 class="h2">The agent stops talking and does something.</h2>
+              <p class="lede">
+                Ask for two hours and Tempo flips your <strong>real</strong> Do-Not-Disturb and sets a
+                status your team can actually see — on your own token, as you. Most agents end at a
+                nicely-worded suggestion. This one changes the state of your workspace.
+              </p>
+              <p class="lede">
+                And where it <em>can't</em>, it says so out loud. The calendar line below prints
+                <code>(mock)</code> on the real card, because we didn't stand up third-party OAuth we
+                couldn't test end to end.
+              </p>
+            </div>
+            <div class="fcard" data-reveal>
+              <div class="ftop">
+                <span class="glyph" aria-hidden="true">🌙</span>
+                <b>Focus time protected — 2 hours</b>
+              </div>
+              <div class="frow">
+                <span>Do-Not-Disturb</span>
+                <span class="ok">On until 4:30pm · real</span>
+              </div>
+              <div class="frow">
+                <span>Slack status</span>
+                <span>🎯 Heads-down until 4:30 · real</span>
+              </div>
+              <div class="frow">
+                <span>Calendar hold</span>
+                <span class="mock">Focus block (mock)</span>
+              </div>
+              <div class="frow">
+                <span>Anything urgent</span>
+                <span>Still reaches you</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Crisis ────────────────────────────────────────────────────── -->
+      <section id="safety" class="ink">
+        <div class="wrap narrow">
+          <span class="eyebrow">Safety</span>
+          <h2 class="h2">The one place we take the AI out of the loop.</h2>
+          <p class="lede">
+            Tempo is built for people under strain — burnt out, overwhelmed, neurodivergent. Given that
+            audience, someone will eventually type something that isn't about Slack at all.
+          </p>
+          <p class="lede">
+            <strong>In that moment, a generative model is exactly the wrong thing to have in the
+            loop.</strong> It can improvise. It can minimise. It can hallucinate a helpline that
+            doesn't exist. So the crisis check runs <em>before</em> any model call and returns fixed,
+            hand-written words. No generation. No temperature. No surprises.
+          </p>
+          <div class="callout grave">
+            <p class="lede" style="margin: 0 0 0.75rem">
+              And this isn't a promise in a README. The test spies on the LLM port and fails if it is
+              <em>touched at all</em> — not "prompted carefully". Never reached.
+            </p>
+            <pre><code><span class="cmt">// converse.test.ts — the assertion this whole file exists for</span>
+expect(llm.structured).<span class="tok">not</span>.toHaveBeenCalled();</code></pre>
+            <p class="lede" style="margin: 0; font-size: 1rem">
+              The card it shows carries no product buttons either. Nudging someone toward "want me to
+              triage your inbox?" in that moment would be grotesque.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Tech ──────────────────────────────────────────────────────── -->
+      <section id="build">
+        <div class="wrap">
+          <span class="eyebrow">How it's built</span>
+          <h2 class="h2">All three required technologies, live.</h2>
+          <div class="tech">
+            <div class="card" data-reveal>
+              <span class="num">1</span>
+              <div>
+                <h3>Real-Time Search API</h3>
+                <p>
+                  <code>assistant.search.context</code> runs on the user's <em>own</em> token — so
+                  Tempo sees exactly what you can see, and nothing else. It's the only way to ground on
+                  the messages that never mentioned you, which is precisely where the blockers hide.
+                  <strong>What it reads is never stored.</strong>
+                </p>
+              </div>
+            </div>
+
+            <div class="card" data-reveal>
+              <span class="num">2</span>
+              <div>
+                <h3>MCP — and Tempo <em>is</em> the server</h3>
+                <p>
+                  Tempo isn't just an MCP client. It <strong>is</strong> a live MCP server at
+                  <code>/api/mcp/server</code>, exposing <code>tempo_triage</code>,
+                  <code>tempo_commitments</code>, <code>tempo_decode</code> and <code>tempo_focus</code>
+                  to Agentforce, Claude or Cursor — behind signed per-user tokens and a default-deny
+                  gate. <strong>Anyone can call an MCP server; few expose one.</strong>
+                </p>
+                <pre><code><span class="cmt"># judges can run this right now</span>
+curl -sX POST https://tempo-slack.vercel.app/api/mcp/server \
+  -H <span class="tok">"Authorization: Bearer $TEMPO_MCP_SERVER_TOKEN"</span> \
+  -d <span class="tok">'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</span></code></pre>
+                <p>
+                  The <em>outbound</em> MCP clients (calendar, tasks) are built against the same port
+                  and fully tested, but ship <strong>mock-backed</strong> — we didn't stand up
+                  third-party OAuth we couldn't test end to end, and we'd rather say so than pretend.
+                </p>
+              </div>
+            </div>
+
+            <div class="card" data-reveal>
+              <span class="num">3</span>
+              <div>
+                <h3>Slack AI &amp; agent surfaces</h3>
+                <p>
+                  The Agent pane (<code>agent_view</code>) with suggested prompts, a live App Home
+                  dashboard, Block Kit actions and an accessibility settings modal, four Workflow
+                  Builder steps, Tempo Canvas, and Slack Lists.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Architecture ──────────────────────────────────────────────── -->
+      <section id="arch" class="alt">
+        <div class="wrap">
+          <span class="eyebrow">Architecture</span>
+          <h2 class="h2">Ports and adapters, all the way down.</h2>
+          <p class="lede">
+            The domain modules import no SDKs — they depend only on ports. So every external system has
+            a mock and a live adapter, and <strong>the entire product runs with zero credentials.</strong>
+            That's not a demo mode bolted on; it's the same code path, and it's the CI smoke test.
+          </p>
+          <div class="arch">
+            <div class="col" data-reveal>
+              <h3>Surfaces</h3>
+              <ul>
+                <li><b>Slack</b><span>Agent pane, App Home, Block Kit, slash commands, Workflow steps</span></li>
+                <li><b>Web</b><span>Privacy dashboard, settings, export &amp; delete</span></li>
+                <li><b>MCP server</b><span>External agents call in — default-deny</span></li>
+                <li><b>Cron</b><span>The morning digest</span></li>
+              </ul>
+            </div>
+            <div class="col core" data-reveal>
+              <h3>Application core</h3>
+              <ul>
+                <li><b>Triage</b><span>Ranks, caps, explains</span></li>
+                <li><b>Ledger</b><span>Promises made and owed</span></li>
+                <li><b>Decoder</b><span>Literal vs. implied</span></li>
+                <li><b>Focus · Re-entry · Converse</b><span>Pure domain logic. No SDK imports. Ever.</span></li>
+              </ul>
+            </div>
+            <div class="col" data-reveal>
+              <h3>Ports → adapters</h3>
+              <ul>
+                <li><b>Search</b><span>mock · Slack Real-Time Search</span></li>
+                <li><b>LLM</b><span>mock · OpenAI</span></li>
+                <li><b>Actions</b><span>mock · Slack Web API (DND, status)</span></li>
+                <li><b>Store</b><span>mock · Neon Postgres, encrypted tokens only</span></li>
+                <li><b>Calendar · Tasks</b><span>mock · outbound MCP (mock-backed today)</span></li>
+              </ul>
+            </div>
+          </div>
+          <p class="video-note">
+            <a href="/architecture.svg">Open the full architecture diagram</a> — every entrypoint, port
+            and adapter, generated from source.
+          </p>
+        </div>
+      </section>
+
+      <!-- ── Honesty ───────────────────────────────────────────────────── -->
+      <section id="honest">
+        <div class="wrap">
+          <span class="eyebrow">What's honest about this</span>
+          <h2 class="h2">Judges deserve to know exactly where the line is.</h2>
+          <div class="honest">
+            <div class="card">
+              <h3><span class="dot live" aria-hidden="true"></span>Live and real</h3>
+              <ul>
+                <li><b>RTS grounding</b> on the user's own token</li>
+                <li><b>Slack AI &amp; agent surfaces</b></li>
+                <li><b>The inbound MCP server</b> — call it yourself</li>
+                <li><b>Real DND + status flips</b></li>
+                <li><b>Neon Postgres</b>, encrypted tokens</li>
+                <li><b>The Vercel cron digest</b></li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><span class="dot mock" aria-hidden="true"></span>Built, tested, mock-backed</h3>
+              <ul>
+                <li>
+                  The <b>outbound</b> MCP calendar and task clients. Same port, fully exercised — we
+                  chose not to stand up third-party OAuth we couldn't test end to end under the
+                  deadline. The focus card literally prints <code>(mock)</code>.
+                </li>
+                <li>
+                  Focus is hardened so that on the day a real MCP server <em>is</em> connected and goes
+                  down, <b>the DND still lands.</b>
+                </li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><span class="dot off" aria-hidden="true"></span>Off by default, by design</h3>
+              <ul>
+                <li>The <b>team/manager view</b> and the multi-source <b>"Attention OS"</b> (email, calendar).</li>
+                <li>
+                  Their sources are mock-only, behind a flag that ships off. <b>The seam is real, the
+                  integration is not, and we will not call it one.</b>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Privacy ───────────────────────────────────────────────────── -->
+      <section id="privacy">
+        <div class="wrap narrow">
+          <span class="eyebrow">Privacy</span>
+          <h2 class="h2">Privacy is architectural, not a promise.</h2>
+          <p class="lede">
+            Tempo acts as <em>you</em>, on data you already have permission to see. It stores your
+            encrypted token, your preferences, the facts of your commitments, and counts-only metrics.
+            <strong>It never persists a single message it reads</strong> — enforced at the schema level
+            and guarded by tests, not just asserted on a landing page.
+          </p>
+          <p class="lede">
+            You can narrow it further: <em>only watch these channels</em>, <em>never track these
+            people</em>. That consent holds on every surface — the app, the scheduled digest, and the
+            MCP server all go through the same code path, so an external agent can't read around it.
+          </p>
+          <div class="actions">
+            <a class="btn secondary" href="/privacy">See everything it holds</a>
+            <a class="btn secondary" href="/privacy-policy">Privacy policy</a>
+            <span class="note">Export it or delete it — immediately and totally.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Close ─────────────────────────────────────────────────────── -->
+      <section class="close brand-band">
+        <div class="wrap narrow">
+          <h2 class="h2">Curb cuts were built for wheelchairs.</h2>
+          <p class="lede">
+            They're used by everyone with a suitcase. Calm, ranked, plain-language communication is
+            universal design — and the person who benefits from being told <em>"three things need you,
+            and Priya has been blocked on you since Tuesday"</em> is, on a bad week, all of us.
+          </p>
+          <div class="actions">
+            <a class="btn" href="/api/oauth/start">Add Tempo to Slack</a>
+            <a class="btn secondary" href="https://github.com/Harjotraith04/Tempo_Slack">Read the source</a>
+          </div>
+        </div>
+      </section>
     </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="cols">
+          <div>
+            <a class="brand" href="/">
+              <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                <rect width="64" height="64" rx="15" fill="#4a154b" />
+                <g fill="#fff">
+                  <rect x="15" y="34" width="7" height="15" rx="3.5" opacity="0.45" />
+                  <rect x="28.5" y="26" width="7" height="23" rx="3.5" opacity="0.72" />
+                  <rect x="42" y="15" width="7" height="34" rx="3.5" />
+                </g>
+              </svg>
+              Tempo
+            </a>
+            <p>
+              Assistive technology for the Slack firehose — built for people with ADHD and
+              executive-function differences, for non-native speakers, and for anyone drowning in
+              unreads.
+            </p>
+          </div>
+          <nav aria-label="Footer">
+            <a href="/api/oauth/start">Add to Slack</a>
+            <a href="https://github.com/Harjotraith04/Tempo_Slack">Source</a>
+            <a href="/privacy-policy">Privacy policy</a>
+            <a href="/privacy">Your data</a>
+            <a href="/settings">Settings</a>
+          </nav>
+        </div>
+        <p class="fine">
+          Tempo drafts; you send. It never auto-sends, and it never stores what it reads.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Progressive enhancement only. Every section above is fully usable with this
+      // file removed — the decoder is a CSS-driven radio group, the video is a link,
+      // and the reveals are opt-in via a media query.
+      (function () {
+        var reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        // Nav gets a border once you've scrolled off the top.
+        var nav = document.getElementById("nav");
+        var onScroll = function () {
+          nav.classList.toggle("stuck", window.scrollY > 8);
+        };
+        addEventListener("scroll", onScroll, { passive: true });
+        onScroll();
+
+        if (reduced) return; // everything below is motion. Leave the page static.
+
+        // Reveal on scroll.
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (!e.isIntersecting) return;
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            });
+          },
+          { rootMargin: "0px 0px -12% 0px" },
+        );
+        document.querySelectorAll("[data-reveal]").forEach(function (el) {
+          io.observe(el);
+        });
+
+        // Count up the proof numbers when they scroll into view.
+        var counters = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (!e.isIntersecting) return;
+              var el = e.target;
+              counters.unobserve(el);
+              var target = Number(el.dataset.count);
+              if (!target) return; // the zeroes are already correct, and honest
+              var t0 = performance.now();
+              var tick = function (now) {
+                var p = Math.min((now - t0) / 900, 1);
+                el.textContent = String(Math.round(target * (1 - Math.pow(1 - p, 3))));
+                if (p < 1) requestAnimationFrame(tick);
+              };
+              el.textContent = "0";
+              requestAnimationFrame(tick);
+            });
+          },
+          { threshold: 0.6 },
+        );
+        document.querySelectorAll("[data-count]").forEach(function (el) {
+          counters.observe(el);
+        });
+      })();
+
+      // The YouTube facade: no third-party request until the visitor asks for one.
+      (function () {
+        var box = document.getElementById("video");
+        if (!box) return;
+        var btn = box.querySelector(".play");
+        btn.addEventListener("click", function () {
+          var f = document.createElement("iframe");
+          f.src =
+            "https://www.youtube-nocookie.com/embed/" +
+            box.dataset.id +
+            "?autoplay=1&rel=0";
+          f.title = "Tempo — 3-minute demo";
+          f.allow =
+            "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+          f.allowFullscreen = true;
+          box.innerHTML = "";
+          box.appendChild(f);
+          f.focus();
+        });
+      })();
+    </script>
   </body>
 </html>
